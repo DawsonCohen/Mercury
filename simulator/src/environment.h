@@ -8,10 +8,9 @@
 struct Environment
 {
 	float floor_stiffness = 1000000;
-	float3 g = {0, -9.81, 0};
-	float damping = .99;
-	float friction = .4;
-	float zeta = .8;
+	float3 g = {0.0f, -9.81f, 0.0f};
+	float damping = 1.0f;
+	float friction = 0.4f;
 };
 
 #endif

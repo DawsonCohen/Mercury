@@ -12,11 +12,11 @@ struct Mass {
 	glm::vec3 	pos;
 	glm::vec3 	protoPos;
 	
-	float 	mass = 1.0f;
-	float3 	vel = {0.0f, 0.0f, 0.0f};
-	float3 	acc = {0.0f, 0.0f, 0.0f};
-	float3 	force = {0.0f, 0.0f, 0.0f};
-	glm::vec4 color = glm::vec4(0.0f,0.0f,0.0f,1.0f);
+	float 		mass = 1.0f;
+	glm::vec3 	vel   = glm::vec3(0.0f);
+	glm::vec3 	acc   = glm::vec3(0.0f);
+	glm::vec3 	force = glm::vec3(0.0f);
+	glm::vec4	color = glm::vec4(0.0f,0.0f,0.0f,1.0f);
 
 	bool	active = false;
 };

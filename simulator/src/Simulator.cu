@@ -152,10 +152,10 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	float mu = envBuf[0].friction;
 	float zeta = envBuf[0].damping;
 	float step_time = 0;
-	glm::vec3 pos;
+	glm::vec3 pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
 		float  mass = massBuf[i].mass;
-		float3 vel  = massBuf[i].vel;
+		vel  = massBuf[i].vel;
 		pos = massBuf[i].pos;
 
 		m_hPos[4*i]   = pos.x;
@@ -259,7 +259,9 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
+		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
 		massBuf[i].pos = glm::vec3(pos.x,pos.y,pos.z);
+		massBuf[i].vel = glm::vec3(vel.x,vel.y,vel.z);
 	}
 
 	return trackers;
