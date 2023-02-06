@@ -1,0 +1,100 @@
+#ifndef __SIMULATOR_H__
+#define __SIMULATOR_H__
+
+#include "environment.h"
+#include "element.h"
+#include <memory>
+
+struct ElementTracker {
+	uint ID;
+	Mass* mass_begin;
+	Mass* mass_end;
+	Mass* mass_chunk_end;
+	Spring* spring_begin;
+	Spring* spring_end;
+	Spring* spring_chunk_end;
+	uint* offset_begin;
+	uint* offset_end;
+	uint* offset_chunk_end;
+
+	float3 mean_pos = {0.0f, 0.0f, 0.0f};
+};
+
+class Simulator {
+	void _initialize();
+
+public:
+	Simulator(Element prototype, uint maxElements);
+	Simulator(float dt): step_period(dt) {}
+	Simulator() {}
+	~Simulator();
+
+	void Initialize(Element prototype, uint maxElements);
+	
+	std::vector<ElementTracker> Allocate(const std::vector<Element>& element);
+	ElementTracker AllocateElement(const Element& e);
+
+	std::vector<Element> Collect(const std::vector<ElementTracker>& trackers);
+	Element CollectElement(const ElementTracker& tracker);
+	std::vector<ElementTracker> Simulate(std::vector<Element>& elements);
+
+	// void Simulate(std::vector<Mass>& masses, const std::vector<Spring>& springs);
+
+	// Getter/setter time step in seconds
+	float getStepPeriod() const { return step_period; }
+	void setTimeStep(float dt) { step_period = dt; }
+
+	// Get simulated time elapsed in seconds
+	float getTotalTime() const { return total_time; }
+
+	// Getter/setter maximum simulation time in seconds
+	float getMaxTime() const { return max_time; }
+	void setMaxTime(float tmax) { max_time = tmax; }
+
+	void Reset() { total_time = 0; }
+
+	// std::tuple<std::vector<Mass>, std::vector<Spring>> element2simulatable(std::vector<Mass>, std::vector<Spring>);
+	// void result2element(std::vector<Element>, std::vector<Mass>);
+
+
+protected:
+	bool initialized = false;
+
+	std::vector<Environment> mEnvironments;
+    float total_time = 0;
+    float step_period = 0.0005;
+    float max_time = 5;
+
+	Mass*			massBuf;
+	Spring*			springBuf;
+	uint*			offsetBuf;
+	Environment*	envBuf;
+
+	// CPU data
+	uint   *m_hPairs;
+	float  *m_hMats;
+	float  *m_hLbars;
+	float  *m_hPos;
+	float  *m_hVel;
+
+	// GPU data
+	float   *m_dPos[2], *m_dVel[2],
+			*m_dMats;
+	uint	*m_dPairs;
+	float	*m_dLbars;
+	uint	*m_dSpringCount;
+
+	uint springsPerElement = 0;
+	uint massesPerElement  = 0;
+	uint maxElements       = 0;
+	uint maxMasses 	       = 0;
+	uint maxSprings        = 0;
+	uint maxEnvs           = 0;
+	uint numElements       = 0;
+	uint numMasses         = 0;
+	uint numSprings        = 0;
+	uint envCount          = 0;
+	uint elementCount      = 0;
+};
+
+#endif
