@@ -25,7 +25,9 @@ Simulator::Simulator(Element prototype, uint maxElements) :
 	springsPerElement(prototype.springs.size()),
 	maxMasses(prototype.masses.size()*maxElements),
 	maxSprings(prototype.springs.size()*maxElements),
-	maxEnvs(1)
+	maxEnvs(1),
+	m_hPos(0),
+	m_hVel(0)
 {
 	m_dPos[0] = m_dPos[1] = 0;
     m_dVel[0] = m_dVel[1] = 0;
@@ -65,6 +67,8 @@ void Simulator::Initialize(Element prototype, uint maxElements) {
 	maxMasses = prototype.masses.size()*maxElements;
 	maxSprings = prototype.springs.size()*maxElements;
 	maxEnvs = 1;
+	m_currentRead = 0;
+	m_currentWrite = 1;
 
 	_initialize();
 }
@@ -180,8 +184,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		m_hLbars[i] 	= lbar;
 	}
 
-	cudaMemcpy(m_dVel[1], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dPos[1], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dPairs,  m_hPairs, numSprings *2*sizeof(uint),  cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dLbars,  m_hLbars, numSprings  * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMats,   m_hMats,  numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
@@ -231,8 +235,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		// integrateBodies<<<blockSize,numSpringBlocks>>>(
 		
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
-			(float4*) m_dPos[0], (float4*) m_dVel[0],
-			(float4*) m_dPos[1], (float4*) m_dVel[1],
+			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(uint2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, 
 			step_period, total_time, make_float4(stiffness,mu,zeta,gravity.y),
 			massesPerElement, springsPerElement,
@@ -240,16 +244,18 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 		gpuErrchk( cudaPeekAtLastError() );
 		cudaDeviceSynchronize();
+
+		std::swap(m_currentRead, m_currentWrite);
 		
 		step++;
 		total_time += step_period;
 		step_time += step_period;
-		break;
 	}
+
+	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	
 	cudaMemcpy(&springCount,m_dSpringCount,sizeof(uint),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hPos,m_dPos[0],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hVel,m_dVel[0],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};

@@ -85,10 +85,8 @@ __device__ inline void AtomicAdd(float3& v, float3 val, int reorder)
 }
 
 __device__
-float3 gravityForce(float mass, float3 force, float4 env) {
-	force.y += -mass*9.81;
-
-	return force;
+float3 gravityForce(float mass, float4 env) {
+	return {0, -mass*9.81, 0};
 }
 
 __device__
@@ -132,7 +130,7 @@ float3 collisionForce(float4 pos, float4 vel, float3 force,
 }
 
 /*
-	env: float3 describing global environment variables
+	env: float4 describing global environment variables
 		x - k		stiffness
 		y - mu		coefficient of friction
 		z - zeta	damping
@@ -141,7 +139,7 @@ float3 collisionForce(float4 pos, float4 vel, float3 force,
 __device__
 float3 environmentForce(float4 pos, float4 vel, float3 force,
 						float4 env) {
-	force = gravityForce(pos.w, force, env);
+	force = gravityForce(pos.w, env);
 	force = collisionForce(pos,vel,force,env);
 	return force;
 }
@@ -211,12 +209,12 @@ integrateBodies(float4* newPos, float4* newVel,
 	int stride = blockDim.x;
 
 	// Initialize and compute environment forces
-	for(int i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
+	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		s_pos[i] = oldPos[i+massOffset];
 	}
 	__syncthreads();
 	
-	for(int i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
+	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
 	}
 	__syncthreads();
@@ -240,26 +238,22 @@ integrateBodies(float4* newPos, float4* newVel,
 	}
 	__syncthreads();
 
-	for(int i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
+	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		float4 vel = oldVel[i+massOffset];
 
 		vel.x += s_force[i].x * dt;
 		vel.y += s_force[i].y * dt;
 		vel.z += s_force[i].z * dt;
-		
 
+		// Damping
 		vel.x *= env.z;
 		vel.y *= env.z;
 		vel.z *= env.z;
-		// printf("Vel: {%f,%f,%f}\n",vel.x, vel.y, vel.z);
 
 		// new position = old position + velocity * deltaTime
 		s_pos[i].x += vel.x * dt;
 		s_pos[i].y += vel.y * dt;
 		s_pos[i].z += vel.z * dt;
-
-
-		// printf("Loc: {%f,%f,%f}\n",s_pos[i].x, s_pos[i].y, s_pos[i].z);
 
 		// store new position and velocity
 		newPos[i+massOffset] = s_pos[i];

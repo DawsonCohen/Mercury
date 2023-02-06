@@ -25,7 +25,7 @@ class Simulator {
 
 public:
 	Simulator(Element prototype, uint maxElements);
-	Simulator(float dt): step_period(dt) {}
+	// Simulator(float dt): step_period(dt) {}
 	Simulator() {}
 	~Simulator();
 
@@ -83,6 +83,8 @@ protected:
 	uint	*m_dPairs;
 	float	*m_dLbars;
 	uint	*m_dSpringCount;
+	uint	m_currentRead,
+			m_currentWrite;
 
 	uint springsPerElement = 0;
 	uint massesPerElement  = 0;
