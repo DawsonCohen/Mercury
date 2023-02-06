@@ -86,33 +86,30 @@ __device__ inline void AtomicAdd(float3& v, float3 val, int reorder)
 
 __device__
 float3 gravityForce(float mass, float4 env) {
-	return {0, -mass*9.81, 0};
+	return {0, -mass*9.81f, 0};
 }
 
 __device__
 float3 collisionForce(float4 pos, float4 vel, float3 force,
 					float4 env) {
-	if(pos.y > 0) return force;
+	if(pos.y > 0.0f) return force;
 	
 	float3 Fc = {0.0f, 0.0f, 0.0f}; // force due to collision
 	float3 Ff = {0.0f, 0.0f, 0.0f}; // force due to friction
 	float magFc, magFf;
 
-	Fc.y = env.x * (0 - pos.y);
+	Fc.y = env.x * (0.0f - pos.y);
 
-	force.y = 0;
-	vel.y = 0;
-	
 	magFc = l2norm(force);
-	magFf = env.y * force.y;
+	magFf = env.y * Fc.y;
 
 	//Static Friction
-	if(vel.x == 0 && vel.z == 0) {
+	if(vel.x == 0.0f && vel.z == 0.0f) {
 		//Check if object has acceleration
 		// TODO: check within epsilon
 		if(magFc != 0) {
 			if(magFc < magFf) {
-				Ff = -force;
+				Ff = {-force.x, 0.0f, -force.y};
 			} else {
 				//Calculate direction of force and apply friction opposite based on magnitude
 				Ff = magFf*normalize(force);
@@ -120,12 +117,13 @@ float3 collisionForce(float4 pos, float4 vel, float3 force,
 		}
 	} else {
 		// Kinetic Friction
-		Ff = magFf * normalize(make_float3(-vel.x,-vel.y,-vel.z));
+		Ff = magFf * normalize(make_float3(-vel.x, 0.0f, -vel.z));
 	}
 
 	force.x = Fc.x + Ff.x;
-	force.y = Fc.y + Ff.y;
+	force.y = Fc.y;
 	force.z = Fc.z + Ff.z;
+
 	return force;
 }
 
@@ -174,7 +172,6 @@ float3 springForce(float4 bl, float4 br, float4 mat,
 
 	relative_change = mat.y * sinf(mat.z*time+mat.w);
 	rest_length = mean_length * (1 + relative_change);
-
 
 	diff.x = b0pos.x - b1pos.x;
 	diff.y = b0pos.y - b1pos.y;
@@ -241,14 +238,11 @@ integrateBodies(float4* newPos, float4* newVel,
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		float4 vel = oldVel[i+massOffset];
 
-		vel.x += s_force[i].x * dt;
-		vel.y += s_force[i].y * dt;
-		vel.z += s_force[i].z * dt;
+		// printf("Force: {%f,%f,%f}\n",s_force[i].x,s_force[i].y,s_force[i].z);
 
-		// Damping
-		vel.x *= env.z;
-		vel.y *= env.z;
-		vel.z *= env.z;
+		vel.x += (s_force[i].x * dt)*env.z;
+		vel.y += (s_force[i].y * dt)*env.z;
+		vel.z += (s_force[i].z * dt)*env.z;
 
 		// new position = old position + velocity * deltaTime
 		s_pos[i].x += vel.x * dt;
