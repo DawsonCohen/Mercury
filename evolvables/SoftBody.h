@@ -1,7 +1,6 @@
 #ifndef __SOFT_BODY_H__
 #define __SOFT_BODY_H__
 
-#include "Model.h"
 #include "element.h"
 #include "candidate.h"
 #include <memory>
@@ -39,16 +38,13 @@ public:
 		swap(s1.springs, s2.springs);
 		swap(s1.mDirectEncoding, s2.mDirectEncoding);
 		swap(s1.mRadiiEncoding, s2.mRadiiEncoding);
-		swap((Model&) s1, (Model&) s2);
 	}
 
 	void rotate(float deg, glm::vec3 axis);
 	void translate(glm::vec3 translation);
 
 	const std::vector<Mass>& getMasses() const { return masses; };
-	std::vector<Mass>& getMasses() { return masses; };
 	const std::vector<Spring>& getSprings() const { return springs; }
-	std::vector<Spring>& getSprings() { return springs; }
 
 	float getSimTime() const { return mSimTime; }
 	float getTotalSimTime() const { return mTotalSimTime; }

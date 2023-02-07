@@ -11,6 +11,16 @@ std::uniform_real_distribution<> VoxelRobot::uniform = std::uniform_real_distrib
 
 VoxelRobot::Encoding repr = VoxelRobot::ENCODE_DIRECT;
 
+float VoxelRobot::Distance() {
+    glm::vec3 mean_pos = glm::vec3(0.0f);
+    float i = 0;
+    for(Mass& m : masses) {
+        mean_pos = mean_pos + (m.pos - mean_pos) * 1.0f/(i+1);
+        i++;
+    }
+    return glm::l2Norm(mean_pos);
+}
+
 void Circle::Randomize(float xlim, float ylim, float zlim) {
     static unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     static std::default_random_engine gen = std::default_random_engine(seed);

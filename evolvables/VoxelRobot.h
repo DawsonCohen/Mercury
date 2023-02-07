@@ -101,15 +101,7 @@ public:
     static std::default_random_engine gen;
     static std::uniform_real_distribution<> uniform;
 
-    float Distance() {
-        glm::vec3 mean_pos = glm::vec3(0.0f);
-        float i = 0;
-        for(Mass& m : masses) {
-            mean_pos = mean_pos + (m.pos - mean_pos) * 1.0f/(i+1);
-            i++;
-        }
-        return glm::l2Norm(mean_pos);
-    }
+    float Distance();
 
     static VoxelRobotPair TwoPointChildren(const VoxelRobotPair& parents);
     static VoxelRobotPair RadiusChildren(const VoxelRobotPair& parents);
@@ -123,9 +115,9 @@ public:
     void Strip();
 
 private:
-    float xSize = 2.0f;
-    float ySize = 2.0f;
-    float zSize = 2.0f;
+    float xSize = 12.0f;
+    float ySize = 12.0f;
+    float zSize = 12.0f;
     float resolution = 1.0f; // Masses per meter
     glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
     std::vector<Voxel> voxels;

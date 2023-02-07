@@ -1,5 +1,6 @@
 #include "SoftBody.h"
-#include "Renderer.h"
+#include<glm/gtc/matrix_transform.hpp>
+#include<glm/gtx/rotate_vector.hpp>
 #include <iostream>
 #include <map>
 
