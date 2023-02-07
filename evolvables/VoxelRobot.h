@@ -115,9 +115,9 @@ public:
     void Strip();
 
 private:
-    float xSize = 12.0f;
-    float ySize = 12.0f;
-    float zSize = 12.0f;
+    float xSize = 10.0f;
+    float ySize = 10.0f;
+    float zSize = 10.0f;
     float resolution = 1.0f; // Masses per meter
     glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
     std::vector<Voxel> voxels;
