@@ -17,7 +17,7 @@ struct ElementTracker {
 	uint* offset_end;
 	uint* offset_chunk_end;
 
-	float3 mean_pos = {0.0f, 0.0f, 0.0f};
+	glm::vec3 mean_pos = glm::vec3(0.0f, 0.0f, 0.0f);
 };
 
 class Simulator {

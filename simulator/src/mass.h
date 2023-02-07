@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include <iostream>
-#include "vector_types.h"
 #include <glm/glm.hpp>
 
 struct Mass {

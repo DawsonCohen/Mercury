@@ -147,7 +147,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	std::vector<ElementTracker> trackers = Allocate(elements);
 	
-	float3 gravity = envBuf[0].g;
+	float3 gravity = {envBuf[0].g.x, envBuf[0].g.y, envBuf[0].g.z};
 	float stiffness = envBuf[0].floor_stiffness;
 	float mu = envBuf[0].friction;
 	float zeta = envBuf[0].damping;
@@ -232,7 +232,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	uint step = 0;
 	uint springCount = 0;
 	while(step_time < max_time) {
-		
+
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
