@@ -1,0 +1,8 @@
+# Build files
+build/
+build/*
+
+*.avi
+z_results/
+
+.vscode
