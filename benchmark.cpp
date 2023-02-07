@@ -11,7 +11,7 @@
 // #define POP_SIZE 1
 
 #define MAX_TIME 5
-#define MAX_SPRINGS 1e9
+#define MAX_SPRINGS 1e11
 #define INIT_POP_SIZE 1
 
 void Benchmark(Robot& R);
@@ -43,7 +43,7 @@ void Benchmark(Robot& R) {
 	sim.Initialize(R,pop_size);
 
 	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getStepPeriod());
-	// FILE* pFile = fopen("z_results/speed_test.txt","w");
+	FILE* pFile = fopen("../z_results/speed_test.txt","w");
 
 	// sim = Simulator(R,pop_size);
 
@@ -76,10 +76,10 @@ void Benchmark(Robot& R) {
 
 		pop_size *= 2;
 
-		// fprintf(pFile,"%lu, %f\n", num_springs,execute_time);
+		fprintf(pFile,"%lu, %f\n", num_springs,execute_time);
 		printf("%lu SPRINGS IN %f SECONDS\n", num_springs, execute_time);
 		printf("%lu SPRINGS PER SECOND\n", (ulong) springs_per_sec);
 		printf("--------------------------\n");
 	}
-	// fclose(pFile);
+	fclose(pFile);
 }
