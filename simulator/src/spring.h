@@ -61,6 +61,7 @@ struct Material {
 	}
 };
 
+
 enum MaterialOption {
 	AGONIST_MUSCLE = 0,
 	ANTAGOINST_MUSCLE = 1,
@@ -68,15 +69,37 @@ enum MaterialOption {
 	BONE = 3,
 	AIR = 4,
 	MATERIAL_FIRST = AGONIST_MUSCLE,
-	MATERIAL_LAST = AIR
+	MATERIAL_LAST = AIR,
+	MATERIAL_COUNT = MATERIAL_LAST+1
 };
 
 namespace materials {
-	// static Material agonist_muscle = {0, 5000, AMPLITUDE, OMEGA, 0};
-	// static Material antagonist_muscle = {1, 5000, AMPLITUDE, OMEGA, M_PI};
-	// static Material tissue = {2, 1000, 0, OMEGA,0};
-	static Material bone = {3, 10000, 0, OMEGA, 0};
-	static Material air = {4, 0, 0, 0, 0};
+	static Material agonist_muscle    = {0, 5000 , AMPLITUDE, OMEGA, 0   , glm::vec4(32.0f , 212.0f, 82.0f , 1.0f)*1.0f/255.0f};
+	static Material antagonist_muscle = {1, 5000 , AMPLITUDE, OMEGA, M_PI, glm::vec4(250.0f, 112.0f, 66.0f , 1.0f)*1.0f/255.0f};
+	static Material tissue            = {2, 4000 , 0        , OMEGA, 0   , glm::vec4(169.0f, 32.0f , 212.0f, 1.0f)*1.0f/255.0f};
+	static Material bone              = {3, 10000, 0        , OMEGA, 0   , glm::vec4(245.0f, 231.0f, 54.0f , 1.0f)*1.0f/255.0f};
+	static Material air               = {4, 0    , 0        , 0    , 0   , glm::vec4(0.0f  , 0.0f  , 0.0f  , 0.0f)*1.0f/255.0f};
+
+	static Material matLookup(uint mat) {
+		switch(mat){
+		case AGONIST_MUSCLE:
+			return agonist_muscle;
+		case ANTAGOINST_MUSCLE:
+			return antagonist_muscle;
+		case TISSUE:
+			return tissue;
+		case BONE:
+			return bone;
+		case AIR:
+		default:
+			return air;
+		}
+	};
+
+	static Material random() {
+		uint matId = rand() % MATERIAL_COUNT;
+		return matLookup(matId);
+	}
 }
 
 struct Spring {

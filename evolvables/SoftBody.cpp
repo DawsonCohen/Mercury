@@ -66,10 +66,6 @@ void SoftBody::printObjectPositions() {
 	glm::vec3 p(0.0f);
 	for(const Mass& m : masses) {
 		p = m.pos; 
-		#ifndef THREED
-		printf("%i - %f, %f\n", m.id, p.x, p.y);
-		#else
-		printf("%i - %f, %f, %f\n", m.id, p.x, p.y, p.z);
-		#endif
+		printf("%u - %f, %f, %f\n", m.id, p.x, p.y, p.z);
 	}
 }

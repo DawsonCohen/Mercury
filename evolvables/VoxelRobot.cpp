@@ -9,7 +9,7 @@ unsigned VoxelRobot::seed = std::chrono::system_clock::now().time_since_epoch().
 std::default_random_engine VoxelRobot::gen = std::default_random_engine(VoxelRobot::seed);
 std::uniform_real_distribution<> VoxelRobot::uniform = std::uniform_real_distribution<>(0.0,1.0);
 
-VoxelRobot::Encoding repr = VoxelRobot::ENCODE_DIRECT;
+VoxelRobot::Encoding repr = VoxelRobot::ENCODE_RADIUS;
 
 float VoxelRobot::Distance() {
     glm::vec3 mean_pos = glm::vec3(0.0f);
@@ -313,7 +313,7 @@ void VoxelRobot::BuildFromCircles() {
         float dist;
         for(Circle& c : circles) {
             dist = glm::l2Norm(v.center-c.center);
-            if(dist < c.radius) mats.push_back(materials::bone);
+            if(dist < c.radius) mats.push_back(c.mat);
         }
         v.mat = Material::avg(mats);
     }
@@ -322,14 +322,14 @@ void VoxelRobot::BuildFromCircles() {
 }
 
 void VoxelRobot::Initialize() {
-    circles.push_back({BONE});
-    circles.push_back({BONE});
-    circles.push_back({TISSUE});
-    circles.push_back({TISSUE});
-    circles.push_back({AGONIST_MUSCLE});
-    circles.push_back({AGONIST_MUSCLE});
-    circles.push_back({ANTAGOINST_MUSCLE});
-    circles.push_back({ANTAGOINST_MUSCLE});
+    circles.push_back({materials::bone});
+    circles.push_back({materials::bone});
+    circles.push_back({materials::tissue});
+    circles.push_back({materials::tissue});
+    circles.push_back({materials::agonist_muscle});
+    circles.push_back({materials::agonist_muscle});
+    circles.push_back({materials::antagonist_muscle});
+    circles.push_back({materials::antagonist_muscle});
 
     xCount = resolution*xSize;
     yCount = resolution*ySize;
@@ -380,6 +380,7 @@ void VoxelRobot::Mutate() {
 }
 
 void VoxelRobot::Randomize() {
+    printf("Repr - %u\n",VoxelRobot::repr);
     switch(VoxelRobot::repr) {
     case ENCODE_RADIUS:
         for(Circle& c : circles)

@@ -29,7 +29,7 @@ struct BasisIdx {
 };
 
 struct Circle {
-    MaterialOption mat = BONE;
+    Material mat = materials::bone;
     float radius = 0;
     glm::vec3 center = glm::vec3(0.0f);
     float max_radius = 5.0f;
@@ -50,7 +50,7 @@ struct Voxel {
     Material mat;
 
     void setRandomMaterial() {
-        mat = materials::bone;
+        mat = materials::random();
     }
 
     std::string to_string() const {
@@ -78,8 +78,8 @@ friend class Evaluator;
 
 public:
 enum Encoding {
-    ENCODE_DIRECT = 0,
-    ENCODE_RADIUS = 1,
+    ENCODE_RADIUS = 0,
+    ENCODE_DIRECT = 1,
     ENCODE_FUNC = 2,
     ENCODE_SHAPE_ACT = 3
 };
