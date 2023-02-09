@@ -8,18 +8,18 @@ Simulator Evaluator::Sim = Simulator();
 void Evaluator::Initialize(uint pop_size, float max_time) {
     Robot prototype;
     
-    Sim.Initialize((Element) prototype, pop_size*3);
+    Sim.Initialize(prototype, pop_size*3);
     Sim.setMaxTime(max_time);
 }
 
 void Evaluator::BatchEvaluate(std::vector<Robot>& robots) {
     printf("EVALUATING %lu ROBOTS\n",robots.size());
 
-    std::vector<Element> robot_elements(robots.size());
+    std::vector<Element> robot_elements;
     for(uint i = 0; i < robots.size(); i++) {
-        robot_elements[i] = robots[i];
+        Robot R = robots[i];
+        robot_elements.push_back({R.getMasses(), R.getSprings()});
     }
-
 
     std::vector<ElementTracker> trackers = Sim.Simulate(robot_elements);
     

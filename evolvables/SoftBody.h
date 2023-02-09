@@ -19,8 +19,6 @@ struct RadiiSoftBodyEncoding {
 };
 
 class SoftBody : public Element, public Candidate {
-    float   mSimTime = 0;
-    float   mTotalSimTime = 0;
 	float	mVolume = 0;
 
 protected:
@@ -34,6 +32,7 @@ public:
 
 	friend void swap(SoftBody& s1, SoftBody& s2) {
 		using std::swap;
+		swap((Candidate&) s1, (Candidate&) s2);
 		swap(s1.masses, s2.masses);
 		swap(s1.springs, s2.springs);
 		swap(s1.mDirectEncoding, s2.mDirectEncoding);
@@ -46,10 +45,10 @@ public:
 	const std::vector<Mass>& getMasses() const { return masses; };
 	const std::vector<Spring>& getSprings() const { return springs; }
 
-	float getSimTime() const { return mSimTime; }
-	float getTotalSimTime() const { return mTotalSimTime; }
-    void incrementSimTime(float dt) { mSimTime += dt; mTotalSimTime += dt; }
-    void resetSimTime() { mSimTime = 0; }
+	float getSimTime() const { return sim_time; }
+	float getTotalSimTime() const { return total_sim_time; }
+    void incrementSimTime(float dt) { sim_time += dt; total_sim_time += dt; }
+    void resetSimTime() { sim_time = 0; }
 
 	void Update(Element e) { 
 		masses = e.masses; 
@@ -69,12 +68,13 @@ public:
 
 	void addSpring(Spring& s) {
 		if(s.material != materials::air) {
+			s.active = true;
 			masses[s.m0].active = true;
 			masses[s.m1].active = true;
 			masses[s.m0].color = s.material.color;
 			masses[s.m1].color = s.material.color;
-			springs.push_back(s);
 		}
+		springs.push_back(s);
 	}
 
 	void setMasses(std::vector<Mass> _masses) {
@@ -88,12 +88,13 @@ public:
 		springs.clear();
 		for(Spring& s : _springs) {
 			if(s.material != materials::air) {
+				s.active = true;
 				masses[s.m0].active = true;
 				masses[s.m1].active = true;
 				masses[s.m0].color = s.material.color;
 				masses[s.m1].color = s.material.color;
-				springs.push_back(s);
 			}
+			springs.push_back(s);
 		}
 	}
 

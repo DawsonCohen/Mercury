@@ -70,8 +70,9 @@ void Optimizer::RandomizePopulation(std::vector<Robot>& population) {
     
     Evaluator::BatchEvaluate(evalBuf);
 
-    for(uint i = 0; i < population.size(); i++)
+    for(uint i = 0; i < population.size(); i++) {
         population[i] = evalBuf[i];
+    }
 }
 
 Robot Optimizer::RandomizeSolution(Robot& working_sol) {

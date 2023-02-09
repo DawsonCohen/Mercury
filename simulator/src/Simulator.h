@@ -74,6 +74,7 @@ protected:
 	uint   *m_hPairs;
 	float  *m_hMats;
 	float  *m_hLbars;
+	bool   *m_hActive;
 	float  *m_hPos;
 	float  *m_hVel;
 
@@ -82,6 +83,7 @@ protected:
 			*m_dMats;
 	uint	*m_dPairs;
 	float	*m_dLbars;
+	bool	*m_dActive;
 	uint	*m_dSpringCount;
 	uint	m_currentRead,
 			m_currentWrite;

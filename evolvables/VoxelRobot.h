@@ -86,14 +86,9 @@ enum Encoding {
 
 
 private:
-    float   mFitness = 0;
     uint    mVolume = 0;
-    uint    mParetoLayer = 0;
 
 public:
-    int     mAge = 0;
-    bool wasUsed = false;
-
     glm::vec3 mCOM;
     glm::vec3 mSkew;
 
@@ -181,8 +176,7 @@ public:
     };
     
     VoxelRobot(const VoxelRobot& src) : SoftBody(src),
-        mFitness(src.mFitness), mVolume(src.mVolume), 
-        mParetoLayer(src.mParetoLayer),mAge(src.mAge), mCOM(src.mCOM), mSkew(src.mSkew),
+        mVolume(src.mVolume), mCOM(src.mCOM), mSkew(src.mSkew),
         xSize(src.xSize), ySize(src.ySize), zSize(src.zSize),
         resolution(src.resolution), voxels(src.voxels), circles(src.circles),
         xCount(src.xCount), yCount(src.yCount), zCount(src.zCount)
@@ -207,14 +201,10 @@ public:
 
     std::vector<Voxel>& getVoxels() { return voxels; }
 
-    float fitness() const { return mFitness; }
     uint volume() const { return mVolume; }
     glm::vec3 COM() const { return mCOM; }
     glm::vec3 skew() const { return mSkew; }
-    uint paretoLayer() const { return mParetoLayer; }
-    void setFitness(float fit) { mFitness = fit; }
 
-    void IncrementAge() { mAge++; };
     void Randomize();
     static void Random();
     void Duplicate(const VoxelRobot&);
@@ -233,10 +223,7 @@ public:
 
     friend void swap(VoxelRobot& r1, VoxelRobot& r2) {
         using std::swap;
-        swap(r1.mFitness, r2.mFitness);
         swap(r1.mVolume, r2.mVolume);
-        swap(r1.mAge, r2.mAge);
-        swap(r1.mParetoLayer, r2.mParetoLayer);
         swap(r1.mCOM, r2.mCOM);
         swap(r1.mSkew, r2.mSkew);
         swap(r1.voxels, r2.voxels);

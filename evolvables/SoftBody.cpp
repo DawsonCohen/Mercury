@@ -5,7 +5,7 @@
 #include <map>
 
 SoftBody::SoftBody( const SoftBody& src )
-: Element{src.masses, src.springs}, 
+: Element{src.masses, src.springs}, Candidate(src),
 mDirectEncoding(src.mDirectEncoding), mRadiiEncoding(src.mRadiiEncoding)
 {}
 
@@ -15,7 +15,6 @@ void SoftBody::rotate(float deg, glm::vec3 axis) {
 		m.pos = (transform * glm::vec4(m.pos,1.0f));
         m.protoPos = (m.pos);
 	}
-	// updateMesh();
 }
 
 void SoftBody::translate(glm::vec3 translation) {
@@ -24,12 +23,11 @@ void SoftBody::translate(glm::vec3 translation) {
 		m.pos = (transform * glm::vec4(m.pos,1.0f));
         m.protoPos = (m.pos);
 	}
-	// updateMesh();
 }
 
 void SoftBody::SimReset() {
-    mSimTime = 0;
-    mTotalSimTime = 0;
+    sim_time = 0;
+    total_sim_time = 0;
 }
 
 void SoftBody::Reset() {

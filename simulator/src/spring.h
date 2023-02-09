@@ -109,7 +109,7 @@ struct Spring {
 	float mean_length;
 	Material material;
 
-	bool active = true; // TODO: Why can't this be false?
+	bool active = false; // TODO: Why can't this be false?
 };
 
 #endif

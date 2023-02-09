@@ -18,6 +18,14 @@ protected:
 public:
     int     mAge;
 
+    Candidate() : mAge(0) {}
+
+    Candidate(const Candidate& src): 
+        mFitness(src.mFitness),
+        mParetoLayer(src.mParetoLayer),
+        mAge(src.mAge)
+    {}
+
 
     friend void swap(Candidate& c1, Candidate& c2) {
         using std::swap;
@@ -30,6 +38,9 @@ public:
 
     float fitness() const { return mFitness; }
     uint paretoLayer() const { return mParetoLayer; }
+
+    void setFitness(float fit) { mFitness = fit; }
+
 
     void Randomize();
     static void Random();

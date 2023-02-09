@@ -17,8 +17,8 @@ SET(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 add_subdirectory( renderer )
 
 set( PHYS
-	benchmark.cpp
-	# main.cpp
+	# benchmark.cpp
+	main.cpp
 
 	renderer/src/Camera.cpp
 	renderer/src/Shader.cpp
@@ -43,14 +43,12 @@ set( PHYS
 
 add_definitions(-Wall -Wextra -O3 -pg)
 
-# add_definitions("-DOPTIMIZE -DVISUALIZE -DENV_GRAVITY -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
-# add_definitions("-DOPTIMIZE -DVISUALIZE -DENV_GRAVITY -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
-# add_definitions("-DOPTIMIZE -DENV_GRAVITY -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
-# add_definitions("-DVISUALIZE -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
-add_definitions("-DVISUALIZE -DBOUNCE")
-# add_definitions("-DVERIFY -DWRITE_VIDEO -DENV_GRAVITY -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
-# add_definitions("-DVERIFY -DVISUALIZE -DENV_GRAVITY -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
-# add_definitions("-DVISUALIZE -DENV_GRAVITY -DTHREED -DFRICTION -DDAMPING -DMULTIOBJECT")
+add_definitions("-DOPTIMIZE -DVISUALIZE")
+# add_definitions("-DVISUALIZE")
+
+# add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
+# add_definitions("-DVERIFY -DVISUALIZE")
+# add_definitions("-DVERIFY -DWRITE_VIDEO")
 
 add_executable( phys 
 ${PHYS} 

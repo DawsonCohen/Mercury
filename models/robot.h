@@ -35,7 +35,6 @@ public:
     }
     void translate(glm::vec3 translation) {
         VoxelRobot::translate(translation);
-        // printf("Test\n");
         updateMesh();
     }
 
@@ -78,7 +77,7 @@ public:
 
 	friend void swap(Robot& s1, Robot& s2) {
 		swap((VoxelRobot&) s1, (VoxelRobot&) s2);
-		// swap((Model&) s1, (Model&) s2);
+		swap((Model&) s1, (Model&) s2);
     }
 
     void Build() {

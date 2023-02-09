@@ -41,6 +41,7 @@ Simulator::~Simulator() {
 	delete[] m_hVel;
 
 	delete[] m_hLbars;
+	delete[] m_hActive;
 	delete[] m_hPairs;
 	delete[] m_hMats;
 
@@ -56,6 +57,7 @@ Simulator::~Simulator() {
 	cudaFree((void**) m_dVel[1]);
 
 	cudaFree((void**) m_dLbars);
+	cudaFree((void**) m_dActive);
 	cudaFree((void**) m_dPairs);
 	cudaFree((void**) m_dMats);
 }
@@ -110,6 +112,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	envBuf 	  =	new Environment[1];
 
 	m_hLbars  = new float[maxSprings];
+	m_hActive = new bool[maxSprings];
 	m_hPairs  = new uint[maxSprings*2];
 	m_hMats   = new float[maxSprings*4];
 
@@ -123,9 +126,8 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
     unsigned int springSizefloat  = sizeof(float) * 1 * maxSprings;
     unsigned int springSizefloat4 = sizeof(float) * 4 * maxSprings;
     unsigned int springSizeuint2  = sizeof( uint) * 2 * maxSprings;
+    unsigned int springSizebool   = sizeof( bool) * 1 * maxSprings;
 	
-	printf("Pos size: %u\n",massSizefloat4);
-
 	cudaMalloc((void**)&m_dSpringCount, sizeof(uint));
 	cudaMalloc((void**)&m_dVel[0], massSizefloat4);
 	cudaMalloc((void**)&m_dVel[1], massSizefloat4);
@@ -136,6 +138,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
 	cudaMalloc((void**)&m_dPairs,  springSizeuint2);
 	cudaMalloc((void**)&m_dLbars,  springSizefloat);
+	cudaMalloc((void**)&m_dActive, springSizebool);
 	cudaMalloc((void**)&m_dMats,   springSizefloat4);
 
 	envBuf[0] = Environment();
@@ -171,8 +174,11 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	for(uint i = 0; i < numSprings; i++) {
 		Material mat    = springBuf[i].material;
 		float    lbar   = springBuf[i].mean_length;
+		bool	 active = springBuf[i].active;
 		uint     left   = springBuf[i].m0 + offsetBuf[i],
 			     right  = springBuf[i].m1 + offsetBuf[i];
+
+		// printf("%u:\t%u\n",offsetBuf[i],springBuf[i].m0);
 
 		m_hMats[4*i]   = mat.k;
 		m_hMats[4*i+1] = mat.dL0;
@@ -182,13 +188,15 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		m_hPairs[2*i]   = left;
 		m_hPairs[2*i+1] = right;
 		m_hLbars[i] 	= lbar;
+		m_hActive[i] 	= active;
 	}
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dPairs,  m_hPairs, numSprings *2*sizeof(uint),  cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dLbars,  m_hLbars, numSprings  * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dMats,   m_hMats,  numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dPairs,  m_hPairs,  numSprings *2*sizeof(uint),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dLbars,  m_hLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dActive, m_hActive, numSprings  * sizeof(bool), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dMats,   m_hMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
 
 	// uint requiredSize = numMasses * bytesPerMass; // 4 floats for pos
 	// uint maxStreams = 32;
@@ -223,11 +231,17 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	uint springsPerBlock = springsPerElement * elementsPerBlock;
 	uint sharedMemSize = massesPerBlock * bytesPerMass;
 
+
 	int threadsPerBlock = 256;
 
-	int numMassBlocks = (massesPerBlock + threadsPerBlock - 1) / threadsPerBlock;
-	int numSpringBlocks = (springsPerBlock + threadsPerBlock - 1) / threadsPerBlock;
-	int numBlocks = max(numMassBlocks, numSpringBlocks);
+	// int numBlocks = (elementsPerBlock)
+
+	int numBlocks = (numElements + elementsPerBlock - 1) / elementsPerBlock;
+	// int numBlocks = (springsPerBlock + threadsPerBlock - 1) / threadsPerBlock;
+	// printf("BPE:\t%u\n", bytesPerElement);
+	// printf("Elements:\t%u\n", numElements);
+	// printf("EPB:\t%u\n", elementsPerBlock);
+	// printf("Blocks:\t%u\n", numBlocks);
 	
 	uint step = 0;
 	uint springCount = 0;
@@ -236,7 +250,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-			(uint2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, 
+			(uint2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, (bool*) m_dActive,
 			step_period, total_time, make_float4(stiffness,mu,zeta,gravity.y),
 			massesPerElement, springsPerElement,
 			maxMasses, maxSprings, m_dSpringCount);
@@ -297,6 +311,7 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 		numMasses++;
 	}
 
+	uint i = 0;
 	for(const Spring& s : e.springs) {
 		springBuf[numSprings] = s;
 		tracker.spring_end++;
@@ -304,6 +319,7 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 		offsetBuf[numSprings] = massOffset;
 		tracker.offset_end++;
 		numSprings++;
+		i++;
 	}
 	
 	return tracker;

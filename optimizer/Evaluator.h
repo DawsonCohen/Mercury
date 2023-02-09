@@ -44,7 +44,7 @@ public:
                 if(i->mParetoLayer < run) continue;
                 for(auto j = begin; j < end; j++) {
                     if(j->mParetoLayer < run) continue;
-                    if(*j > *i) {
+                    if(j->mFitness > i->mFitness) {
                         i->mParetoLayer++;
                         Delta++;
                         break;

@@ -380,7 +380,6 @@ void VoxelRobot::Mutate() {
 }
 
 void VoxelRobot::Randomize() {
-    printf("Repr - %u\n",VoxelRobot::repr);
     switch(VoxelRobot::repr) {
     case ENCODE_RADIUS:
         for(Circle& c : circles)

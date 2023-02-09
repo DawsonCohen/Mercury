@@ -11,7 +11,7 @@
 // #define POP_SIZE 1
 
 #define MAX_TIME 5
-#define MAX_SPRINGS 1e11
+#define MAX_SPRINGS 2e11
 #define INIT_POP_SIZE 1
 
 void Benchmark(Robot& R);
@@ -43,7 +43,7 @@ void Benchmark(Robot& R) {
 	sim.Initialize(R,pop_size);
 
 	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getStepPeriod());
-	FILE* pFile = fopen("../z_results/speed_test.txt","w");
+	FILE* pFile = fopen("../z_results/speed_test.csv","w");
 
 	// sim = Simulator(R,pop_size);
 
@@ -51,22 +51,20 @@ void Benchmark(Robot& R) {
 
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<Element> robots;
-		auto start = std::chrono::high_resolution_clock::now();
 		for(uint i = 0; i < pop_size; i++) {
 			robots.push_back({R.getMasses(), R.getSprings()});
 		}
-		auto end = std::chrono::high_resolution_clock::now();
 
 		printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
-
+		
 		sim.Initialize(R,pop_size);
 		sim.setMaxTime(MAX_TIME);
 
 		printf("STARTED\n");
-		start = std::chrono::high_resolution_clock::now();
+		auto start = std::chrono::high_resolution_clock::now();
 		
 		sim.Simulate(robots);
-		end = std::chrono::high_resolution_clock::now();
+		auto end = std::chrono::high_resolution_clock::now();
 		printf("FINISHED\n\n");
 
 		execute_time = std::chrono::duration<float>(end - start).count();
