@@ -32,7 +32,7 @@ struct Circle {
     Material mat = materials::bone;
     float radius = 0;
     glm::vec3 center = glm::vec3(0.0f);
-    float max_radius = 5.0f;
+    float max_radius = 3.5f;
     void Randomize(float xlim, float ylim, float zlim);
 
     friend void swap(Circle& c1, Circle& c2) {
@@ -89,7 +89,7 @@ private:
     uint    mVolume = 0;
 
 public:
-    glm::vec3 mCOM;
+    glm::vec3 mBaseCOM;
     glm::vec3 mSkew;
 
     static unsigned seed;
@@ -110,9 +110,9 @@ public:
     void Strip();
 
 private:
-    float xSize = 10.0f;
-    float ySize = 10.0f;
-    float zSize = 10.0f;
+    float xSize = 7.0f;
+    float ySize = 7.0f;
+    float zSize = 7.0f;
     float resolution = 1.0f; // Masses per meter
     glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
     std::vector<Voxel> voxels;
@@ -176,7 +176,7 @@ public:
     };
     
     VoxelRobot(const VoxelRobot& src) : SoftBody(src),
-        mVolume(src.mVolume), mCOM(src.mCOM), mSkew(src.mSkew),
+        mVolume(src.mVolume), mBaseCOM(src.mBaseCOM), mSkew(src.mSkew),
         xSize(src.xSize), ySize(src.ySize), zSize(src.zSize),
         resolution(src.resolution), voxels(src.voxels), circles(src.circles),
         xCount(src.xCount), yCount(src.yCount), zCount(src.zCount)
@@ -202,7 +202,7 @@ public:
     std::vector<Voxel>& getVoxels() { return voxels; }
 
     uint volume() const { return mVolume; }
-    glm::vec3 COM() const { return mCOM; }
+    glm::vec3 COM() const { return mBaseCOM; }
     glm::vec3 skew() const { return mSkew; }
 
     void Randomize();
@@ -213,6 +213,7 @@ public:
     static VoxelRobotPair Crossover(const VoxelRobotPair& parents);
 
     static glm::vec3 calcMeanPos(VoxelRobot&);
+    static glm::vec3 calcClosestPos(VoxelRobot&);
     static glm::vec3 calcSkew(VoxelRobot&);
     static void calcFitness(VoxelRobot&);
     static float Distance(const VoxelRobotPair& robots);
@@ -224,7 +225,7 @@ public:
     friend void swap(VoxelRobot& r1, VoxelRobot& r2) {
         using std::swap;
         swap(r1.mVolume, r2.mVolume);
-        swap(r1.mCOM, r2.mCOM);
+        swap(r1.mBaseCOM, r2.mBaseCOM);
         swap(r1.mSkew, r2.mSkew);
         swap(r1.voxels, r2.voxels);
         swap(r1.circles, r2.circles);

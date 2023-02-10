@@ -21,9 +21,10 @@
 #define MAX_FILE_PATH (int) 500
 #define REPEATS 1
 
-#define MAX_TIME 10
+#define BASE_TIME 5.0f
+#define MAX_TIME 10.0f
 
-#define MAX_EVALS (ulong) 5e3
+#define MAX_EVALS (ulong) 1e6
 
 #define POP_SIZE (uint) 256
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
@@ -79,7 +80,7 @@ int main(int argc, char** argv)
 	printf("Output directory: %s\n",io.out_dir);
 
 	std::vector<Robot> solutions;
-	Evaluator::Initialize(POP_SIZE, MAX_TIME);
+	Evaluator::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
 	
 	#ifdef OPTIMIZE
 	solutions = Solve();

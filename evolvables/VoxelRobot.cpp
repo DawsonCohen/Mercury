@@ -302,7 +302,7 @@ void VoxelRobot::Build() {
     ShiftX(*this);
     ShiftY(*this);
 
-    mCOM = calcMeanPos(*this);
+    mBaseCOM = calcMeanPos(*this);
     mSkew = calcSkew(*this);
 }
 
@@ -474,12 +474,24 @@ glm::vec3 VoxelRobot::calcMeanPos(VoxelRobot& R) {
     return mean_pos;
 }
 
+glm::vec3 VoxelRobot::calcClosestPos(VoxelRobot& R) {
+    glm::vec3 closest_pos = glm::vec3(0.0f);
+    for(Voxel& v : R.voxels) {
+        if(v.mat == materials::air) continue;
+        if(R.masses[v.ID].pos.x < closest_pos.x)
+            closest_pos = R.masses[v.ID].pos;
+    }
+
+    return closest_pos;
+}
+
+
 glm::vec3 VoxelRobot::calcSkew(VoxelRobot& R) {
     glm::vec3 skew = glm::vec3(0.0f);
     float i = 0;
     for(Voxel& v : R.voxels) {
         if(v.mat == materials::air) continue;
-        glm::vec3 dist = v.center - R.mCOM;
+        glm::vec3 dist = v.center - R.mBaseCOM;
         glm::vec3 loc_skew = glm::vec3(pow(dist.x,3), pow(dist.y,3), pow(dist.z,3));
         skew = skew + (loc_skew-skew) * 1.0f/(i+1);
         i++;
@@ -490,10 +502,12 @@ glm::vec3 VoxelRobot::calcSkew(VoxelRobot& R) {
 }
 
 void VoxelRobot::calcFitness(VoxelRobot& R) {
-    glm::vec3 mean_pos = calcMeanPos(R);
+    // glm::vec3 mean_pos = calcMeanPos(R);
+    glm::vec3 closest_pos = calcClosestPos(R);
 
     // R.mFitness = glm::l2Norm(mean_pos);
-    R.mFitness = mean_pos.x - R.mCOM.x;
+    // R.mFitness = mean_pos.x - R.mCOM.x;
+    R.mFitness = closest_pos.x - R.mBaseCOM.x;
 }
 
 float VoxelRobot::Distance(const VoxelRobotPair& robots) {

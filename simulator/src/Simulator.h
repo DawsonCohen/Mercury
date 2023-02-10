@@ -62,8 +62,8 @@ protected:
 
 	std::vector<Environment> mEnvironments;
     float total_time = 0;
-    float step_period = 0.0005;
-    float max_time = 5;
+    float step_period = 0.0005f;
+    float max_time = 10.0f;
 
 	Mass*			massBuf;
 	Spring*			springBuf;

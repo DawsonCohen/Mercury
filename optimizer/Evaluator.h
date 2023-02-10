@@ -26,8 +26,10 @@ class Evaluator {
 public:
     static ulong eval_count;
     static Simulator Sim;
+    static float baselineTime;
+    static float evaluationTime;
 
-    static void Initialize(uint pop_size, float max_time);
+    static void Initialize(uint pop_size, float base_time, float eval_time);
     static void BatchEvaluate(std::vector<Robot>&);
     static float Distance(const RobotPair& robots);
 
@@ -44,7 +46,9 @@ public:
                 if(i->mParetoLayer < run) continue;
                 for(auto j = begin; j < end; j++) {
                     if(j->mParetoLayer < run) continue;
-                    if(j->mFitness > i->mFitness) {
+                    if(j->mFitness > i->mFitness &&
+                        j->mAge < i->mAge
+                    ) {
                         i->mParetoLayer++;
                         Delta++;
                         break;

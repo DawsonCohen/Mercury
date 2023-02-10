@@ -246,7 +246,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	uint step = 0;
 	uint springCount = 0;
 	while(step_time < max_time) {
-
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
