@@ -7,7 +7,6 @@
 #include <filesystem>
 #include <memory>
 #include "robot.h"
-#include "vector_types.h"
 
 Robot ReadRobot(const char* filename) {
     std::ifstream file(filename);
