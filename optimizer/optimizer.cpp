@@ -512,6 +512,7 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
             }
             printf("----------------------\n");
         }
+        generation++;
     }
 
     Evaluator::pareto_sort(population.begin(),population.end());
