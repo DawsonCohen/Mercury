@@ -21,11 +21,11 @@
 #define MAX_FILE_PATH (int) 500
 #define REPEATS 1
 
-#define MAX_TIME 2
+#define MAX_TIME 10
 
-#define MAX_EVALS (ulong) 50
+#define MAX_EVALS (ulong) 5e3
 
-#define POP_SIZE (uint) 10
+#define POP_SIZE (uint) 256
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
 #define NICHE_COUNT (uint) std::thread::hardware_concurrency()
 #define STEPS_TO_COMBINE (uint) 1e2
@@ -53,10 +53,10 @@ struct IOLocations {
 };
 
 struct OptimizationStrats {
-    Optimizer::MutationStrat mutator = Optimizer::RANDOMIZE;
-    Optimizer::CrossoverStrat crossover = Optimizer::CROSS_BEAM;
+    Optimizer::MutationStrat mutator = Optimizer::MUTATE;
+    Optimizer::CrossoverStrat crossover = Optimizer::CROSS_SWAP;
     Optimizer::NichingStrat niche = Optimizer::NICHE_NONE;
-    Robot::Encoding encoding = Robot::ENCODE_DIRECT;
+    Robot::Encoding encoding = Robot::ENCODE_RADIUS;
 };
 
 void handle_commandline_args(const int& argc, char** argv);
@@ -82,7 +82,7 @@ int main(int argc, char** argv)
 	Evaluator::Initialize(POP_SIZE, MAX_TIME);
 	
 	#ifdef OPTIMIZE
-	// solutions = Solve();
+	solutions = Solve();
 	#endif
 
 	#ifdef VERIFY
@@ -138,11 +138,10 @@ int main(int argc, char** argv)
 
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
 	Robot solution = Robot();
-	// uint seed = std::chrono::system_clock::now().time_since_epoch().count();
-    // srand(seed);
-	// solution.Randomize();
+	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
+    srand(seed);
+	solution.Randomize();
 	solutions.push_back(solution);
-	solution.printObjectPositions();
 	#endif
 
 	#ifdef BOUNCE
@@ -185,7 +184,7 @@ std::vector<Robot> Solve() {
         printf("Started Run %i\n",N);
 		std::vector<Robot> solutions = O.Solve();
 
-		printf("SOLUTIONS: %lu", solutions.size());
+		printf("SOLUTIONS: %lu\n", solutions.size());
 
 		if(snprintf(io.out_sol_fit_file,sizeof(io.out_sol_fit_file),"%s/solution_history_%i.csv",io.out_dir,N) < (int) sizeof(io.out_sol_fit_file)
             && snprintf(io.out_pop_fit_file,sizeof(io.out_pop_fit_file),"%s/fitness_history_%i.csv",io.out_dir,N) < (int) sizeof(io.out_pop_fit_file)
@@ -325,7 +324,7 @@ void Render(Robot& R) {
 void Visualize(Robot& R) {
 	printf("VISUALIZING\n");
 
-	R.printObjectPositions();
+	// R.printObjectPositions();
 
 	GLFWwindow* window = GLFWsetup(true);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
@@ -359,13 +358,15 @@ void Visualize(Robot& R) {
 	// Main while loop
 	uint i = 0;
 	std::vector<Element> robot_elements(1);
+
+	// printf("-----------------------\n");
 	
 	while (!glfwWindowShouldClose(window))
 	{
 		// printf("Iteration: %u\n", i);
 		float crntTime = glfwGetTime();
 		
-		robot_elements[0] = (Element) R;
+		robot_elements[0] = {R.getMasses(),R.getSprings()};
 		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
 		std::vector<Element> results = sim.Collect(trackers);
 		
@@ -379,9 +380,6 @@ void Visualize(Robot& R) {
 		// R.printMesh();
 		
 		// R.printObjectPositions();
-
-		// std::vector<SoftBodyInfo> results = sim.Simulate(robots);
-		// R.Update(results[0]);
 
 		while ((crntTime - prevTime) < 1 / FPS) {
 			crntTime = glfwGetTime();
@@ -483,9 +481,14 @@ void handle_commandline_args(const int& argc, char** argv) {
 			solID = atoi(argv[i+1]);
         }
 
-		if(strcmp(argv[i], "-radius") == 0) {
-			strats.encoding = Robot::ENCODE_RADIUS;
-			Robot::repr = Robot::ENCODE_RADIUS;
+		if(strcmp(argv[i], "-encode") == 0) {
+            if(strcmp(argv[i+1], "rad") == 0) {
+				strats.encoding = Robot::ENCODE_RADIUS;
+				Robot::repr = Robot::ENCODE_RADIUS;
+			} else if(strcmp(argv[i+1], "direct") == 0) {
+				strats.encoding = Robot::ENCODE_DIRECT;
+				Robot::repr = Robot::ENCODE_DIRECT;
+			}
         }
     }
 }
