@@ -24,9 +24,9 @@
 #define BASE_TIME 5.0f
 #define MAX_TIME 10.0f
 
-#define MAX_EVALS (ulong) 1e6
+#define MAX_EVALS (ulong) 1e5
 
-#define POP_SIZE (uint) 256
+#define POP_SIZE (uint) 2048
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
 #define NICHE_COUNT (uint) std::thread::hardware_concurrency()
 #define STEPS_TO_COMBINE (uint) 1e2
@@ -67,7 +67,7 @@ void GLFWinitialize();
 
 std::vector<Robot> Solve();
 void Render(Robot& R);
-void Visualize(Robot& R);
+void Visualize(std::vector<Robot>& R);
 
 OptimizationStrats strats;
 IOLocations io;
@@ -138,11 +138,13 @@ int main(int argc, char** argv)
 	#endif
 
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
-	Robot solution = Robot();
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
-	solution.Randomize();
-	solutions.push_back(solution);
+	for(uint i = 0; i < 100; i++) {
+		Robot solution = Robot();
+		solution.Randomize();
+		solutions.push_back(solution);
+	}
 	#endif
 
 	#ifdef BOUNCE
@@ -156,7 +158,7 @@ int main(int argc, char** argv)
 	#endif
 
 	#ifdef VISUALIZE
-	Visualize(solutions[solID]);
+	Visualize(solutions);
 	#endif
 
 	return 0;
@@ -322,7 +324,7 @@ void Render(Robot& R) {
 	glfwTerminate();
 }
 
-void Visualize(Robot& R) {
+void Visualize(std::vector<Robot>& robots) {
 	printf("VISUALIZING\n");
 
 	// R.printObjectPositions();
@@ -330,8 +332,10 @@ void Visualize(Robot& R) {
 	GLFWwindow* window = GLFWsetup(true);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
 	shader.Bind();
-	Camera camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f);
+	Camera camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f, robots.size());
 	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
+
+	Robot R = robots[camera.tabIdx];
 
 	R.Bind();
 
@@ -353,7 +357,7 @@ void Visualize(Robot& R) {
 
 	float prevTime = glfwGetTime();
 
-	sim.Initialize(R, 1);
+	sim.Initialize(robots[0], 1);
 	sim.setMaxTime( 1 / FPS);
 
 	// Main while loop
@@ -362,8 +366,16 @@ void Visualize(Robot& R) {
 
 	// printf("-----------------------\n");
 	
+	uint tabId = camera.tabIdx;
 	while (!glfwWindowShouldClose(window))
 	{
+		if(tabId != camera.tabIdx) {
+			tabId = camera.tabIdx;
+			R.Unbind();
+			R = robots[tabId];
+			R.Bind();
+		}
+
 		// printf("Iteration: %u\n", i);
 		float crntTime = glfwGetTime();
 		
