@@ -205,17 +205,21 @@ integrateBodies(float4* newPos, float4* newVel,
 
 	int idx    = threadIdx.x;
 	int stride = blockDim.x;
+	float3 envForce;
 
 	// Initialize and compute environment forces
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		s_pos[i] = oldPos[i+massOffset];
 	}
-	__syncthreads();
 	
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
-		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
+		envForce = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
+		atomicExch(&(s_force[i].x),envForce.x);
+		atomicExch(&(s_force[i].y),envForce.y);
+		atomicExch(&(s_force[i].z),envForce.z);
+		// s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
 	}
-	__syncthreads();
+	// __syncthreads();
 
 
 	float4 bl, br;
@@ -235,8 +239,6 @@ integrateBodies(float4* newPos, float4* newVel,
 		force = springForce(bl,br,mats[i+springOffset],Lbars[i+springOffset],time);
 		AtomicAdd(s_force[left],   force, 1);
 		AtomicAdd(s_force[right], -force, 1);
-
-		atomicAdd(springCount,1);
 	}
 	__syncthreads();
 
