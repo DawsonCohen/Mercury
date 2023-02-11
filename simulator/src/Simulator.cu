@@ -154,7 +154,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	float zeta = envBuf[0].damping;
 	float step_time = 0;
 	glm::vec3 pos, vel;
-	for(ushort i = 0; i < numMasses; i++) {
+	for(uint i = 0; i < numMasses; i++) {
 		float  mass = massBuf[i].mass;
 		vel  = massBuf[i].vel;
 		pos = massBuf[i].pos;
@@ -169,11 +169,11 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		m_hVel[4*i+2] = vel.z;
 	}
 
-	for(ushort i = 0; i < numSprings; i++) {
+	for(uint i = 0; i < numSprings; i++) {
 		Material mat    = springBuf[i].material;
 		float    lbar   = springBuf[i].mean_length;
 		bool	 active = springBuf[i].active;
-		ushort   left   = springBuf[i].m0,
+		uint   left   = springBuf[i].m0,
 			     right  = springBuf[i].m1;
 
 		// printf("%u:\t%u\n",offsetBuf[i],springBuf[i].m0);

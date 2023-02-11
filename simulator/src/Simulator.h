@@ -71,7 +71,7 @@ protected:
 	Environment*	envBuf;
 
 	// CPU data
-	ushort *m_hPairs;
+	ushort   *m_hPairs;
 	float  *m_hMats;
 	float  *m_hLbars;
 	bool   *m_hActive;
