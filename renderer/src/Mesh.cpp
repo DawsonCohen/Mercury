@@ -14,6 +14,12 @@ void Mesh::Bind() {
     setupMesh();
 }
 
+void Mesh::Unbind() {
+	mVAO.Unbind();
+	mVBO.Unbind();
+	mEBO.Unbind();
+}
+
 void Mesh::setupMesh() {
 	mVAO.GenerateID();
 	mVBO.GenerateID();

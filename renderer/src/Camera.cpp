@@ -1,7 +1,8 @@
 #include "Camera.h"
 #include "Renderer.h"
 
-Camera::Camera(int width, int height, glm::vec3 position, float rotX)
+Camera::Camera(int width, int height, glm::vec3 position, float rotX, uint tabCount):
+	num_tabs(tabCount)
 {
 	Camera::width = width;
 	Camera::height = height;
@@ -82,6 +83,9 @@ void Camera::Inputs(GLFWwindow* window)
 	}
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
 		glfwSetWindowShouldClose(window, true);
+	}
+	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
+		tabIdx = (tabIdx + 1) % num_tabs;
 	}
 	
 	// Handles mouse inputs

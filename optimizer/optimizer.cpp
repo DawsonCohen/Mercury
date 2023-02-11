@@ -231,11 +231,11 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
                     D10 = Robot::Distance(P3);
 
                     if(D00 + D11 < D01 + D10) {
-                        if(fam.children.first >= *fam.parents.first) swap(fam.children.first,*fam.parents.first);
-                        if(fam.children.second >= *fam.parents.second) swap(fam.children.second,*fam.parents.second);
+                        if(fam.children.first > *fam.parents.first) swap(fam.children.first,*fam.parents.first);
+                        if(fam.children.second > *fam.parents.second) swap(fam.children.second,*fam.parents.second);
                     } else {
-                        if(fam.children.first >= *fam.parents.second) swap(fam.children.first,*fam.parents.second);
-                        if(fam.children.second >= *fam.parents.first) swap(fam.children.second,*fam.parents.first);
+                        if(fam.children.first > *fam.parents.second) swap(fam.children.first,*fam.parents.second);
+                        if(fam.children.second > *fam.parents.first) swap(fam.children.second,*fam.parents.first);
                     }
                 }
                 break;
@@ -248,11 +248,11 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
                     random.first  = &subpop[r1];
                     random.second = &subpop[r2];
 
-                    if(fam.children.first  >= *random.first) swap(fam.children.first,  *random.first);
-                    if(fam.children.second >= *random.first) swap(fam.children.second, *random.first);
+                    if(fam.children.first  > *random.first) swap(fam.children.first,  *random.first);
+                    if(fam.children.second > *random.first) swap(fam.children.second, *random.first);
 
-                    if(fam.children.first  >= *random.second) swap(fam.children.first,  *random.second);
-                    if(fam.children.second >= *random.second) swap(fam.children.second, *random.second);
+                    if(fam.children.first  > *random.second) swap(fam.children.first,  *random.second);
+                    if(fam.children.second > *random.second) swap(fam.children.second, *random.second);
                 }
             }
         }
@@ -385,8 +385,7 @@ std::vector<Robot> Optimizer::ALPSSolve() {
             while(i < pop_size) {
                 if(population[i] < population[0]) break;
                 sol = population[i];
-                printf("%u: Layer: %u, \t%s\n",
-                    population[i].paretoLayer(),
+                printf("%u:\t%s\n",
                     i,
                     population[i].fitnessReadout().data());
                 i++;
@@ -504,9 +503,8 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
             while(i < pop_size) {
                 if(population[i].paretoLayer() > 0) break;
                 sol = population[i];
-                printf("%u: Layer: %u, \t%s\n",
+                printf("%u:\t%s\n",
                     i,
-                    population[i].paretoLayer(),
                     population[i].fitnessReadout().data());
                 i++;
             }

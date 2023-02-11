@@ -37,6 +37,7 @@ public:
 	}
 
     void Bind();
+    void Unbind();
     void Draw(Shader& shader, Camera& camera) const;
     void updateVertex(size_t index, Vertex v);
     void addVertex(Vertex v) { mVertices.push_back(v); }

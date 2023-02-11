@@ -75,7 +75,7 @@ public:
     }
 
     std::string fitnessReadout() {
-        return "fitness: " + std::to_string(mFitness);
+        return "fitness: " + std::to_string(mFitness) + "\tage: " + std::to_string(mAge);
     }
 };
 

@@ -27,6 +27,12 @@ void Model::Bind() {
     }
 }
 
+void Model::Unbind() {
+    for(size_t i = 0; i < mMeshes.size(); i++) {
+        mMeshes[i].Unbind();
+    }
+}
+
 void Model::Draw(Shader &shader, Camera& camera)
 {
     shader.Bind();

@@ -35,6 +35,7 @@ public:
     }
 
     void Bind();
+    void Unbind();
     void rotate(float deg, glm::vec3 axis);
     void translate(glm::vec3 translation);
     void scale(float scale);
