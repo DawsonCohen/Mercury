@@ -49,6 +49,8 @@ void Benchmark(Robot& R) {
 
 	float execute_time;
 
+	fprintf(pFile,"springs simulated, springs per iteration, execute time\n", num_springs,R.getSprings().size()*pop_size,execute_time);
+	
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<Element> robots;
 		for(uint i = 0; i < pop_size; i++) {
@@ -74,7 +76,7 @@ void Benchmark(Robot& R) {
 
 		pop_size *= 2;
 
-		fprintf(pFile,"%lu, %f\n", num_springs,execute_time);
+		fprintf(pFile,"%lu,%lu,%f\n", num_springs,R.getSprings().size()*pop_size,execute_time);
 		printf("%lu SPRINGS IN %f SECONDS\n", num_springs, execute_time);
 		printf("%lu SPRINGS PER SECOND\n", (ulong) springs_per_sec);
 		printf("--------------------------\n");
