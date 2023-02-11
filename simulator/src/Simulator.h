@@ -71,7 +71,7 @@ protected:
 	Environment*	envBuf;
 
 	// CPU data
-	uint   *m_hPairs;
+	ushort *m_hPairs;
 	float  *m_hMats;
 	float  *m_hLbars;
 	bool   *m_hActive;
@@ -81,12 +81,11 @@ protected:
 	// GPU data
 	float   *m_dPos[2], *m_dVel[2],
 			*m_dMats;
-	uint	*m_dPairs;
+	ushort	*m_dPairs;
 	float	*m_dLbars;
 	bool	*m_dActive;
-	uint	*m_dSpringCount;
-	uint	m_currentRead,
-			m_currentWrite;
+	unsigned char m_currentRead,
+			 	  m_currentWrite;
 
 	uint springsPerElement = 0;
 	uint massesPerElement  = 0;

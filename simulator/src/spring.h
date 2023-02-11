@@ -6,7 +6,7 @@
 #include "math.h"
 
 #define OMEGA (float) 1.0f
-#define AMPLITUDE .15f
+#define AMPLITUDE .05f
 
 // k - spring constant 
 // spring oscillation L0 = L0 + dL0*sin(wt+phi)
@@ -103,8 +103,8 @@ namespace materials {
 }
 
 struct Spring {
-	unsigned int m0;
-	unsigned int m1;
+	uint m0;
+	uint m1;
 	float rest_length;
 	float mean_length;
 	Material material;

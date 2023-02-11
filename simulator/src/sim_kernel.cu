@@ -190,11 +190,11 @@ float3 springForce(float4 bl, float4 br, float4 mat,
 __global__ void
 integrateBodies(float4* newPos, float4* newVel,
 				float4* oldPos, float4* oldVel,
-				uint2* pairs, float4* mats, float* Lbars,
+				ushort2* pairs, float4* mats, float* Lbars,
 				bool* active,
 				float dt, float time, float4 env,
 				uint numMasses, uint numSprings,
-				uint maxMasses, uint maxSprings, uint* springCount)
+				uint maxMasses, uint maxSprings)
 {
 	extern __shared__ float4 s[];
 	float4  *s_pos = s;
@@ -229,8 +229,8 @@ integrateBodies(float4* newPos, float4* newVel,
 
 	for(int i = idx; i < numSprings && (i+springOffset) < maxSprings; i+=stride) {
 		if(!active[i]) continue;
-		left  = pairs[i+springOffset].x-massOffset;
-		right = pairs[i+springOffset].y-massOffset;
+		left  = pairs[i+springOffset].x;
+		right = pairs[i+springOffset].y;
 		// printf("%u:\t%u - %u\n", i, pairs[i+springOffset].x, massOffset);
 		bl = s_pos[left];
 		br = s_pos[right];

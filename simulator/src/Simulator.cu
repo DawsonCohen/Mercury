@@ -95,7 +95,6 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dPos[1]);
 		cudaFree((void**) m_dVel[0]);
 		cudaFree((void**) m_dVel[1]);
-		cudaFree((void**) m_dSpringCount);
 
 		cudaFree((void**) m_dLbars);
 		cudaFree((void**) m_dPairs);
@@ -113,7 +112,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
 	m_hLbars  = new float[maxSprings];
 	m_hActive = new bool[maxSprings];
-	m_hPairs  = new uint[maxSprings*2];
+	m_hPairs  = new ushort[maxSprings*2];
 	m_hMats   = new float[maxSprings*4];
 
 	m_hPos 	  = new float[maxMasses*4];
@@ -122,13 +121,12 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	memset(m_hPos, 0, maxMasses*4*sizeof(float));
     memset(m_hVel, 0, maxMasses*4*sizeof(float));
 	
-    unsigned int massSizefloat4   = sizeof(float) * 4 * maxMasses;
-    unsigned int springSizefloat  = sizeof(float) * 1 * maxSprings;
-    unsigned int springSizefloat4 = sizeof(float) * 4 * maxSprings;
-    unsigned int springSizeuint2  = sizeof( uint) * 2 * maxSprings;
-    unsigned int springSizebool   = sizeof( bool) * 1 * maxSprings;
+    unsigned int massSizefloat4     = sizeof(float)  * 4 * maxMasses;
+    unsigned int springSizefloat    = sizeof(float)  * 1 * maxSprings;
+    unsigned int springSizefloat4   = sizeof(float)  * 4 * maxSprings;
+    unsigned int springSizeushort2  = sizeof(ushort) * 2 * maxSprings;
+    unsigned int springSizebool     = sizeof( bool)  * 1 * maxSprings;
 	
-	cudaMalloc((void**)&m_dSpringCount, sizeof(uint));
 	cudaMalloc((void**)&m_dVel[0], massSizefloat4);
 	cudaMalloc((void**)&m_dVel[1], massSizefloat4);
 
@@ -136,7 +134,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dPos[1], massSizefloat4);
 
 
-	cudaMalloc((void**)&m_dPairs,  springSizeuint2);
+	cudaMalloc((void**)&m_dPairs,  springSizeushort2);
 	cudaMalloc((void**)&m_dLbars,  springSizefloat);
 	cudaMalloc((void**)&m_dActive, springSizebool);
 	cudaMalloc((void**)&m_dMats,   springSizefloat4);
@@ -156,7 +154,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	float zeta = envBuf[0].damping;
 	float step_time = 0;
 	glm::vec3 pos, vel;
-	for(uint i = 0; i < numMasses; i++) {
+	for(ushort i = 0; i < numMasses; i++) {
 		float  mass = massBuf[i].mass;
 		vel  = massBuf[i].vel;
 		pos = massBuf[i].pos;
@@ -171,12 +169,12 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		m_hVel[4*i+2] = vel.z;
 	}
 
-	for(uint i = 0; i < numSprings; i++) {
+	for(ushort i = 0; i < numSprings; i++) {
 		Material mat    = springBuf[i].material;
 		float    lbar   = springBuf[i].mean_length;
 		bool	 active = springBuf[i].active;
-		uint     left   = springBuf[i].m0 + offsetBuf[i],
-			     right  = springBuf[i].m1 + offsetBuf[i];
+		ushort   left   = springBuf[i].m0,
+			     right  = springBuf[i].m1;
 
 		// printf("%u:\t%u\n",offsetBuf[i],springBuf[i].m0);
 
@@ -193,7 +191,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dPairs,  m_hPairs,  numSprings *2*sizeof(uint),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dPairs,  m_hPairs,  numSprings *2*sizeof(ushort),  cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dLbars,  m_hLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dActive, m_hActive, numSprings  * sizeof(bool), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMats,   m_hMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
@@ -225,21 +223,22 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	uint maxSharedMemSize = 49152;
 	uint bytesPerMass = sizeof(float4) + sizeof(float3);
-	uint bytesPerElement = massesPerElement*(sizeof(float4)+sizeof(float3));
+	uint bytesPerElement = massesPerElement*bytesPerMass;
 	uint elementsPerBlock = min(maxSharedMemSize / bytesPerElement, numElements);
 	uint massesPerBlock = massesPerElement * elementsPerBlock;
 	uint springsPerBlock = springsPerElement * elementsPerBlock;
 	uint sharedMemSize = massesPerBlock * bytesPerMass;
+	uint bytesPerBlock = elementsPerBlock * bytesPerElement;
 
-
-	int threadsPerBlock = 256;
+	int threadsPerBlock = 1024;
 
 	// int numBlocks = (elementsPerBlock)
 
 	int numBlocks = (numElements + elementsPerBlock - 1) / elementsPerBlock;
 	// int numBlocks = (springsPerBlock + threadsPerBlock - 1) / threadsPerBlock;
 	// printf("BPE:\t%u\n", bytesPerElement);
-	// printf("Elements:\t%u\n", numElements);
+	// printf("Block Utilization:\t%f\n", (float) bytesPerBlock / (float) maxSharedMemSize);
+	// printf("EPB:\t%u\n", elementsPerBlock);
 	// printf("EPB:\t%u\n", elementsPerBlock);
 	// printf("Blocks:\t%u\n", numBlocks);
 	
@@ -249,10 +248,10 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-			(uint2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, (bool*) m_dActive,
+			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, (bool*) m_dActive,
 			step_period, total_time, make_float4(stiffness,mu,zeta,gravity.y),
 			massesPerElement, springsPerElement,
-			maxMasses, maxSprings, m_dSpringCount);
+			maxMasses, maxSprings);
 
 		gpuErrchk( cudaPeekAtLastError() );
 		cudaDeviceSynchronize();
@@ -267,8 +266,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	
-	cudaMemcpy(&springCount,m_dSpringCount,sizeof(uint),cudaMemcpyDeviceToHost);
-
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
 		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
