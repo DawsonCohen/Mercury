@@ -173,7 +173,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		Material mat    = springBuf[i].material;
 		float    lbar   = springBuf[i].mean_length;
 		bool	 active = springBuf[i].active;
-		uint   left   = springBuf[i].m0,
+		uint	 left   = springBuf[i].m0,
 			     right  = springBuf[i].m1;
 
 		// printf("%u:\t%u\n",offsetBuf[i],springBuf[i].m0);
@@ -244,12 +244,18 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	
 	uint step = 0;
 	uint springCount = 0;
+	float hold_time = 0.0f;
+	float mat_time = 0.0f;
 	while(step_time < max_time) {
+		if(total_time >= hold_time)
+			mat_time = total_time - hold_time;
+		else
+			mat_time = 0.0f;
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, (bool*) m_dActive,
-			step_period, total_time, make_float4(stiffness,mu,zeta,gravity.y),
+			step_period, mat_time, make_float4(stiffness,mu,zeta,gravity.y),
 			massesPerElement, springsPerElement,
 			maxMasses, maxSprings);
 

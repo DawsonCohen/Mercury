@@ -205,7 +205,6 @@ integrateBodies(float4* newPos, float4* newVel,
 
 	int idx    = threadIdx.x;
 	int stride = blockDim.x;
-	float3 envForce;
 
 	// Initialize and compute environment forces
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
@@ -213,7 +212,6 @@ integrateBodies(float4* newPos, float4* newVel,
 	}
 	
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
-		envForce = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
 		// atomicExch(&(s_force[i].x),envForce.x);
 		// atomicExch(&(s_force[i].y),envForce.y);
 		// atomicExch(&(s_force[i].z),envForce.z);

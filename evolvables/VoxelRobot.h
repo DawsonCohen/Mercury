@@ -32,7 +32,7 @@ struct Circle {
     Material mat = materials::bone;
     float radius = 0;
     glm::vec3 center = glm::vec3(0.0f);
-    float max_radius = 3.5f;
+    float max_radius = 2.5f;
     void Randomize(float xlim, float ylim, float zlim);
 
     friend void swap(Circle& c1, Circle& c2) {
@@ -91,6 +91,7 @@ private:
 public:
     glm::vec3 mBaseCOM;
     glm::vec3 mSkew;
+    float mLength = 1.0f;
 
     static unsigned seed;
     static std::default_random_engine gen;
@@ -110,9 +111,9 @@ public:
     void Strip();
 
 private:
-    float xSize = 7.0f;
-    float ySize = 7.0f;
-    float zSize = 7.0f;
+    float xSize = 5.0f;
+    float ySize = 5.0f;
+    float zSize = 5.0f;
     float resolution = 1.0f; // Masses per meter
     glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
     std::vector<Voxel> voxels;
@@ -176,7 +177,7 @@ public:
     };
     
     VoxelRobot(const VoxelRobot& src) : SoftBody(src),
-        mVolume(src.mVolume), mBaseCOM(src.mBaseCOM), mSkew(src.mSkew),
+        mVolume(src.mVolume), mBaseCOM(src.mBaseCOM), mSkew(src.mSkew), mLength(src.mLength),
         xSize(src.xSize), ySize(src.ySize), zSize(src.zSize),
         resolution(src.resolution), voxels(src.voxels), circles(src.circles),
         xCount(src.xCount), yCount(src.yCount), zCount(src.zCount)
@@ -217,6 +218,7 @@ public:
     static glm::vec3 calcSkew(VoxelRobot&);
     static void calcFitness(VoxelRobot&);
     static float Distance(const VoxelRobotPair& robots);
+    static float calcLength(VoxelRobot&);
 
     std::string DirectEncode() const;
 
@@ -227,6 +229,7 @@ public:
         swap(r1.mVolume, r2.mVolume);
         swap(r1.mBaseCOM, r2.mBaseCOM);
         swap(r1.mSkew, r2.mSkew);
+        swap(r1.mLength, r2.mLength);
         swap(r1.voxels, r2.voxels);
         swap(r1.circles, r2.circles);
         swap(r1.xSize, r2.xSize);

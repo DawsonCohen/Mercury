@@ -26,7 +26,7 @@
 
 #define MAX_EVALS (ulong) 1e5
 
-#define POP_SIZE (uint) 2048
+#define POP_SIZE (uint) 256
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
 #define NICHE_COUNT (uint) std::thread::hardware_concurrency()
 #define STEPS_TO_COMBINE (uint) 1e2
@@ -154,7 +154,9 @@ int main(int argc, char** argv)
 	#endif
 
 	#ifdef WRITE_VIDEO
-	Render(solutions[solID]);
+	for(Robot& R : solutions) {
+		Render(R);
+	}
 	#endif
 
 	#ifdef VISUALIZE
@@ -263,7 +265,7 @@ void Render(Robot& R) {
 	Plane p;
 
 	float max_render_time = 15;
-	sim.setMaxTime(1/ FPS);
+	sim.setMaxTime(1 / FPS);
 
 	// Main while loop
 	while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
@@ -374,6 +376,7 @@ void Visualize(std::vector<Robot>& robots) {
 			R.Unbind();
 			R = robots[tabId];
 			R.Bind();
+			sim.Reset();
 		}
 
 		// printf("Iteration: %u\n", i);

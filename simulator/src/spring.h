@@ -5,8 +5,8 @@
 #include "stdio.h"
 #include "math.h"
 
-#define OMEGA (float) 1.0f
-#define AMPLITUDE .05f
+#define OMEGA (float) 4.0f
+#define AMPLITUDE .1f
 
 // k - spring constant 
 // spring oscillation L0 = L0 + dL0*sin(wt+phi)

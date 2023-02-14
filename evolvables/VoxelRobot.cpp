@@ -11,6 +11,9 @@ std::uniform_real_distribution<> VoxelRobot::uniform = std::uniform_real_distrib
 
 VoxelRobot::Encoding repr = VoxelRobot::ENCODE_RADIUS;
 
+#define min(a,b) a < b ? a : b
+#define max(a,b) a > b ? a : b
+
 float VoxelRobot::Distance() {
     glm::vec3 mean_pos = glm::vec3(0.0f);
     float i = 0;
@@ -304,6 +307,7 @@ void VoxelRobot::Build() {
 
     mBaseCOM = calcMeanPos(*this);
     mSkew = calcSkew(*this);
+    mLength = calcLength(*this);
 }
 
 void VoxelRobot::BuildFromCircles() {
@@ -485,6 +489,21 @@ glm::vec3 VoxelRobot::calcClosestPos(VoxelRobot& R) {
     return closest_pos;
 }
 
+float VoxelRobot::calcLength(VoxelRobot& R) {
+    glm::vec3 closest_pos = glm::vec3(0.0f);
+    glm::vec3 furthest_pos = glm::vec3(0.0f);
+    for(Voxel& v : R.voxels) {
+        if(v.mat == materials::air) continue;
+        if(R.masses[v.ID].protoPos.x < closest_pos.x)
+            closest_pos  = R.masses[v.ID].protoPos;
+        if(R.masses[v.ID].protoPos.x > furthest_pos.x)
+            furthest_pos = R.masses[v.ID].protoPos;
+    }
+
+    return max(abs(furthest_pos.x - closest_pos.x),1.0f);
+}
+
+
 
 glm::vec3 VoxelRobot::calcSkew(VoxelRobot& R) {
     glm::vec3 skew = glm::vec3(0.0f);
@@ -507,7 +526,12 @@ void VoxelRobot::calcFitness(VoxelRobot& R) {
 
     // R.mFitness = glm::l2Norm(mean_pos);
     // R.mFitness = mean_pos.x - R.mCOM.x;
-    R.mFitness = closest_pos.x - R.mBaseCOM.x;
+    R.mFitness = (closest_pos.x - R.mBaseCOM.x) / R.mLength;
+
+    if(R.mFitness > 1000) {
+        printf("Length: %f\n",R.mLength);
+        exit(0);
+    }
 }
 
 float VoxelRobot::Distance(const VoxelRobotPair& robots) {
