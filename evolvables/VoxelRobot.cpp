@@ -494,10 +494,10 @@ float VoxelRobot::calcLength(VoxelRobot& R) {
     glm::vec3 furthest_pos = glm::vec3(0.0f);
     for(Voxel& v : R.voxels) {
         if(v.mat == materials::air) continue;
-        if(R.masses[v.ID].protoPos.x < closest_pos.x)
-            closest_pos  = R.masses[v.ID].protoPos;
-        if(R.masses[v.ID].protoPos.x > furthest_pos.x)
-            furthest_pos = R.masses[v.ID].protoPos;
+        if(R.masses[v.ID].pos.x < closest_pos.x)
+            closest_pos  = R.masses[v.ID].pos;
+        if(R.masses[v.ID].pos.x > furthest_pos.x)
+            furthest_pos = R.masses[v.ID].pos;
     }
 
     return max(abs(furthest_pos.x - closest_pos.x),1.0f);

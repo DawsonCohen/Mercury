@@ -31,31 +31,6 @@ Optimizer::~Optimizer() {
 
 std::vector<float> updateDiversity(std::vector<Robot> pop) {
     return Robot::findDiversity(pop);
-
-    // // std::vector<Spring> springs;
-    // size_t pop_size = pop.size();
-    // size_t v_size = pop[0].getVoxels().size();
-    // std::vector<float> diversity(pop_size, 0);
-    
-    // std::map<Material, float> mat_count;
-
-    // // TODO
-    // for(size_t i = 0; i < v_size; i ++) {
-    //     mat_count.clear();
-    //     for(size_t j  = 0; j < pop_size; j++){
-    //         Material mat = pop[j].getVoxels()[i].mat;
-    //         if(mat_count.count(mat) == 0) mat_count[mat] = 0;
-    //         mat_count[mat]++;
-    //     }
-    //     for(auto& count : mat_count) {
-    //         mat_count[count.first] = count.second / pop_size;
-    //     }
-    //     for(size_t j = 0; j < pop_size; j++) {
-    //         Voxel v = pop[j].getVoxels()[i];
-    //         diversity[j] += 1 - mat_count[v.mat];
-    //     }
-    // }
-    // return diversity;
 }
 
 void Optimizer::RandomizePopulation(std::vector<Robot>& population) {
@@ -79,7 +54,7 @@ Robot Optimizer::RandomizeSolution(Robot& working_sol) {
     Robot new_sol = working_sol;
 
     new_sol.Randomize();
-    new_sol.mAge += 1;
+    new_sol.mAge = 1;
 
     return new_sol;
 }
@@ -231,11 +206,11 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
                     D10 = Robot::Distance(P3);
 
                     if(D00 + D11 < D01 + D10) {
-                        if(fam.children.first > *fam.parents.first) swap(fam.children.first,*fam.parents.first);
-                        if(fam.children.second > *fam.parents.second) swap(fam.children.second,*fam.parents.second);
+                        if(fam.children.first >= *fam.parents.first) swap(fam.children.first,*fam.parents.first);
+                        if(fam.children.second >= *fam.parents.second) swap(fam.children.second,*fam.parents.second);
                     } else {
-                        if(fam.children.first > *fam.parents.second) swap(fam.children.first,*fam.parents.second);
-                        if(fam.children.second > *fam.parents.first) swap(fam.children.second,*fam.parents.first);
+                        if(fam.children.first >= *fam.parents.second) swap(fam.children.first,*fam.parents.second);
+                        if(fam.children.second >= *fam.parents.first) swap(fam.children.second,*fam.parents.first);
                     }
                 }
                 break;
@@ -248,11 +223,11 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
                     random.first  = &subpop[r1];
                     random.second = &subpop[r2];
 
-                    if(fam.children.first  > *random.first) swap(fam.children.first,  *random.first);
-                    if(fam.children.second > *random.first) swap(fam.children.second, *random.first);
+                    if(fam.children.first  >= *random.first) swap(fam.children.first,  *random.first);
+                    if(fam.children.second >= *random.first) swap(fam.children.second, *random.first);
 
-                    if(fam.children.first  > *random.second) swap(fam.children.first,  *random.second);
-                    if(fam.children.second > *random.second) swap(fam.children.second, *random.second);
+                    if(fam.children.first  >= *random.second) swap(fam.children.first,  *random.second);
+                    if(fam.children.second >= *random.second) swap(fam.children.second, *random.second);
                 }
             }
         }

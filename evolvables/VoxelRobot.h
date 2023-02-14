@@ -250,10 +250,7 @@ public:
     }
 
     bool operator < (const VoxelRobot& R) const {
-        if(mParetoLayer > R.mParetoLayer)
-            return true;
-        
-        return false;
+        return mParetoLayer > R.mParetoLayer;
     }
 
     bool operator > (const VoxelRobot& R) const {

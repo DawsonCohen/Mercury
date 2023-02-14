@@ -37,6 +37,7 @@ void Evaluator::BatchEvaluate(std::vector<Robot>& robots) {
     for(Robot& r : robots) {
         eval_count++;
         r.mBaseCOM = Robot::calcMeanPos(r);
+        r.mLength = Robot::calcLength(r);
     }
 
     Sim.setMaxTime(evaluationTime-baselineTime);
