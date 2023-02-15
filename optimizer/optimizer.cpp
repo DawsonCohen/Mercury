@@ -153,14 +153,21 @@ void Optimizer::MutateCollect(std::vector<subpopulation>& subpop_list) {
         for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
             fam.child = evalBuf[count++];
         }
+        Evaluator::pareto_sort(subpop.begin(),subpop.end());
     }
 
     for(subpopulation& subpop : subpop_list) {
         int max_elite = elitism * subpop.size();
+
         for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
             uint r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-            Robot* rand  = &subpop[r_idx];
-            if(*rand <= fam.child) {
+            Robot* random_robot  = &subpop[r_idx];
+            // while(random_robot->paretoLayer() == 0) {
+            //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
+            //     random_robot  = &subpop[r_idx];
+            // }
+            assert(r_idx != 0);
+            if(*random_robot <= fam.child) {
                 swap(*(fam.parent), fam.child);
             }
         }
@@ -186,7 +193,9 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
             fam.children.first = evalBuf[count++];
             fam.children.second = evalBuf[count++];
         }
+        Evaluator::pareto_sort(subpop.begin(),subpop.end());
     }
+
     for(subpopulation& subpop : subpop_list) {
         int max_elite = elitism * subpop.size();
         for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
@@ -220,6 +229,7 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
                     SolutionPair random;
                     uint r1 = max_elite + (rand() % (subpop.size()-max_elite));
                     uint r2 = max_elite + (rand() % (subpop.size()-max_elite));
+                    
                     random.first  = &subpop[r1];
                     random.second = &subpop[r2];
 
