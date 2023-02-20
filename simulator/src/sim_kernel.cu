@@ -84,13 +84,14 @@ __device__ inline void AtomicAdd(float3& v, float3 val, int reorder)
     atomicAdd(&(v.z), val.z);
 }
 
+// Explicity assumes each mass is of unit 1 mass
 __device__
-float3 gravityForce(float mass, float4 env) {
-	return {0, -mass*9.81f, 0};
+float3 gravityForce(float4 env) {
+	return {0, -9.81f, 0};
 }
 
 __device__
-float3 collisionForce(float4 pos, float4 vel, float3 force,
+float3 collisionForce(float3 pos, float4 vel, float3 force,
 					float4 env) {
 	if(pos.y > 0.0f) return force;
 	
@@ -135,9 +136,9 @@ float3 collisionForce(float4 pos, float4 vel, float3 force,
 		w - g		acceleration due to gravity
 */
 __device__
-float3 environmentForce(float4 pos, float4 vel, float3 force,
+float3 environmentForce(float3 pos, float4 vel, float3 force,
 						float4 env) {
-	force = gravityForce(pos.w, env);
+	force = gravityForce(env);
 	force = collisionForce(pos,vel,force,env);
 	return force;
 }
@@ -151,31 +152,29 @@ float3 environmentForce(float4 pos, float4 vel, float3 force,
 		w - phi		phase
 */
 __device__
-float3 springForce(float4 bl, float4 br, float4 mat, 
+float3 springForce(float3 bl, float3 br, float4 mat, 
 					float mean_length, float time) {
-
-	extern __shared__ float4 s_pos[];
 
 	float3 force = {0.0f, 0.0f, 0.0f};
 
 	if(mat.x == 0.0f) return force;
 
-	float3	b0pos, b1pos,
-			dir, diff;
+	float3	dir, diff;
+	// float3 b0pos, b1pos;
 
 	float	relative_change,
 			rest_length,
 			L, magF;
 
-	b0pos = {bl.x, bl.y, bl.z};
-	b1pos = {br.x, br.y, br.z};
+	// b0pos = {bl.x, bl.y, bl.z};
+	// b1pos = {br.x, br.y, br.z};
 
 	relative_change = mat.y * sinf(mat.z*time+mat.w);
 	rest_length = mean_length * (1 + relative_change);
 
-	diff.x = b0pos.x - b1pos.x;
-	diff.y = b0pos.y - b1pos.y;
-	diff.z = b0pos.z - b1pos.z;
+	diff.x = bl.x - br.x;
+	diff.y = bl.y - br.y;
+	diff.z = bl.z - br.z;
 
 	L = l2norm(diff);
 	dir = normalize(diff);
@@ -187,6 +186,8 @@ float3 springForce(float4 bl, float4 br, float4 mat,
 	return force;
 }
 
+// TODO: test with single spring
+// TODO: returns indices of highest stress 10 springs
 __global__ void
 integrateBodies(float4* newPos, float4* newVel,
 				float4* oldPos, float4* oldVel,
@@ -196,8 +197,8 @@ integrateBodies(float4* newPos, float4* newVel,
 				uint numMasses, uint numSprings,
 				uint maxMasses, uint maxSprings)
 {
-	extern __shared__ float4 s[];
-	float4  *s_pos = s;
+	extern __shared__ float3 s[];
+	float3  *s_pos = s;
 	float3  *s_force = (float3*) &s_pos[numMasses];
 
 	uint massOffset   = blockIdx.x * numMasses;
@@ -207,20 +208,18 @@ integrateBodies(float4* newPos, float4* newVel,
 	int stride = blockDim.x;
 
 	// Initialize and compute environment forces
+	float4 pos4;
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
-		s_pos[i] = oldPos[i+massOffset];
+		pos4 = oldPos[i+massOffset];
+		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
-		// atomicExch(&(s_force[i].x),envForce.x);
-		// atomicExch(&(s_force[i].y),envForce.y);
-		// atomicExch(&(s_force[i].z),envForce.z);
 		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
 	}
 	__syncthreads();
 
-
-	float4 bl, br;
+	float3 bl, br;
 	float3 force;
 	uint left, right;
 	// printf("Spring Offset: %u\n", springOffset);
@@ -240,8 +239,10 @@ integrateBodies(float4* newPos, float4* newVel,
 	}
 	__syncthreads();
 
+	float4 vel;
+	float3 pos3;
 	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
-		float4 vel = oldVel[i+massOffset];
+		vel = oldVel[i+massOffset];
 
 		// printf("Force: {%f,%f,%f}\n",s_force[i].x,s_force[i].y,s_force[i].z);
 
@@ -255,7 +256,8 @@ integrateBodies(float4* newPos, float4* newVel,
 		s_pos[i].z += vel.z * dt;
 
 		// store new position and velocity
-		newPos[i+massOffset] = s_pos[i];
+		pos3 = s_pos[i];
+		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
 		newVel[i+massOffset] = vel;
 	}
 }

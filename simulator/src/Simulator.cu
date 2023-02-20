@@ -222,7 +222,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	*/
 
 	uint maxSharedMemSize = 49152;
-	uint bytesPerMass = sizeof(float4) + sizeof(float3);
+	uint bytesPerMass = sizeof(float3) + sizeof(float3);
 	uint bytesPerElement = massesPerElement*bytesPerMass;
 	uint elementsPerBlock = min(maxSharedMemSize / bytesPerElement, numElements);
 	uint massesPerBlock = massesPerElement * elementsPerBlock;
