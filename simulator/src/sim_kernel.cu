@@ -191,8 +191,8 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 __global__ void
 integrateBodies(float4* newPos, float4* newVel,
 				float4* oldPos, float4* oldVel,
-				ushort2* pairs, float4* mats, float* Lbars,
-				bool* active,
+				const ushort2* pairs, const float4* mats, const float* Lbars,
+				const bool* active,
 				float dt, float time, float4 env,
 				uint numMasses, uint numSprings,
 				uint maxMasses, uint maxSprings)
@@ -222,18 +222,22 @@ integrateBodies(float4* newPos, float4* newVel,
 	float3 bl, br;
 	float3 force;
 	uint left, right;
-	// printf("Spring Offset: %u\n", springOffset);
 
+	float4 mat = {5000.0f, 0.0f, 4.0f, 0.0f};
+	float Lbar = 1.0f;
 	for(int i = idx; i < numSprings && (i+springOffset) < maxSprings; i+=stride) {
 		if(!active[i]) continue;
-		left  = pairs[i+springOffset].x;
-		right = pairs[i+springOffset].y;
+		left  = __ldg(&pairs[i+springOffset].x);
+		right = __ldg(&pairs[i+springOffset].y);
+		// left = 0;
+		// right = 1;
 		// printf("%u:\t%u - %u\n", i, pairs[i+springOffset].x, massOffset);
 		bl = s_pos[left];
 		br = s_pos[right];
 
 
-		force = springForce(bl,br,mats[i+springOffset],Lbars[i+springOffset],time);
+		force = springForce(bl,br,__ldg(&mats[i+springOffset]),__ldg(&Lbars[i+springOffset]),time);
+		// force = springForce(bl,br,mat,Lbar,time);
 		AtomicAdd(s_force[left],   force, 1);
 		AtomicAdd(s_force[right], -force, 1);
 	}
