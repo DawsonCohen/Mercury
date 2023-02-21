@@ -223,8 +223,8 @@ integrateBodies(float4* newPos, float4* newVel,
 	float3 force;
 	uint left, right;
 
-	float4 mat = {5000.0f, 0.0f, 4.0f, 0.0f};
-	float Lbar = 1.0f;
+	// float4 mat = {5000.0f, 0.0f, 4.0f, 0.0f};
+	// float Lbar = 1.0f;
 	for(int i = idx; i < numSprings && (i+springOffset) < maxSprings; i+=stride) {
 		if(!active[i]) continue;
 		left  = __ldg(&pairs[i+springOffset].x);
