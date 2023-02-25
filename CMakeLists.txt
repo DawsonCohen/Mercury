@@ -12,7 +12,7 @@ string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
 string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
 SET(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 
-# find_package( OpenCV REQUIRED )
+find_package( OpenCV REQUIRED )
 
 add_subdirectory( renderer )
 
@@ -29,7 +29,7 @@ set( PHYS
 	renderer/src/EBO.cpp
 	renderer/src/Model.cpp
 	
-	simulator/src/Simulator.cu
+	simulator/Simulator.cu
 	
 	evolvables/SoftBody.cpp
 	evolvables/VoxelRobot.cpp
@@ -43,8 +43,8 @@ set( PHYS
 
 add_definitions(-Wall -Wextra -O3 -pg)
 
-add_definitions("-DOPTIMIZE -DVISUALIZE")
-# add_definitions("-DVISUALIZE")
+# add_definitions("-DOPTIMIZE -DVISUALIZE")
+add_definitions("-DVISUALIZE")
 
 # add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
 # add_definitions("-DVERIFY -DVISUALIZE")
@@ -55,7 +55,7 @@ ${PHYS}
 )
 
 target_include_directories(phys PUBLIC renderer/src)
-target_include_directories(phys PUBLIC simulator/src)
+target_include_directories(phys PUBLIC simulator)
 target_include_directories(phys PUBLIC optimizer)
 target_include_directories(phys PUBLIC util)
 target_include_directories(phys PUBLIC models)
