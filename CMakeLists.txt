@@ -69,3 +69,7 @@ target_link_libraries( phys
 		stb
 		${OpenCV_LIBS}
 	)
+
+target_compile_options(phys PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
+					-Xcudafe --diag_suppress=20012
+					>)
