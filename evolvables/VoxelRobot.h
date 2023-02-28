@@ -250,7 +250,12 @@ public:
     }
 
     bool operator < (const VoxelRobot& R) const {
-        return mParetoLayer > R.mParetoLayer;
+        if(mParetoLayer > R.mParetoLayer)
+            return true;
+        else if(mParetoLayer == R.mParetoLayer)
+            return mFitness < R.mFitness;
+
+        return false
     }
 
     bool operator > (const VoxelRobot& R) const {
@@ -263,11 +268,21 @@ public:
     }
 
     bool operator <= (const VoxelRobot& R) const {
-        return !(mFitness > R.mFitness);
+        if(mParetoLayer < R.mParetoLayer)
+            return false;
+        else if(mParetoLayer == R.mParetoLayer)
+            return !(mFitness > R.mFitness);
+
+        return true
     }
 
     bool operator >= (const VoxelRobot& R) const {
-        return !(mFitness < R.mFitness);
+        if(mParetoLayer > R.mParetoLayer)
+            return false;
+        else if(mParetoLayer == R.mParetoLayer)
+            return !(mFitness < R.mFitness);
+
+        return true
     }
 
     static std::vector<float> findDiversity(std::vector<VoxelRobot> pop);
