@@ -152,7 +152,9 @@ float3 environmentForce(float3 pos, float4 vel, float3 force,
 		w - phi		phase
 */
 __device__
-float3 springForce(float3 bl, float3 br, float4 mat, 
+float3 springForce(uint i,
+	// float* stress,
+	float3 bl, float3 br, float4 mat, 
 					float mean_length, float time) {
 
 	float3 force = {0.0f, 0.0f, 0.0f};
@@ -182,6 +184,7 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 	magF = mat.x*(rest_length-L);
 
 	force = magF * dir;
+	// stress[i] += abs(magF);
 	
 	return force;
 }
@@ -193,6 +196,7 @@ integrateBodies(float4* newPos, float4* newVel,
 				float4* oldPos, float4* oldVel,
 				const ushort2* pairs, const float4* mats, const float* Lbars,
 				const bool* active,
+				// float* stress,
 				float dt, float time, float4 env,
 				uint numMasses, uint numSprings,
 				uint maxMasses, uint maxSprings)
@@ -203,6 +207,8 @@ integrateBodies(float4* newPos, float4* newVel,
 
 	uint massOffset   = blockIdx.x * numMasses;
 	uint springOffset = blockIdx.x * numSprings;
+
+	// printf("%u, %u\n",blockIdx.x,blockIdx.y);
 
 	int idx    = threadIdx.x;
 	int stride = blockDim.x;
@@ -235,8 +241,9 @@ integrateBodies(float4* newPos, float4* newVel,
 		bl = s_pos[left];
 		br = s_pos[right];
 
-
-		force = springForce(bl,br,__ldg(&mats[i+springOffset]),__ldg(&Lbars[i+springOffset]),time);
+		force = springForce(i+springOffset,
+			// stress,
+			bl,br,__ldg(&mats[i+springOffset]),__ldg(&Lbars[i+springOffset]),time);
 		// force = springForce(bl,br,mat,Lbar,time);
 		AtomicAdd(s_force[left],   force, 1);
 		AtomicAdd(s_force[right], -force, 1);

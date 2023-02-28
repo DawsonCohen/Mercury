@@ -16,10 +16,6 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
-/*
-TODO: Softening
-*/ 
-
 Simulator::Simulator(Element prototype, uint maxElements) :
 	massesPerElement(prototype.masses.size()),
 	springsPerElement(prototype.springs.size()),
@@ -42,6 +38,7 @@ Simulator::~Simulator() {
 
 	delete[] m_hLbars;
 	delete[] m_hActive;
+	delete[] m_hStress;
 	delete[] m_hPairs;
 	delete[] m_hMats;
 
@@ -58,6 +55,7 @@ Simulator::~Simulator() {
 
 	cudaFree((void**) m_dLbars);
 	cudaFree((void**) m_dActive);
+	cudaFree((void**) m_dStress);
 	cudaFree((void**) m_dPairs);
 	cudaFree((void**) m_dMats);
 }
@@ -97,6 +95,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dVel[1]);
 
 		cudaFree((void**) m_dLbars);
+		cudaFree((void**) m_dStress);
 		cudaFree((void**) m_dPairs);
 		cudaFree((void**) m_dMats);
 	}
@@ -111,6 +110,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	envBuf 	  =	new Environment[1];
 
 	m_hLbars  = new float[maxSprings];
+	m_hStress = new float[maxSprings];
 	m_hActive = new bool[maxSprings];
 	m_hPairs  = new ushort[maxSprings*2];
 	m_hMats   = new float[maxSprings*4];
@@ -120,6 +120,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
 	memset(m_hPos, 0, maxMasses*4*sizeof(float));
     memset(m_hVel, 0, maxMasses*4*sizeof(float));
+    memset(m_hStress, 0, maxSprings*sizeof(float));
 	
     unsigned int massSizefloat4     = sizeof(float)  * 4 * maxMasses;
     unsigned int springSizefloat    = sizeof(float)  * 1 * maxSprings;
@@ -136,6 +137,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
 	cudaMalloc((void**)&m_dPairs,  springSizeushort2);
 	cudaMalloc((void**)&m_dLbars,  springSizefloat);
+	cudaMalloc((void**)&m_dStress,  springSizefloat);
 	cudaMalloc((void**)&m_dActive, springSizebool);
 	cudaMalloc((void**)&m_dMats,   springSizefloat4);
 
@@ -193,6 +195,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dPairs,  m_hPairs,  numSprings *2*sizeof(ushort),  cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dLbars,  m_hLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
+	// cudaMemcpy(m_dStress, m_hStress, numSprings  * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dActive, m_hActive, numSprings  * sizeof(bool), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMats,   m_hMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
 
@@ -240,7 +243,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	// printf("Block Utilization:\t%f\n", (float) bytesPerBlock / (float) maxSharedMemSize);
 	// printf("EPB:\t%u\n", elementsPerBlock);
 	// printf("EPB:\t%u\n", elementsPerBlock);
-	// printf("Blocks:\t%u\n", numBlocks);
+	printf("Blocks:\t%u\n", numBlocks);
 	
 	uint step = 0;
 	uint springCount = 0;
@@ -255,8 +258,9 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, (bool*) m_dActive,
+			// (float*) m_dStress,
 			step_period, mat_time, make_float4(stiffness,mu,zeta,gravity.y),
-			massesPerElement, springsPerElement,
+			massesPerBlock, springsPerBlock,
 			maxMasses, maxSprings);
 
 		gpuErrchk( cudaPeekAtLastError() );
@@ -271,7 +275,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	
+	// cudaMemcpy(m_hStress, m_dStress, numSprings  * sizeof(float), cudaMemcpyDeviceToHost);
+
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
 		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
