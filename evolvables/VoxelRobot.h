@@ -106,8 +106,12 @@ public:
     void Build();
     void Initialize();
 
+
+    // Gets number of non-air connected voxels from a given voxel index
+    uint ConnectedVoxelRecurse(BasisIdx ind, std::vector<bool>& visit_list);
+
+    // Builds a robot R from voxels connected to a source voxel at index ind
     void CopyFromVoxelRecurse(BasisIdx ind, VoxelRobot& R, std::vector<bool>& visit_list);
-    uint StripRecurse(BasisIdx ind, std::vector<bool>& visit_list);
     void Strip();
 
 private:
@@ -193,7 +197,7 @@ public:
             point.z <= zSize && point.z >= 0;
     }
 
-    bool isValidInd(BasisIdx ind) {
+    bool isValidIdx(BasisIdx ind) {
         return 
             ind.x < (int) xCount && ind.x >= 0 &&
             ind.y < (int) yCount && ind.y >= 0 &&

@@ -66,8 +66,9 @@ void ShiftX(VoxelRobot& R) {
 }
 
 // Note mMasses.size == voxels.size
+// Builds spring from srcIdx to vIdx
 void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx indices, bool* visit_list, uint srcIdx) {
-    if(!isValidInd(indices)) return;
+    if(!isValidIdx(indices)) return;
 
     uint vIdx = getVoxelIdx(indices);
 
@@ -105,7 +106,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
             }
             std::vector<Material> nMats;
             for(uint i = 0; i < 4; i++) {
-                if(!isValidInd(neighbors[i])) continue;
+                if(!isValidIdx(neighbors[i])) continue;
                 Voxel neighbor = voxels[getVoxelIdx(neighbors[i])];
                 nMats.push_back(neighbor.mat);
             }
@@ -114,7 +115,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
             BasisIdx nprox = {!path.x,!path.y,!path.z};
             BasisIdx neighborIdx = v_src.indices - nprox;
             if(path.x >= 0 && path.y >= 0 && path.z >= 0 ){
-                if(!isValidInd(neighborIdx)) {
+                if(!isValidIdx(neighborIdx)) {
                     mat = v_src.mat;
                 } else {
                     std::vector<Material> nMats;
@@ -129,7 +130,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                 Voxel v_matsrc = voxels[getVoxelIdx(matSrcIdx)];
                 BasisIdx neighborIdx = matSrcIdx - nprox;
 
-                if(!isValidInd(neighborIdx)) {
+                if(!isValidIdx(neighborIdx)) {
                     mat = v_matsrc.mat;
                 } else {
                     std::vector<Material> nMats;
@@ -170,7 +171,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
     }
 
     //  Adds the following to the basis indices:
-    // 1-10, 0-11,-101
+    // 1-10, 01-1,-101
     x = 1; y = -1; z = 0;
     for(uint k = 0; k < 3; k++) {
         BasisIdx offset = {x,y,z};
@@ -196,11 +197,12 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
     }
 }
 
-uint VoxelRobot::StripRecurse(BasisIdx ind, std::vector<bool>& visit_list) {
+// Gets number of non-air adjacent voxels
+uint VoxelRobot::ConnectedVoxelRecurse(BasisIdx ind, std::vector<bool>& visit_list) {
     uint numConnected = 0;
     uint idx = getVoxelIdx(ind);
 
-    if(!isValidInd(ind)) return 0;
+    if(!isValidIdx(ind)) return 0;
     if(visit_list[idx] == true) return 0;
 
     visit_list[idx] = true;
@@ -212,17 +214,17 @@ uint VoxelRobot::StripRecurse(BasisIdx ind, std::vector<bool>& visit_list) {
 
     numConnected = 1;
 
-    // 100, 010,001
+    // 100, 010, 001
     int x = 1, y = 0, z = 0;
     // voxel postive and negative cardinal directions
     Voxel v_pos, v_neg;
     int tempx, tempy;
     for(uint k = 0; k < 3; k++) {
         BasisIdx pos_offset = {x,y,z};
-        numConnected += StripRecurse(ind + pos_offset, visit_list);
+        numConnected += ConnectedVoxelRecurse(ind + pos_offset, visit_list);
 
         BasisIdx neg_offset = {-x,-y,-z};
-        numConnected += StripRecurse(ind + neg_offset, visit_list);
+        numConnected += ConnectedVoxelRecurse(ind + neg_offset, visit_list);
 
         tempx = x;
         tempy = y;
@@ -235,7 +237,7 @@ uint VoxelRobot::StripRecurse(BasisIdx ind, std::vector<bool>& visit_list) {
 }
 
 void VoxelRobot::CopyFromVoxelRecurse(BasisIdx ind, VoxelRobot& R, std::vector<bool>& visit_list) {
-    if(!isValidInd(ind)) return;
+    if(!isValidIdx(ind)) return;
     uint idx = getVoxelIdx(ind);
 
     if(visit_list[idx] == true) return;
@@ -273,13 +275,13 @@ void VoxelRobot::Strip() {
     uint idx = 0;
     uint maxIdx = 0;
     for(Voxel& v : voxels) {
-        connected_count[idx] = StripRecurse(v.indices, visited);
+        connected_count[idx] = ConnectedVoxelRecurse(v.indices, visited);
         if(connected_count[idx] > connected_count[maxIdx]) maxIdx = idx;
         idx++;
     }
     VoxelRobot R = *this;
     for(Voxel& v: R.voxels) v.mat = materials::air;
-
+    
     visited = std::vector<bool>(voxels.size(), false);
     CopyFromVoxelRecurse(getVoxelBasisIdx(maxIdx), R, visited);
     *this = R;
@@ -297,10 +299,13 @@ void VoxelRobot::Build() {
         if(voxels[i].mat != materials::air) mVolume++;
         addMass(Mass{i,voxels[i].base,voxels[i].mat.color});
         visited[i] = false;
+        // printf("Voxel %u: {%i,%i,%i} %s\n",i,voxels[i].indices.x,voxels[i].indices.y,voxels[i].indices.z,voxels[i].mat.to_string().data());
     }
+    // printf("----------------\n");
     
     std::vector<Spring> _springs;
     BuildSpringsRecurse(_springs, {0,0,0}, visited);
+    // AssignMaterials(_springs);
     setSprings(_springs);
     ShiftX(*this);
     ShiftY(*this);
@@ -312,6 +317,8 @@ void VoxelRobot::Build() {
 
 void VoxelRobot::BuildFromCircles() {
     for(Voxel& v : voxels) {
+        if((uint) v.indices.x == xCount-1 || (uint) v.indices.y == yCount-1 || (uint) v.indices.z == zCount-1)
+            continue;
         std::vector<Material> mats;
         mats.push_back(materials::air);
         float dist;
@@ -341,7 +348,7 @@ void VoxelRobot::Initialize() {
     uint numVoxels = xCount*yCount*zCount;
     voxels = std::vector<Voxel>(numVoxels);
 
-    glm::vec3 center_correction = (1.0f/resolution)*glm::vec3(-0.5f,0.5f,-0.5f);
+    glm::vec3 center_correction = (1.0f/resolution)*glm::vec3(0.5f,0.5f,0.5f);
     for(uint i = 0; i < voxels.size(); i++) {
         BasisIdx indices = getVoxelBasisIdx(i);
         glm::vec3 base((1.0f/resolution)*(indices.x),
@@ -530,7 +537,6 @@ void VoxelRobot::calcFitness(VoxelRobot& R) {
 
     if(R.mFitness > 1000) {
         printf("Length: %f\n",R.mLength);
-        exit(0);
     }
 }
 
