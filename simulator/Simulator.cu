@@ -149,8 +149,9 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	std::vector<ElementTracker> trackers = Allocate(elements);
 	
 	float3 gravity = {envBuf[0].g.x, envBuf[0].g.y, envBuf[0].g.z};
+	float rho = envBuf[0].drag;
 	float stiffness = envBuf[0].floor_stiffness;
-	float mu = envBuf[0].friction;
+	//float mu = envBuf[0].friction;
 	float zeta = envBuf[0].damping;
 	float step_time = 0;
 	glm::vec3 pos, vel;
@@ -255,7 +256,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, (bool*) m_dActive,
-			step_period, mat_time, make_float4(stiffness,mu,zeta,gravity.y),
+			step_period, mat_time, make_float4(stiffness,rho,zeta,gravity.y),
 			massesPerElement, springsPerElement,
 			maxMasses, maxSprings);
 

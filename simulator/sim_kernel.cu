@@ -86,11 +86,11 @@ __device__ inline void AtomicAdd(float3& v, float3 val, int reorder)
 
 // Explicity assumes each mass is of unit 1 mass
 __device__
-float3 gravityForce(float4 env) {
-	return {0, -9.81f, 0};
+float3 gravityForce(float g) {
+	return {0, -g, 0};
 }
 
-__device__
+/*__device__
 float3 collisionForce(float3 pos, float4 vel, float3 force,
 					float4 env) {
 	if(pos.y > 0.0f) return force;
@@ -126,20 +126,35 @@ float3 collisionForce(float3 pos, float4 vel, float3 force,
 	force.z = Fc.z + Ff.z;
 
 	return force;
+}*/
+
+__device__
+float3 dragForce(float4 vel, float3 force,
+					float rho) {	
+	float3 Fd = {0.0f, 0.0f, 0.0f}; //Force due to drag - 1/2 * rho * v^2 * A * Cd (Assume A and Cd are 1)
+	Fd.x = 1/2*vel.x*vel.x*rho;
+	Fd.y = 1/2*vel.y*vel.y*rho;
+	Fd.z = 1/2*vel.z*vel.z*rho;
+	force.x += Fd.x;
+	force.y += Fd.y;
+	force.z += Fd.z;
+	return force;
 }
 
 /*
 	env: float4 describing global environment variables
 		x - k		stiffness
-		y - mu		coefficient of friction
+		//y - mu		coefficient of friction
+		y - rho		coefficient of drag
 		z - zeta	damping
 		w - g		acceleration due to gravity
 */
 __device__
 float3 environmentForce(float3 pos, float4 vel, float3 force,
 						float4 env) {
-	force = gravityForce(env);
-	force = collisionForce(pos,vel,force,env);
+	force = gravityForce(env.w);
+	//force = collisionForce(pos,vel,force,env);
+	force = dragForce(vel,force,env.y)
 	return force;
 }
 

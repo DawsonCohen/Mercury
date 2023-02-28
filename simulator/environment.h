@@ -7,9 +7,10 @@
 struct Environment
 {
 	float floor_stiffness = 1000000;
-	glm::vec3 g = glm::vec3(0.0f, -9.81f, 0.0f);
+	glm::vec3 g = glm::vec3(0.0f, 0.0f, 0.0f);
 	float damping = 0.99f;
-	float friction = 0.5f;
+	//float friction = 0.5f;
+	float drag = 1.204f;
 };
 
 #endif
