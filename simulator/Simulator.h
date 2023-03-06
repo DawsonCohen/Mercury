@@ -73,7 +73,7 @@ protected:
 	// CPU data
 	ushort   *m_hPairs;
 	float  *m_hMats;
-	float  *m_hLbars;
+	float  *m_hLbars, *m_hStress;
 	bool   *m_hActive;
 	float  *m_hPos;
 	float  *m_hVel;
@@ -82,7 +82,7 @@ protected:
 	float   *m_dPos[2], *m_dVel[2],
 			*m_dMats;
 	ushort	*m_dPairs;
-	float	*m_dLbars;
+	float	*m_dLbars, *m_dStress;
 	bool	*m_dActive;
 	unsigned char m_currentRead,
 			 	  m_currentWrite;

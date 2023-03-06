@@ -42,6 +42,11 @@ public:
         VoxelRobot::Update(e);
 		updateMesh();
 	}
+
+    void Randomize() {
+        VoxelRobot::Randomize();
+        updateMesh();
+    }
     
     void Reset() {
         VoxelRobot::Reset();

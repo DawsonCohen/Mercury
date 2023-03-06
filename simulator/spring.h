@@ -6,7 +6,7 @@
 #include "math.h"
 
 #define OMEGA (float) 4.0f
-#define AMPLITUDE .2f
+#define AMPLITUDE .14f
 
 // k - spring constant 
 // spring oscillation L0 = L0 + dL0*sin(wt+phi)
@@ -56,8 +56,14 @@ struct Material {
 	}
 
 	std::string to_string() const {
-		return std::to_string(k) + ", " + std::to_string(dL0) + ", " + std::to_string(omega) + ", " + std::to_string(phi) +
-			", " +  std::to_string(color.x) + ", " +  std::to_string(color.y) + ", " +  std::to_string(color.z) + ", " +  std::to_string(color.w);
+		return std::to_string(k) + ", " +
+				std::to_string(dL0) + ", " +
+				std::to_string(omega) + ", " +
+				std::to_string(phi) + ", " +
+				std::to_string(color.x) + ", " +
+				std::to_string(color.y) + ", " +
+				std::to_string(color.z) + ", " +
+				std::to_string(color.w);
 	}
 };
 
