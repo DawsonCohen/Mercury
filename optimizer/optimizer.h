@@ -16,6 +16,7 @@ struct subpopulation {
     float export_threshold = 0;
     std::vector<Robot>::iterator mBegin{};
     std::vector<Robot>::iterator mEnd{};
+    std::vector<int> parentFlag
     size_t mSize = 0;
     std::mutex a_mutex;
     std::mutex p_mutex;
@@ -108,8 +109,9 @@ public:
     uint print_skip = 1;
 
     // TODO
-    float mutation_rate = 0.6;
-    float crossover_rate = 0.7;
+    float mutation_crossover_threshold = 0.5;
+    float child_pop_size = .8
+    float injection_rate = 4;
     float elitism = 0.1;
     bool prune = false;
     bool snip = false;
@@ -145,28 +147,16 @@ private:
     Robot RandomizeSolution(Robot&);
     Robot MutateSolution(Robot&); // TODO Rename
     void SimulatedAnnealingStep(Robot&);
-    // void MutateStep(std::vector<Robot>&);
-    void MutateStep(subpopulation& subpop);
-    void MutateCollect(std::vector<subpopulation>& subpop_list);
-    
-    void AlpsMutateStep(subpopulation& subpop);
-    void AlpsCollectStep(std::vector<subpopulation>& subpop_list);
 
-    void CrossoverStep(subpopulation&);
-    void CrossoverCollect(std::vector<subpopulation>& subpop_list);
+    void ChildStep(subpopulation& subpop);
+
     void CalibrateStep(void);
     void Calibrate(void);
-    void HFCStep(subpopulation&, uint);
     void SteadyStateReplace(subpopulation& subpop, RobotPair& parents, RobotPair& children, size_t P1, size_t P2);
     void SteadyStateMutate(Robot&);
     void SteadyStateStep(subpopulation&);
-    void MALPSCrossover(std::vector<Robot>&, uint);
-    void MALPSStep(std::vector<Robot>&, uint);
 
     std::vector<Robot> NoNicheSolve();
-    std::vector<Robot> HFCSolve();
-    std::vector<Robot> ALPSSolve();
-    std::vector<Robot> MALPSSolve();
 
 public:
     void reset(void) {

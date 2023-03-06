@@ -33,7 +33,7 @@ public:
     static void BatchEvaluate(std::vector<Robot>&);
     static float Distance(const RobotPair& robots);
 
-    static void pareto_sort(std::vector<Robot>::iterator begin, std::vector<Robot>::iterator end) {
+    static void pareto_classify(std::vector<Robot>::iterator begin, std::vector<Robot>::iterator end) {
         for(auto i = begin; i < end; i++) {
             i->mParetoLayer = 0;
         }
@@ -65,7 +65,11 @@ public:
             if(Delta == 0) break;
             run++;
         }
-        std::sort(begin,end,std::greater<Robot>());
+    }
+
+    static void pareto_sort(std::vector<Robot>::iterator begin, std::vector<Robot>::iterator end) {
+        pareto_classify(begin, end);
+        std::sort(begin,end,std::greater<Robot>());    
     }
 };
 
