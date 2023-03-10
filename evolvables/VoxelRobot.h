@@ -32,7 +32,7 @@ struct Circle {
     Material mat = materials::bone;
     float radius = 0;
     glm::vec3 center = glm::vec3(0.0f);
-    float max_radius = 2.5f;
+    float max_radius = 6.0f;
     void Randomize(float xlim, float ylim, float zlim);
 
     friend void swap(Circle& c1, Circle& c2) {
@@ -115,9 +115,9 @@ public:
     void Strip();
 
 private:
-    float xSize = 5.0f;
-    float ySize = 5.0f;
-    float zSize = 5.0f;
+    float xSize = 12.0f;
+    float ySize = 12.0f;
+    float zSize = 12.0f;
     float resolution = 1.0f; // Masses per meter
     glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
     std::vector<Voxel> voxels;

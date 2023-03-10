@@ -114,8 +114,6 @@ struct Spring {
 	float rest_length;
 	float mean_length;
 	Material material;
-
-	bool active = false; // TODO: Why can't this be false?
 };
 
 #endif

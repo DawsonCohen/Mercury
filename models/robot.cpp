@@ -56,7 +56,7 @@ void Robot::updateMesh() {
     std::vector<uint> indices;
 
     for(const Spring& s : springs) {
-        if(!s.active) continue;
+        if(s.material == materials::air) continue;
         Mass m0 = masses[s.m0];
         Mass m1 = masses[s.m1];
         vertices.push_back({m0.pos, s.material.color});

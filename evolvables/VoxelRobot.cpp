@@ -299,9 +299,7 @@ void VoxelRobot::Build() {
         if(voxels[i].mat != materials::air) mVolume++;
         addMass(Mass{i,voxels[i].base,voxels[i].mat.color});
         visited[i] = false;
-        // printf("Voxel %u: {%i,%i,%i} %s\n",i,voxels[i].indices.x,voxels[i].indices.y,voxels[i].indices.z,voxels[i].mat.to_string().data());
     }
-    // printf("----------------\n");
     
     std::vector<Spring> _springs;
     BuildSpringsRecurse(_springs, {0,0,0}, visited);

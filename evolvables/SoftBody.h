@@ -68,7 +68,6 @@ public:
 
 	void addSpring(Spring& s) {
 		if(s.material != materials::air) {
-			s.active = true;
 			masses[s.m0].active = true;
 			masses[s.m1].active = true;
 			masses[s.m0].color = s.material.color;
@@ -88,7 +87,6 @@ public:
 		springs.clear();
 		for(Spring& s : _springs) {
 			if(s.material != materials::air) {
-				s.active = true;
 				masses[s.m0].active = true;
 				masses[s.m1].active = true;
 				masses[s.m0].color = s.material.color;
