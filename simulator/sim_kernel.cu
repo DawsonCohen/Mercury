@@ -7,81 +7,74 @@
 #include <fstream>
 #include <iostream>
 
-__host__ __device__ float3 operator+(const float3 &a, const float3 &b) {
+__host__ __device__ __forceinline__ float3 operator+(const float3 &a, const float3 &b) {
 	return make_float3(a.x+b.x, a.y+b.y, a.z+b.z);
 }
 
-__host__ __device__ float3 operator+=(const float3 &a, const float3 &b) {
+__host__ __device__ __forceinline__ float3 operator+=(const float3 &a, const float3 &b) {
 	return make_float3(a.x+b.x, a.y+b.y, a.z+b.z);
 }
 
-__host__ __device__ float4 operator+(const float4 &a, const float4 &b) {
+__host__ __device__ __forceinline__ float4 operator+(const float4 &a, const float4 &b) {
 	return make_float4(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
 }
 
-__host__ __device__ float4 operator+=(const float4 &a, const float4 &b) {
+__host__ __device__ __forceinline__ float4 operator+=(const float4 &a, const float4 &b) {
 	return make_float4(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
 }
 
-__host__ __device__ float3 operator-(const float3 &a, const float3 &b) {
+__host__ __device__ __forceinline__ float3 operator-(const float3 &a, const float3 &b) {
 	return make_float3(a.x-b.x, a.y-b.y, a.z-b.z);
 }
 
-__host__ __device__ float3 operator*(const float3 &a, const float3 &b) {
+__host__ __device__ __forceinline__ float3 operator*(const float3 &a, const float3 &b) {
 	return make_float3(a.x*b.x, a.y*b.y, a.z*b.z);
 }
 
-__host__ __device__ float4 operator*(const float4 &a, const float4 &b) {
+__host__ __device__ __forceinline__ float4 operator*(const float4 &a, const float4 &b) {
 	return make_float4(a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w);
 }
 
-__host__ __device__ float3 operator*(const float &a, const float3 &vec) {
+__host__ __device__ __forceinline__ float3 operator*(const float &a, const float3 &vec) {
 	return make_float3(a*vec.x, a*vec.y, a*vec.z);
 }
 
-__host__ __device__ float3 operator*(const float3 &vec, const float &a) {
+__host__ __device__ __forceinline__ float3 operator*(const float3 &vec, const float &a) {
 	return make_float3(a*vec.x, a*vec.y, a*vec.z);
 }
 
-__host__ __device__ float3 operator/(const float3 &vec, const float &a) {
+__host__ __device__ __forceinline__ float3 operator/(const float3 &vec, const float &a) {
 	return make_float3(vec.x/a, vec.y/a, vec.z/a);
 }
 
-__host__ __device__ float3 operator-(const float3 &a) {
+__host__ __device__ __forceinline__ float3 operator-(const float3 &a) {
 	return make_float3(-a.x, -a.y, -a.z);
 }
 
-__host__ __device__ float dot(const float3 &a, const float3 &b) {
+__host__ __device__ __forceinline__ float dot(const float3 &a, const float3 &b) {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
-__host__ __device__ float dot(const float4 &a, const float4 &b) {
+__host__ __device__ __forceinline__ float dot(const float4 &a, const float4 &b) {
 	return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 
-__host__ __device__ float l2norm(const float3 &a) {
+__host__ __device__ __forceinline__ float l2norm(const float3 &a) {
 	return sqrtf(dot(a,a));
 }
 
-__host__ __device__ float l2norm(const float4 &a) {
+__host__ __device__ __forceinline__ float l2norm(const float4 &a) {
 	return sqrtf(dot(a,a));
 }
 
-__host__ __device__ float3 normalize(const float3 &a) {
+__host__ __device__ __forceinline__ float3 normalize(const float3 &a) {
 	float norm = l2norm(a);
 	return make_float3(a.x / norm, a.y / norm, a.z / norm);
 }
 
-__host__ __device__ float4 normalize(const float4 &a) {
+__host__ __device__ __forceinline__ float4 normalize(const float4 &a) {
 	float norm = l2norm(a);
 	return make_float4(a.x / norm, a.y / norm, a.z / norm, a.w / norm);
-}
-
-__device__ inline void AtomicAdd(float3& v, float3 val, int reorder)
-{
-	atomicAdd(&(v.x), val.x);
-    atomicAdd(&(v.y), val.y);
-    atomicAdd(&(v.z), val.z);
 }
 
 // Explicity assumes each mass is of unit 1 mass
@@ -143,7 +136,6 @@ float3 environmentForce(float3 pos, float4 vel, float3 force,
 	return force;
 }
 
-
 /*
 	mat: float4 describing spring material
 		x - k		stiffness
@@ -152,21 +144,22 @@ float3 environmentForce(float3 pos, float4 vel, float3 force,
 		w - phi		phase
 */
 __device__
-float3 springForce(uint i,
-	// float* stress,
-	float3 bl, float3 br, float4 mat, 
-					float mean_length, float time) {
-
-	float3 force = {0.0f, 0.0f, 0.0f};
-
-	if(mat.x == 0.0f) return force;
+float3 springForce(float3 bl, float3 br, float4 mat, 
+					float mean_length, float time,
+					float3 &force, float &magF)
+{
+	if(mat.x == 0.0f) {
+		force = {0.0f, 0.0f, 0.0f};
+		magF = 0;
+		return force;
+	}
 
 	float3	dir, diff;
 	// float3 b0pos, b1pos;
 
 	float	relative_change,
 			rest_length,
-			L, magF;
+			L;
 
 	// b0pos = {bl.x, bl.y, bl.z};
 	// b1pos = {br.x, br.y, br.z};
@@ -184,7 +177,6 @@ float3 springForce(uint i,
 	magF = mat.x*(rest_length-L);
 
 	force = magF * dir;
-	// stress[i] += abs(magF);
 	
 	return force;
 }
@@ -194,9 +186,8 @@ float3 springForce(uint i,
 __global__ void
 integrateBodies(float4* newPos, float4* newVel,
 				float4* oldPos, float4* oldVel,
-				const ushort2* pairs, const float4* mats, const float* Lbars,
-				const bool* active,
-				// float* stress,
+				ushort* highStressCount, ushort* lowStressCount,
+				ushort2* pairs, float4* mats, float* Lbars,
 				float dt, float time, float4 env,
 				uint numMasses, uint numSprings,
 				uint maxMasses, uint maxSprings)
@@ -205,54 +196,87 @@ integrateBodies(float4* newPos, float4* newVel,
 	float3  *s_pos = s;
 	float3  *s_force = (float3*) &s_pos[numMasses];
 
+	__shared__ ushort largestStressedSprings[1024];
+	// __shared__ ushort smallestStressedSprings[1024];
+	
 	uint massOffset   = blockIdx.x * numMasses;
 	uint springOffset = blockIdx.x * numSprings;
+	uint stressOffset = blockIdx.x * blockDim.x;
 
-	// printf("%u, %u\n",blockIdx.x,blockIdx.y);
-
-	int idx    = threadIdx.x;
+	int tid    = threadIdx.x;
+	int tid_next = (tid+1) % blockDim.x;
 	int stride = blockDim.x;
-
+	
 	// Initialize and compute environment forces
 	float4 pos4;
-	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
+	for(uint i = tid; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		pos4 = oldPos[i+massOffset];
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
-	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
+	for(uint i = tid; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],env);
 	}
 	__syncthreads();
 
+
 	float3 bl, br;
 	float3 force;
-	uint left, right;
+	float magF,
+	      smallestStress = INFINITY,
+		  largestStress  = -1;
+	ushort left, right;
 
-	// float4 mat = {5000.0f, 0.0f, 4.0f, 0.0f};
-	// float Lbar = 1.0f;
-	for(int i = idx; i < numSprings && (i+springOffset) < maxSprings; i+=stride) {
-		if(!active[i]) continue;
+	ushort largestStressedSpringIdx = tid;
+			// smallestStressedSpringIdx = tid;
+	for(uint i = tid; i < numSprings && (i+springOffset) < maxSprings; i+=stride) {
 		left  = __ldg(&pairs[i+springOffset].x);
 		right = __ldg(&pairs[i+springOffset].y);
-		// left = 0;
-		// right = 1;
-		// printf("%u:\t%u - %u\n", i, pairs[i+springOffset].x, massOffset);
 		bl = s_pos[left];
 		br = s_pos[right];
 
-		force = springForce(i+springOffset,
-			// stress,
-			bl,br,__ldg(&mats[i+springOffset]),__ldg(&Lbars[i+springOffset]),time);
-		// force = springForce(bl,br,mat,Lbar,time);
-		AtomicAdd(s_force[left],   force, 1);
-		AtomicAdd(s_force[right], -force, 1);
+		springForce(bl,br,__ldg(&mats[i+springOffset]),__ldg(&Lbars[i+springOffset]),time, force, magF);
+
+		atomicAdd(&(s_force[left].x), force.x);
+		atomicAdd(&(s_force[left].y), force.y);
+		atomicAdd(&(s_force[left].z), force.z);
+
+		atomicAdd(&(s_force[right].x), -force.x);
+		atomicAdd(&(s_force[right].y), -force.y);
+		atomicAdd(&(s_force[right].z), -force.z);
+
+		if(magF > largestStress) {
+			largestStressedSpringIdx = i;
+		}
+		
+		// if(magF < smallestStress && magF > 0) {
+		// 	smallestStressedSpringIdx = i;
+		// }
 	}
+
+	largestStressedSprings[tid]  = largestStressedSpringIdx;
+	// smallestStressedSprings[tid] = smallestStressedSpringIdx;
 	__syncthreads();
 
+	// next thread max spring info
+	uint largestStressedSpringIdxNext = largestStressedSprings[tid_next];
+	
+	ushort2 nPair = pairs[largestStressedSpringIdxNext + springOffset];
+	ushort nCount = highStressCount[largestStressedSpringIdxNext + springOffset];
+	float4 nMat = mats[largestStressedSpringIdxNext + springOffset];
+	float nLbar = Lbars[largestStressedSpringIdxNext + springOffset];
+	__syncthreads();
+	
+	// shift next spring to current index
+	pairs[largestStressedSpringIdx + springOffset] = nPair;
+	mats[largestStressedSpringIdx + springOffset] = nMat;
+	Lbars[largestStressedSpringIdx + springOffset] = nLbar;
+	highStressCount[largestStressedSpringIdx + springOffset] = nCount+1;
+
+	// Calculate and store new mass states
 	float4 vel;
 	float3 pos3;
-	for(uint i = idx; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
+	for(uint i = tid; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		vel = oldVel[i+massOffset];
 
 		// printf("Force: {%f,%f,%f}\n",s_force[i].x,s_force[i].y,s_force[i].z);

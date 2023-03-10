@@ -9,15 +9,10 @@ struct ElementTracker {
 	uint ID;
 	Mass* mass_begin;
 	Mass* mass_end;
-	Mass* mass_chunk_end;
 	Spring* spring_begin;
 	Spring* spring_end;
-	Spring* spring_chunk_end;
 	uint* offset_begin;
 	uint* offset_end;
-	uint* offset_chunk_end;
-
-	glm::vec3 mean_pos = glm::vec3(0.0f, 0.0f, 0.0f);
 };
 
 class Simulator {
@@ -73,19 +68,24 @@ protected:
 	// CPU data
 	ushort   *m_hPairs;
 	float  *m_hMats;
-	float  *m_hLbars, *m_hStress;
-	bool   *m_hActive;
+	float  *m_hLbars;
 	float  *m_hPos;
 	float  *m_hVel;
+	ushort *m_hHighStressCount, *m_hLowStressCount;
 
 	// GPU data
 	float   *m_dPos[2], *m_dVel[2],
 			*m_dMats;
 	ushort	*m_dPairs;
-	float	*m_dLbars, *m_dStress;
-	bool	*m_dActive;
+	float	*m_dLbars;
+	ushort  *m_dHighStressCount, *m_dLowStressCount;
+
 	unsigned char m_currentRead,
 			 	  m_currentWrite;
+
+	const uint  threadsPerBlock = 1024;
+	const uint  springsTrackedPerElement = 1024;
+	uint  springsTracked;	
 
 	uint springsPerElement = 0;
 	uint massesPerElement  = 0;
