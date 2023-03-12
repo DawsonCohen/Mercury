@@ -11,7 +11,7 @@
 // #define POP_SIZE 1
 
 #define MAX_TIME 5
-#define MAX_SPRINGS 2e11
+#define MAX_SPRINGS 1e11
 #define INIT_POP_SIZE 1
 
 void Benchmark(Robot& R);
@@ -37,15 +37,11 @@ int main()
 }
 
 void Benchmark(Robot& R) {
-	// printf("SIMULATING\n");
-
 	uint pop_size = INIT_POP_SIZE;
 	sim.Initialize(R,pop_size);
 
 	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getStepPeriod());
 	FILE* pFile = fopen("../z_results/speed_test.csv","w");
-
-	// sim = Simulator(R,pop_size);
 
 	float execute_time;
 
@@ -57,7 +53,7 @@ void Benchmark(Robot& R) {
 			robots.push_back({R.getMasses(), R.getSprings()});
 		}
 
-		printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
+		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
 		sim.Initialize(R,pop_size);
 		sim.setMaxTime(MAX_TIME);
@@ -74,12 +70,12 @@ void Benchmark(Robot& R) {
 		num_springs = R.getSprings().size() * pop_size * (sim.getMaxTime() / sim.getStepPeriod());
 		float springs_per_sec = num_springs / execute_time;
 
-		pop_size *= 2;
-
 		fprintf(pFile,"%lu,%lu,%f\n", num_springs,R.getSprings().size()*pop_size,execute_time);
-		printf("%lu SPRINGS IN %f SECONDS\n", num_springs, execute_time);
-		printf("%lu SPRINGS PER SECOND\n", (ulong) springs_per_sec);
+		printf("%u ROBOTS (%.2e SPRINGS) IN %f SECONDS\n", pop_size, (float) num_springs, execute_time);
+		printf("%.2e SPRINGS PER SECOND\n", (float) springs_per_sec);
 		printf("--------------------------\n");
+
+		pop_size *= 2;
 	}
 	fclose(pFile);
 }

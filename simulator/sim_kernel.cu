@@ -188,7 +188,7 @@ integrateBodies(float4* newPos, float4* newVel,
 				float4* oldPos, float4* oldVel,
 				ushort* highStressCount, ushort* lowStressCount,
 				ushort2* pairs, float4* mats, float* Lbars,
-				float dt, float time, float4 env,
+				float dt, float time, float4 env, uint step,
 				uint numMasses, uint numSprings,
 				uint maxMasses, uint maxSprings)
 {
@@ -197,11 +197,10 @@ integrateBodies(float4* newPos, float4* newVel,
 	float3  *s_force = (float3*) &s_pos[numMasses];
 
 	__shared__ ushort largestStressedSprings[1024];
-	// __shared__ ushort smallestStressedSprings[1024];
+	__shared__ ushort smallestStressedSprings[1024];
 	
 	uint massOffset   = blockIdx.x * numMasses;
 	uint springOffset = blockIdx.x * numSprings;
-	uint stressOffset = blockIdx.x * blockDim.x;
 
 	int tid    = threadIdx.x;
 	int tid_next = (tid+1) % blockDim.x;
@@ -219,67 +218,92 @@ integrateBodies(float4* newPos, float4* newVel,
 	}
 	__syncthreads();
 
+	float4	mat;
+	float3	bl, br;
+	float3	force;
+	ushort2	pair;
+	float	Lbar,
+			magF,
+	    	smallestStress = INFINITY,
+			largestStress  = -1.0f;
+	ushort	left, right;
 
-	float3 bl, br;
-	float3 force;
-	float magF,
-	      smallestStress = INFINITY,
-		  largestStress  = -1;
-	ushort left, right;
-
-	ushort largestStressedSpringIdx = tid;
-			// smallestStressedSpringIdx = tid;
+	ushort	largestSpringIdx = tid,
+			smallestSpringIdx = tid,
+			nextSmallestSpringIdx = tid+stride,
+			nextGroup_LargestSpringIdx,
+			nextGroup_SmallestSpringIdx;
+	
+	uint n = tid % 3;
 	for(uint i = tid; i < numSprings && (i+springOffset) < maxSprings; i+=stride) {
-		left  = __ldg(&pairs[i+springOffset].x);
-		right = __ldg(&pairs[i+springOffset].y);
+		pair = __ldg(&pairs[i+springOffset]);
+		left  = pair.x;
+		right = pair.y;
 		bl = s_pos[left];
 		br = s_pos[right];
+		mat = __ldg(&mats[i+springOffset]);
+		Lbar = __ldg(&Lbars[i+springOffset]);
+		springForce(bl,br,mat,Lbar,time, force, magF);
 
-		springForce(bl,br,__ldg(&mats[i+springOffset]),__ldg(&Lbars[i+springOffset]),time, force, magF);
+		// Add force to each connected mass
+		// Modulo staggers memory access to increase cache misses
+		atomicAdd(&(s_force[left].x) + n, *(&force.x+n));
+		atomicAdd(&(s_force[left].x) + (n+1)%3, *(&force.x + (n+1)%3));
+		atomicAdd(&(s_force[left].x) + (n+2)%3, *(&force.x + (n+2)%3));
 
-		atomicAdd(&(s_force[left].x), force.x);
-		atomicAdd(&(s_force[left].y), force.y);
-		atomicAdd(&(s_force[left].z), force.z);
-
-		atomicAdd(&(s_force[right].x), -force.x);
-		atomicAdd(&(s_force[right].y), -force.y);
-		atomicAdd(&(s_force[right].z), -force.z);
-
-		if(magF > largestStress) {
-			largestStressedSpringIdx = i;
-		}
+		atomicAdd(&(s_force[right].x) + n, -*(&force.x+n));
+		atomicAdd(&(s_force[right].x) + (n+1)%3, -*(&force.x + (n+1)%3));
+		atomicAdd(&(s_force[right].x) + (n+2)%3, -*(&force.x + (n+2)%3));
 		
-		// if(magF < smallestStress && magF > 0) {
-		// 	smallestStressedSpringIdx = i;
-		// }
+		if(abs(magF) > largestStress) {
+			largestStress = magF;
+			largestSpringIdx = i;
+		}
+		if(abs(magF) < smallestStress) { // guarentees not both largest and smallest
+			smallestStress = magF;
+			nextSmallestSpringIdx = smallestSpringIdx;
+			smallestSpringIdx = i;
+		}
 	}
 
-	largestStressedSprings[tid]  = largestStressedSpringIdx;
-	// smallestStressedSprings[tid] = smallestStressedSpringIdx;
+	if(smallestSpringIdx == largestSpringIdx) {
+		smallestSpringIdx = nextSmallestSpringIdx;
+	}
+
+	largestStressedSprings[tid]  = largestSpringIdx;
+	smallestStressedSprings[tid]  = smallestSpringIdx;
+
+	// current thread max spring info
+	ushort2 cLargestPair = pairs[largestSpringIdx + springOffset];
+	ushort cLargestCount = highStressCount[largestSpringIdx + springOffset]+1;
+	float4 cLargestMat = mats[largestSpringIdx + springOffset];
+	float cLargestLbar = Lbars[largestSpringIdx + springOffset];
+	
+	ushort2 cSmallestPair = pairs[smallestSpringIdx + springOffset];
+	ushort cSmallestCount = lowStressCount[smallestSpringIdx + springOffset]+1;
+	float4 cSmallestMat = mats[smallestSpringIdx + springOffset];
+	float cSmallestLbar = Lbars[smallestSpringIdx + springOffset];
 	__syncthreads();
 
-	// next thread max spring info
-	uint largestStressedSpringIdxNext = largestStressedSprings[tid_next];
-	
-	ushort2 nPair = pairs[largestStressedSpringIdxNext + springOffset];
-	ushort nCount = highStressCount[largestStressedSpringIdxNext + springOffset];
-	float4 nMat = mats[largestStressedSpringIdxNext + springOffset];
-	float nLbar = Lbars[largestStressedSpringIdxNext + springOffset];
-	__syncthreads();
+	nextGroup_LargestSpringIdx  = largestStressedSprings[tid_next];
+	nextGroup_SmallestSpringIdx = smallestStressedSprings[tid_next];
 	
 	// shift next spring to current index
-	pairs[largestStressedSpringIdx + springOffset] = nPair;
-	mats[largestStressedSpringIdx + springOffset] = nMat;
-	Lbars[largestStressedSpringIdx + springOffset] = nLbar;
-	highStressCount[largestStressedSpringIdx + springOffset] = nCount+1;
+	pairs[nextGroup_LargestSpringIdx + springOffset] = cLargestPair;
+	mats[nextGroup_LargestSpringIdx + springOffset] = cLargestMat;
+	Lbars[nextGroup_LargestSpringIdx + springOffset] = cLargestLbar;
+	highStressCount[nextGroup_LargestSpringIdx + springOffset] = cLargestCount;
+
+	pairs[nextGroup_SmallestSpringIdx + springOffset] = cSmallestPair;
+	mats[nextGroup_SmallestSpringIdx + springOffset] = cSmallestMat;
+	Lbars[nextGroup_SmallestSpringIdx + springOffset] = cSmallestLbar;
+	lowStressCount[nextGroup_SmallestSpringIdx + springOffset] = cSmallestCount;
 
 	// Calculate and store new mass states
 	float4 vel;
 	float3 pos3;
 	for(uint i = tid; i < numMasses && (i+massOffset) < maxMasses; i+=stride) {
 		vel = oldVel[i+massOffset];
-
-		// printf("Force: {%f,%f,%f}\n",s_force[i].x,s_force[i].y,s_force[i].z);
 
 		vel.x += (s_force[i].x * dt)*env.z;
 		vel.y += (s_force[i].y * dt)*env.z;

@@ -5,6 +5,7 @@
 #include <functional>
 #include <fstream>
 #include <iostream>
+#include <random>
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -20,7 +21,6 @@ Simulator::Simulator(Element prototype, uint maxElements) :
 	massesPerElement(prototype.masses.size()),
 	springsPerElement(prototype.springs.size()),
 	maxElements(maxElements),
-	springsTracked(springsTrackedPerElement*maxElements),
 	maxMasses(prototype.masses.size()*maxElements),
 	maxSprings(prototype.springs.size()*maxElements),
 	maxEnvs(1),
@@ -69,7 +69,6 @@ void Simulator::Initialize(Element prototype, uint maxElements) {
 	massesPerElement = prototype.masses.size();
 	springsPerElement = prototype.springs.size();
 	this->maxElements = maxElements;
-	springsTracked = springsTrackedPerElement*maxElements;
 	maxMasses = prototype.masses.size()*maxElements;
 	maxSprings = prototype.springs.size()*maxElements;
 	maxEnvs = 1;
@@ -127,11 +126,14 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	m_hPos 	  = new float[maxMasses*4];
     m_hVel 	  = new float[maxMasses*4];
 
+	m_hHighStressCount = new ushort[maxSprings];
+	m_hLowStressCount  = new ushort[maxSprings];
+	
 	memset(m_hPos, 0, maxMasses*4*sizeof(float));
     memset(m_hVel, 0, maxMasses*4*sizeof(float));
 	
     unsigned int massSizefloat4     = sizeof(float)  * 4 * maxMasses;
-    unsigned int stressCountSizeuint = sizeof(ushort) * 1 * maxSprings;
+    unsigned int springSizeushort	= sizeof(ushort) * 1 * maxSprings;
     unsigned int springSizefloat    = sizeof(float)  * 1 * maxSprings;
     unsigned int springSizefloat4   = sizeof(float)  * 4 * maxSprings;
     unsigned int springSizeushort2  = sizeof(ushort) * 2 * maxSprings;
@@ -142,13 +144,13 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dPos[0], massSizefloat4);
 	cudaMalloc((void**)&m_dPos[1], massSizefloat4);
 
-
 	cudaMalloc((void**)&m_dPairs,  springSizeushort2);
 	cudaMalloc((void**)&m_dLbars,  springSizefloat);
 	cudaMalloc((void**)&m_dMats,   springSizefloat4);
+	cudaMalloc((void**)&m_dMats,   springSizefloat4);
 	
-	cudaMalloc((void**)&m_dHighStressCount, stressCountSizeuint);
-	cudaMalloc((void**)&m_dLowStressCount,  stressCountSizeuint);
+	cudaMalloc((void**)&m_dHighStressCount, springSizeushort);
+	cudaMalloc((void**)&m_dLowStressCount,  springSizeushort);
 
 	envBuf[0] = Environment();
 	envCount++;
@@ -204,23 +206,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	cudaMemcpy(m_dLbars,  m_hLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMats,   m_hMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
 
-	// uint requiredSize = numMasses * bytesPerMass; // 4 floats for pos
-	// uint maxStreams = 32;
-	// uint numKernels = (requiredSize + maxSharedMemSize - 1) / maxSharedMemSize;
-	// uint sharedMemSize = massesPerKernel * bytesPerMass;
-	// uint numGroups = (numKernels + maxStreams - 1) / maxStreams;
-	// uint numKernelsPerGroup = min(maxStreams, numKernels);
-	// uint massesPerGroup = massesPerKernel * numKernelsPerGroup;
-	// uint springsPerGroup = springsPerKernel * numKernelsPerGroup;
-
-	// printf("elementsPerKernel:\t%u\n",elementsPerKernel);
-	// printf("requiredSize:\t%u\n",requiredSize);
-	// printf("bytesPerMass:\t%u\n",bytesPerMass);
-	// printf("sharedMemSize:\t%u\n",sharedMemSize);
-	// printf("numKernels:\t%u\n",numKernels);
-	// printf("numGroups:\t%u\n",numGroups);
-	// printf("numKernelsPerGroup:\t%u\n",numKernelsPerGroup);
-
 	/*
 	Notes on SM resources:
 	thread blocks	: 8
@@ -232,15 +217,15 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	uint maxSharedMemSize = 49152;
 	uint bytesPerMass = sizeof(float3) + sizeof(float3);
 	uint bytesPerElement = massesPerElement*bytesPerMass;
+	// Must equal 1 for proper max/min spring calculation
 	uint elementsPerBlock = min(maxSharedMemSize / bytesPerElement, numElements);
 	uint massesPerBlock = massesPerElement * elementsPerBlock;
 	uint springsPerBlock = springsPerElement * elementsPerBlock;
 	uint sharedMemSize = massesPerBlock * bytesPerMass;
-	uint bytesPerBlock = elementsPerBlock * bytesPerElement;
-
-	// int numBlocks = (elementsPerBlock)
-
 	int numBlocks = (numElements + elementsPerBlock - 1) / elementsPerBlock;
+
+	assert(sharedMemSize < maxSharedMemSize);
+	// uint bytesPerBlock = elementsPerBlock * bytesPerElement;
 	// int numBlocks = (springsPerBlock + threadsPerBlock - 1) / threadsPerBlock;
 	// printf("BPE:\t%u\n", bytesPerElement);
 	// printf("Block Utilization:\t%f\n", (float) bytesPerBlock / (float) maxSharedMemSize);
@@ -248,20 +233,18 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	// printf("EPB:\t%u\n", elementsPerBlock);
 	
 	uint step = 0;
-	uint springCount = 0;
 	float hold_time = 0.0f;
 	float mat_time = 0.0f;
 	while(step_time < max_time) {
-		if(total_time >= hold_time)
-			mat_time = total_time - hold_time;
-		else
-			mat_time = 0.0f;
+		mat_time = max(total_time-hold_time,0.0f);
+
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort*) m_dHighStressCount, (ushort*) m_dLowStressCount,
-			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars, 
+			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
 			step_period, mat_time, make_float4(stiffness,mu,zeta,gravity.y),
+			step,
 			massesPerBlock, springsPerBlock,
 			maxMasses, maxSprings);
 
@@ -274,10 +257,13 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		step++;
 		total_time += step_period;
 		step_time += step_period;
+
 	}
 
 	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hHighStressCount,m_dHighStressCount,numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hLowStressCount, m_dLowStressCount, numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
 
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
@@ -287,6 +273,16 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		// printf("%u: {%f,%f,%f}\n",i,pos.x,pos.y,pos.z);
 		massBuf[i].vel = glm::vec3(vel.x,vel.y,vel.z);
 	}
+
+	for(uint i = 0; i < numMasses; i++) {
+		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
+		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
+		massBuf[i].pos = glm::vec3(pos.x,pos.y,pos.z);
+
+		// printf("%u: {%f,%f,%f}\n",i,pos.x,pos.y,pos.z);
+		massBuf[i].vel = glm::vec3(vel.x,vel.y,vel.z);
+	}
+
 
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
@@ -327,7 +323,12 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 	}
 
 	uint i = 0;
-	for(const Spring& s : e.springs) {
+
+	unsigned seed = rand();
+	std::vector<Spring> shuffledSprings(e.springs);
+	std::shuffle(shuffledSprings.begin(), shuffledSprings.end(), std::default_random_engine(seed));
+
+	for(const Spring& s : shuffledSprings) {
 		springBuf[numSprings] = s;
 		tracker.spring_end++;
 

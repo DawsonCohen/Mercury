@@ -48,10 +48,6 @@ public:
 
 	void Reset() { total_time = 0; }
 
-	// std::tuple<std::vector<Mass>, std::vector<Spring>> element2simulatable(std::vector<Mass>, std::vector<Spring>);
-	// void result2element(std::vector<Element>, std::vector<Mass>);
-
-
 protected:
 	bool initialized = false;
 
@@ -84,8 +80,6 @@ protected:
 			 	  m_currentWrite;
 
 	const uint  threadsPerBlock = 1024;
-	const uint  springsTrackedPerElement = 1024;
-	uint  springsTracked;	
 
 	uint springsPerElement = 0;
 	uint massesPerElement  = 0;
