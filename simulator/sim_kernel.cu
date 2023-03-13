@@ -321,6 +321,9 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		cSmallestStress = stresses[smallestSpringIdx + springOffset];
 		cSmallestID = ids[smallestSpringIdx + springOffset];
 		#endif
+	} else {
+		highStressCount[largestSpringIdx + springOffset] += 1;
+		lowStressCount[smallestSpringIdx + springOffset] += 1;
 	}
 	#endif
 
