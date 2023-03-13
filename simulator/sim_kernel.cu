@@ -296,7 +296,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	float	cLargestID,
 			cSmallestID;
 	#endif
-	if(step % opt.shiftskip == 0) {
+	if(step % (opt.shiftskip+1) == 0) {
 		if(smallestSpringIdx == largestSpringIdx) { // guarentees not both largest and smallest
 			smallestSpringIdx = nextSmallestSpringIdx;
 		}
@@ -328,7 +328,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 
 	#ifdef STRESS_COUNT
 	int tid_next = (tid+1) % blockDim.x;
-	if(step % opt.shiftskip == 0) {
+	if(step % (opt.shiftskip+1) == 0) {
 		// shift current index to next spring
 		nextGroup_LargestSpringIdx  = largestStressedSprings[tid_next];
 		nextGroup_SmallestSpringIdx = smallestStressedSprings[tid_next];
