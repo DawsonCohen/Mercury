@@ -17,8 +17,8 @@ SET(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 add_subdirectory( renderer )
 
 set( PHYS
-	benchmark.cpp
-	# main.cpp
+	# benchmark.cpp
+	main.cpp
 
 	renderer/src/Camera.cpp
 	renderer/src/Shader.cpp
@@ -39,6 +39,8 @@ set( PHYS
 
 	optimizer/optimizer.cpp
 	optimizer/Evaluator.cpp
+
+	util/util.cpp
 )
 
 add_definitions(-Wall -Wextra -O3 -pg)
@@ -58,7 +60,7 @@ STRESS_COUNT - calculates each time a spring is the top/bottom stressed spring i
 FULL_STRESS - calculates exact stress in each spring over the simulation lifetime
 ]]#
 add_definitions("-DSTRESS_COUNT")
-# add_definitions("-DSTRESS_COUNT -DFULL_STRESS")
+# add_definitions("-DSTRESS_COUNT -DFULL_STRESS -DWRITE_STRESS")
 
 add_executable( phys 
 ${PHYS} 

@@ -26,7 +26,7 @@
 
 #define MAX_EVALS (ulong) 1e5
 
-#define POP_SIZE (uint) 256
+#define POP_SIZE (uint) 32
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
 #define NICHE_COUNT (uint) std::thread::hardware_concurrency()
 #define STEPS_TO_COMBINE (uint) 1e2
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
-	for(uint i = 0; i < 100; i++) {
+	for(uint i = 0; i < POP_SIZE; i++) {
 		Robot solution = Robot();
 		solution.Randomize();
 		solutions.push_back(solution);
@@ -183,7 +183,7 @@ std::vector<Robot> Solve() {
     O.crossover = strats.crossover;
     O.niche = strats.niche;
     
-    RemoveOldFiles(io.out_dir);
+    util::RemoveOldFiles(io.out_dir);
 	
     for(unsigned N = 0; N < REPEATS; N++) {
         printf("Started Run %i\n",N);
@@ -197,12 +197,12 @@ std::vector<Robot> Solve() {
             
             printf("Writing History\n");
 			
-            std::string fitnessHistoryCSV = FitnessHistoryToCSV(O.getFitnessHistory());
-            std::string popFitHistoryCSV = PopulationFitnessHistoryToCSV(O.getPopulationHistory());
-            std::string popDivHistoryCSV = PopulationDiversityHistoryToCSV(O.getPopulationHistory());
-            WriteCSV(io.out_pop_fit_file,popFitHistoryCSV);
-            WriteCSV(io.out_pop_div_file,popDivHistoryCSV);
-            WriteCSV(io.out_sol_fit_file,fitnessHistoryCSV);
+            std::string fitnessHistoryCSV = util::FitnessHistoryToCSV(O.getFitnessHistory());
+            std::string popFitHistoryCSV = util::PopulationFitnessHistoryToCSV(O.getPopulationHistory());
+            std::string popDivHistoryCSV = util::PopulationDiversityHistoryToCSV(O.getPopulationHistory());
+            util::WriteCSV(io.out_pop_fit_file,popFitHistoryCSV);
+            util::WriteCSV(io.out_pop_div_file,popDivHistoryCSV);
+            util::WriteCSV(io.out_sol_fit_file,fitnessHistoryCSV);
         }   else {
             printf("Something Failed\n");
         }
@@ -210,8 +210,8 @@ std::vector<Robot> Solve() {
 
 		for(uint i = 0; i < solutions.size(); i++) {
 			if(snprintf(io.out_sol_file,sizeof(io.out_sol_file),"%s/solution_%i_%i.csv",io.out_dir,N,i) < (int) sizeof(io.out_sol_file)){
-				std::string solutionCSV = SolutionToCSV(solutions[i]);
-				WriteCSV(io.out_sol_file,solutionCSV);
+				std::string solutionCSV = util::SolutionToCSV(solutions[i]);
+				util::WriteCSV(io.out_sol_file,solutionCSV);
 			} else {
 				printf("Something went terribly wrong");
 			}
@@ -385,17 +385,8 @@ void Visualize(std::vector<Robot>& robots) {
 		robot_elements[0] = {R.getMasses(),R.getSprings()};
 		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
 		std::vector<Element> results = sim.Collect(trackers);
-		
-		// for(uint i = 0; i < results[0].masses.size(); i++) {
-		// 	Mass m = results[0].masses[i];
-		// 	printf("Mass %u: (%f,%f,%f)\n", i, m.pos.x, m.pos.y, m.pos.z);
-		// }
 
 		R.Update(results[0]);
-
-		// R.printMesh();
-		
-		// R.printObjectPositions();
 
 		while ((crntTime - prevTime) < 1 / FPS) {
 			crntTime = glfwGetTime();

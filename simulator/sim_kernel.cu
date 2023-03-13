@@ -184,8 +184,8 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 struct SimOptions {
 	float dt;
 	float4 env;
-	uint numMasses;
-	uint numSprings;
+	uint massesPerBlock;
+	uint springsPerBlock;
 	uint maxMasses;
 	uint maxSprings;
 	short shiftskip;
@@ -203,27 +203,27 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
-	float3  *s_force = (float3*) &s_pos[opt.numMasses];
+	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
 
 	#ifdef STRESS_COUNT
 	__shared__ ushort largestStressedSprings[1024];
 	__shared__ ushort smallestStressedSprings[1024];
 	#endif
 	
-	uint massOffset   = blockIdx.x * opt.numMasses;
-	uint springOffset = blockIdx.x * opt.numSprings;
+	uint massOffset   = blockIdx.x * opt.massesPerBlock;
+	uint springOffset = blockIdx.x * opt.springsPerBlock;
 
 	int tid    = threadIdx.x;
 	int stride = blockDim.x;
 	
 	// Initialize and compute environment forces
 	float4 pos4;
-	for(uint i = tid; i < opt.numMasses && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		pos4 = oldPos[i+massOffset];
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
-	for(uint i = tid; i < opt.numMasses && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
 	}
 	__syncthreads();
@@ -246,7 +246,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 			nextGroup_SmallestSpringIdx;
 	#endif
 	
-	for(uint i = tid; i < opt.numSprings && (i+springOffset) < opt.maxSprings; i+=stride) {
+	for(uint i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
 		pair = __ldg(&pairs[i+springOffset]);
 		left  = pair.x;
 		right = pair.y;
@@ -260,9 +260,9 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		atomicAdd(&(s_force[left].y), force.y);
 		atomicAdd(&(s_force[left].z), force.z);
 
-		atomicAdd(&(s_force[right].x), force.x);
-		atomicAdd(&(s_force[right].y), force.y);
-		atomicAdd(&(s_force[right].z), force.z);
+		atomicAdd(&(s_force[right].x), -force.x);
+		atomicAdd(&(s_force[right].y), -force.y);
+		atomicAdd(&(s_force[right].z), -force.z);
 		
 		#ifdef STRESS_COUNT
 		if(abs(magF) > largestStress) {
@@ -277,7 +277,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		#endif
 
 		#ifdef FULL_STRESS
-		stresses[i] += abs(magF);
+		stresses[i + springOffset] += abs(magF);
 		#endif
 	}
 
@@ -355,7 +355,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	// Calculate and store new mass states
 	float4 vel;
 	float3 pos3;
-	for(uint i = tid; i < opt.numMasses && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		vel = oldVel[i+massOffset];
 
 		vel.x += (s_force[i].x * opt.dt)*opt.env.z;

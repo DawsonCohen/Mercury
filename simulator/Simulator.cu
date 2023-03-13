@@ -5,7 +5,8 @@
 #include <functional>
 #include <fstream>
 #include <iostream>
-#include <util.h>
+#include <random>
+#include "util.h"
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -258,7 +259,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		step_period,
 		make_float4(stiffness,mu,zeta,gravity.y),
 		massesPerBlock, springsPerBlock,
-		maxMasses, maxSprings,
+		numMasses, numSprings,
 		shiftskip
 	};
 	
@@ -305,14 +306,14 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		massBuf[i].vel = glm::vec3(vel.x,vel.y,vel.z);
 	}
 
-	#ifdef FULL_STRESS
+	#if defined(FULL_STRESS) && defined(WRITE_STRESS)
 	std::vector<std::tuple<uint, float, uint, uint>> stressHistory;
 
 	for(uint i = 0; i < maxSprings; i++) {
 		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hHighStressCount[i], m_hLowStressCount[i]});
 	}
-	std::string stressHistoryCSV = DataToCSV("id, stress, high_count, low_count",stressHistory);
-	WriteCSV("../z_results/stress.csv", stressHistoryCSV);
+	std::string stressHistoryCSV = util::DataToCSV("id, stress, high_count, low_count",stressHistory);
+	util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
 	#endif
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
