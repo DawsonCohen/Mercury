@@ -68,6 +68,8 @@ protected:
 	float  *m_hPos;
 	float  *m_hVel;
 	ushort *m_hHighStressCount, *m_hLowStressCount;
+	float  *m_hStresses;
+	uint   *m_hSpringIDs;
 
 	// GPU data
 	float   *m_dPos[2], *m_dVel[2],
@@ -75,6 +77,8 @@ protected:
 	ushort	*m_dPairs;
 	float	*m_dLbars;
 	ushort  *m_dHighStressCount, *m_dLowStressCount;
+	float	*m_dStresses;
+	uint    *m_dSpringIDs;
 
 	unsigned char m_currentRead,
 			 	  m_currentWrite;
