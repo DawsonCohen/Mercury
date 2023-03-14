@@ -85,4 +85,7 @@ target_link_libraries( phys
 target_compile_options(phys PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
 					-Xcudafe --diag_suppress=20012
 					--ptxas-options=-v
+					-ftz=true
+					-prec-div=false
+					-prec-sqrt=false
 					>)

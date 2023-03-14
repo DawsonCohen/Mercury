@@ -1,81 +1,8 @@
 #ifndef __SIM_KERNEL_H__
 #define __SIM_KERNEL_H__
 
+#include "vec_math.cuh"
 #include <math.h>
-#include <algorithm>
-#include <functional>
-#include <fstream>
-#include <iostream>
-
-__host__ __device__ __forceinline__ float3 operator+(const float3 &a, const float3 &b) {
-	return make_float3(a.x+b.x, a.y+b.y, a.z+b.z);
-}
-
-__host__ __device__ __forceinline__ float3 operator+=(const float3 &a, const float3 &b) {
-	return make_float3(a.x+b.x, a.y+b.y, a.z+b.z);
-}
-
-__host__ __device__ __forceinline__ float4 operator+(const float4 &a, const float4 &b) {
-	return make_float4(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
-}
-
-__host__ __device__ __forceinline__ float4 operator+=(const float4 &a, const float4 &b) {
-	return make_float4(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);
-}
-
-__host__ __device__ __forceinline__ float3 operator-(const float3 &a, const float3 &b) {
-	return make_float3(a.x-b.x, a.y-b.y, a.z-b.z);
-}
-
-__host__ __device__ __forceinline__ float3 operator*(const float3 &a, const float3 &b) {
-	return make_float3(a.x*b.x, a.y*b.y, a.z*b.z);
-}
-
-__host__ __device__ __forceinline__ float4 operator*(const float4 &a, const float4 &b) {
-	return make_float4(a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w);
-}
-
-__host__ __device__ __forceinline__ float3 operator*(const float &a, const float3 &vec) {
-	return make_float3(a*vec.x, a*vec.y, a*vec.z);
-}
-
-__host__ __device__ __forceinline__ float3 operator*(const float3 &vec, const float &a) {
-	return make_float3(a*vec.x, a*vec.y, a*vec.z);
-}
-
-__host__ __device__ __forceinline__ float3 operator/(const float3 &vec, const float &a) {
-	return make_float3(vec.x/a, vec.y/a, vec.z/a);
-}
-
-__host__ __device__ __forceinline__ float3 operator-(const float3 &a) {
-	return make_float3(-a.x, -a.y, -a.z);
-}
-
-__host__ __device__ __forceinline__ float dot(const float3 &a, const float3 &b) {
-	return a.x*b.x + a.y*b.y + a.z*b.z;
-}
-
-__host__ __device__ __forceinline__ float dot(const float4 &a, const float4 &b) {
-	return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
-}
-
-__host__ __device__ __forceinline__ float l2norm(const float3 &a) {
-	return sqrtf(dot(a,a));
-}
-
-__host__ __device__ __forceinline__ float l2norm(const float4 &a) {
-	return sqrtf(dot(a,a));
-}
-
-__host__ __device__ __forceinline__ float3 normalize(const float3 &a) {
-	float norm = l2norm(a);
-	return make_float3(a.x / norm, a.y / norm, a.z / norm);
-}
-
-__host__ __device__ __forceinline__ float4 normalize(const float4 &a) {
-	float norm = l2norm(a);
-	return make_float4(a.x / norm, a.y / norm, a.z / norm, a.w / norm);
-}
 
 // Explicity assumes each mass is of unit 1 mass
 __device__
@@ -157,15 +84,17 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 	float3	dir, diff;
 	// float3 b0pos, b1pos;
 
-	float	relative_change,
-			rest_length,
+	// float	relative_change,
+	float	rest_length,
 			L;
 
 	// b0pos = {bl.x, bl.y, bl.z};
 	// b1pos = {br.x, br.y, br.z};
 
-	relative_change = mat.y * sinf(mat.z*time+mat.w);
-	rest_length = mean_length * (1 + relative_change);
+	rest_length = __fmaf_rn(mean_length*mat.y, sinf(mat.z*time+mat.w), mean_length);
+
+	// relative_change = mat.y * sinf(mat.z*time+mat.w);
+	// rest_length = mean_length * (1 + relative_change);
 
 	diff.x = bl.x - br.x;
 	diff.y = bl.y - br.y;
