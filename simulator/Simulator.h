@@ -67,7 +67,7 @@ protected:
 	float  *m_hLbars;
 	float  *m_hPos;
 	float  *m_hVel;
-	ushort *m_hHighStressCount, *m_hLowStressCount;
+	ushort *m_hMaxStressCount, *m_hMinStressCount;
 	float  *m_hStresses;
 	uint   *m_hSpringIDs;
 
@@ -76,7 +76,7 @@ protected:
 			*m_dMats;
 	ushort	*m_dPairs;
 	float	*m_dLbars;
-	ushort  *m_dHighStressCount, *m_dLowStressCount;
+	ushort  *m_dMaxStressCount, *m_dMinStressCount;
 	float	*m_dStresses;
 	uint    *m_dSpringIDs;
 

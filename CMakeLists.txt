@@ -17,8 +17,8 @@ SET(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 add_subdirectory( renderer )
 
 set( PHYS
-	# benchmark.cpp
-	main.cpp
+	benchmark.cpp
+	# main.cpp
 
 	renderer/src/Camera.cpp
 	renderer/src/Shader.cpp

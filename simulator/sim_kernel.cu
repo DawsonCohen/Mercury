@@ -150,7 +150,7 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 {
 	if(mat.x == 0.0f) {
 		force = {0.0f, 0.0f, 0.0f};
-		magF = 0;
+		magF = 0.0f;
 		return force;
 	}
 
@@ -192,12 +192,11 @@ struct SimOptions {
 };
 
 // TODO: test with single spring
-// TODO: returns indices of highest stress 10 springs
 __global__ void
 integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
 				ushort2 *__restrict__ pairs, float4 *__restrict__ mats, float *__restrict__ Lbars,
-				ushort *__restrict__ highStressCount, ushort *__restrict__ lowStressCount,
+				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
 				float *__restrict__ stresses, uint *__restrict__ ids,
 				float time, uint step, SimOptions opt)
 {
@@ -206,8 +205,8 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
 
 	#ifdef STRESS_COUNT
-	__shared__ ushort largestStressedSprings[1024];
-	__shared__ ushort smallestStressedSprings[1024];
+	__shared__ ushort maxStressedSprings[1024];
+	__shared__ ushort minStressedSprings[1024];
 	#endif
 	
 	uint massOffset   = blockIdx.x * opt.massesPerBlock;
@@ -237,16 +236,18 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	ushort	left, right;
 
 	#ifdef STRESS_COUNT
-	float	smallestStress = INFINITY,
-			largestStress  = -1.0f;
-	ushort	largestSpringIdx = tid,
-			smallestSpringIdx = tid,
-			nextSmallestSpringIdx = tid+stride,
-			nextGroup_LargestSpringIdx,
-			nextGroup_SmallestSpringIdx;
+	float	minStress = 0.0f,
+			maxStress  = 0.0f,
+			nextMinStress = 0.0f;
+	ushort	maxSpringIdx = tid,
+			minSpringIdx = tid,
+			nextMinSpringIdx = tid+stride,
+			nextGroup_MaxSpringIdx,
+			nextGroup_MinSpringIdx;
 	#endif
 	
-	for(uint i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
+	uint i;
+	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
 		pair = __ldg(&pairs[i+springOffset]);
 		left  = pair.x;
 		right = pair.y;
@@ -256,6 +257,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
 
+		// if(fabsf(magF) > 0.0f) {
 		atomicAdd(&(s_force[left].x), force.x);
 		atomicAdd(&(s_force[left].y), force.y);
 		atomicAdd(&(s_force[left].z), force.z);
@@ -263,94 +265,108 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		atomicAdd(&(s_force[right].x), -force.x);
 		atomicAdd(&(s_force[right].y), -force.y);
 		atomicAdd(&(s_force[right].z), -force.z);
-		
+		// }
+
 		#ifdef STRESS_COUNT
-		if(abs(magF) > largestStress) {
-			largestStress = magF;
-			largestSpringIdx = i;
+		if(fabsf(magF) > maxStress) {
+			maxStress = fabsf(magF);
+			maxSpringIdx = i;
 		}
-		if(abs(magF) < smallestStress && abs(magF) > 0) {
-			smallestStress = magF;
-			nextSmallestSpringIdx = smallestSpringIdx;
-			smallestSpringIdx = i;
+		if(((fabsf(magF) < minStress) || (minStress == 0.0f)) && fabsf(magF) > 0.0f) {
+			if(i > tid) {
+				nextMinStress = minStress;
+				nextMinSpringIdx = minSpringIdx;
+			}
+
+			minStress = fabsf(magF);
+			minSpringIdx = i;
+			
 		}
 		#endif
 
 		#ifdef FULL_STRESS
-		stresses[i + springOffset] += abs(magF);
+		stresses[i + springOffset] = stresses[i + springOffset] + fabsf(magF);
 		#endif
 	}
 
 	#ifdef STRESS_COUNT
-	ushort2 cLargestPair,
-			cSmallestPair;
-	ushort	cLargestCount,
-			cSmallestCount;
-	float4	cLargestMat,
-			cSmallestMat;
-	float	cLargestLbar,
-			cSmallestLbar;
+	ushort2 cMaxPair,
+			cMinPair;
+	ushort	cMax_MaxCount,
+			cMax_MinCount,
+			cMin_MaxCount,
+			cMin_MinCount;
+	float4	cMaxMat,
+			cMinMat;
+	float	cMaxLbar,
+			cMinLbar;
 	#ifdef FULL_STRESS
-	float	cLargestStress,
-			cSmallestStress;
-	float	cLargestID,
-			cSmallestID;
+	float	cMaxStress,
+			cMinStress;
+	float	cMaxID,
+			cMinID;
 	#endif
+
+	
+	if(minSpringIdx == maxSpringIdx) { // guarentees not both max and min
+		minSpringIdx = nextMinSpringIdx;
+		minStress = nextMinStress;
+	}
+
 	if(step % (opt.shiftskip+1) == 0) {
-		if(smallestSpringIdx == largestSpringIdx) { // guarentees not both largest and smallest
-			smallestSpringIdx = nextSmallestSpringIdx;
-		}
-
-		largestStressedSprings[tid]  = largestSpringIdx;
-		smallestStressedSprings[tid]  = smallestSpringIdx;
-
-		// current thread max spring info
-		cLargestPair = pairs[largestSpringIdx + springOffset];
-		cLargestCount = highStressCount[largestSpringIdx + springOffset]+1;
-		cLargestMat = mats[largestSpringIdx + springOffset];
-		cLargestLbar = Lbars[largestSpringIdx + springOffset];
+		maxStressCount[maxSpringIdx + springOffset] += (maxStress > 0.0f);
+		minStressCount[minSpringIdx + springOffset] += (minStress > 0.0f);
+		maxStressedSprings[tid]  = maxSpringIdx;
+		minStressedSprings[tid]  = minSpringIdx;
 		
-		cSmallestPair = pairs[smallestSpringIdx + springOffset];
-		cSmallestCount = lowStressCount[smallestSpringIdx + springOffset]+1;
-		cSmallestMat = mats[smallestSpringIdx + springOffset];
-		cSmallestLbar = Lbars[smallestSpringIdx + springOffset];
+		// current thread max spring info
+		cMaxPair = pairs[maxSpringIdx + springOffset];
+		cMax_MaxCount = maxStressCount[maxSpringIdx + springOffset];
+		cMax_MinCount = minStressCount[maxSpringIdx + springOffset];
+		cMaxMat = mats[maxSpringIdx + springOffset];
+		cMaxLbar = Lbars[maxSpringIdx + springOffset];
+
+		cMinPair = pairs[minSpringIdx + springOffset];
+		cMin_MaxCount = maxStressCount[minSpringIdx + springOffset];
+		cMin_MinCount = minStressCount[minSpringIdx + springOffset];
+		cMinMat = mats[minSpringIdx + springOffset];
+		cMinLbar = Lbars[minSpringIdx + springOffset];
 
 		#ifdef FULL_STRESS
-		cLargestStress = stresses[largestSpringIdx + springOffset];
-		cLargestID = ids[largestSpringIdx + springOffset];
-		cSmallestStress = stresses[smallestSpringIdx + springOffset];
-		cSmallestID = ids[smallestSpringIdx + springOffset];
+		cMaxStress = stresses[maxSpringIdx + springOffset];
+		cMaxID = ids[maxSpringIdx + springOffset];
+		cMinStress = stresses[minSpringIdx + springOffset];
+		cMinID = ids[minSpringIdx + springOffset];
 		#endif
-	} else {
-		highStressCount[largestSpringIdx + springOffset] += 1;
-		lowStressCount[smallestSpringIdx + springOffset] += 1;
 	}
 	#endif
-
 	__syncthreads();
 
 	#ifdef STRESS_COUNT
 	int tid_next = (tid+1) % blockDim.x;
 	if(step % (opt.shiftskip+1) == 0) {
 		// shift current index to next spring
-		nextGroup_LargestSpringIdx  = largestStressedSprings[tid_next];
-		nextGroup_SmallestSpringIdx = smallestStressedSprings[tid_next];
-		
-		pairs[nextGroup_LargestSpringIdx + springOffset] = cLargestPair;
-		mats[nextGroup_LargestSpringIdx + springOffset] = cLargestMat;
-		Lbars[nextGroup_LargestSpringIdx + springOffset] = cLargestLbar;
-		highStressCount[nextGroup_LargestSpringIdx + springOffset] = cLargestCount;
+		nextGroup_MaxSpringIdx  = maxStressedSprings[tid_next];
+		nextGroup_MinSpringIdx = minStressedSprings[tid_next];
 
-		pairs[nextGroup_SmallestSpringIdx + springOffset] = cSmallestPair;
-		mats[nextGroup_SmallestSpringIdx + springOffset] = cSmallestMat;
-		Lbars[nextGroup_SmallestSpringIdx + springOffset] = cSmallestLbar;
-		lowStressCount[nextGroup_SmallestSpringIdx + springOffset] = cSmallestCount;
+		pairs[nextGroup_MaxSpringIdx + springOffset] = cMaxPair;
+		mats[nextGroup_MaxSpringIdx + springOffset] = cMaxMat;
+		Lbars[nextGroup_MaxSpringIdx + springOffset] = cMaxLbar;
+		maxStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MaxCount;
+		minStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MinCount;
+
+		pairs[nextGroup_MinSpringIdx + springOffset] = cMinPair;
+		mats[nextGroup_MinSpringIdx + springOffset] = cMinMat;
+		Lbars[nextGroup_MinSpringIdx + springOffset] = cMinLbar;
+		maxStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MaxCount;
+		minStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MinCount;
 
 		#ifdef FULL_STRESS
-		stresses[nextGroup_LargestSpringIdx + springOffset] = cLargestStress;
-		ids[nextGroup_LargestSpringIdx + springOffset] = cLargestID;
-		stresses[nextGroup_SmallestSpringIdx + springOffset] = cSmallestStress;
-		ids[nextGroup_SmallestSpringIdx + springOffset] = cSmallestID;
+		stresses[nextGroup_MaxSpringIdx + springOffset] = cMaxStress;
+		ids[nextGroup_MaxSpringIdx + springOffset] = cMaxID;
+
+		stresses[nextGroup_MinSpringIdx + springOffset] = cMinStress;
+		ids[nextGroup_MinSpringIdx + springOffset] = cMinID;
 		#endif
 	}
 	#endif

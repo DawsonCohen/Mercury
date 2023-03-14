@@ -48,8 +48,8 @@ Simulator::~Simulator() {
 	delete[] envBuf;
 	delete[] offsetBuf;
 
-	delete[] m_hHighStressCount;
-	delete[] m_hLowStressCount;
+	delete[] m_hMaxStressCount;
+	delete[] m_hMinStressCount;
 
 	// Free GPU
 	cudaFree((void**) m_dPos[0]);
@@ -61,8 +61,8 @@ Simulator::~Simulator() {
 	cudaFree((void**) m_dPairs);
 	cudaFree((void**) m_dMats);
 
-	cudaFree((void**) m_dHighStressCount);
-	cudaFree((void**) m_dLowStressCount);
+	cudaFree((void**) m_dMaxStressCount);
+	cudaFree((void**) m_dMinStressCount);
 	cudaFree((void**) m_dStresses);
 	cudaFree((void**) m_dSpringIDs);
 }
@@ -96,8 +96,8 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		delete[] envBuf;
 		delete[] offsetBuf;
 
-		delete[] m_hHighStressCount;
-		delete[] m_hLowStressCount;
+		delete[] m_hMaxStressCount;
+		delete[] m_hMinStressCount;
 
 		// Free GPU
 		cudaFree((void**) m_dPos[0]);
@@ -109,8 +109,8 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dPairs);
 		cudaFree((void**) m_dMats);
 
-		cudaFree((void**) m_dHighStressCount);
-		cudaFree((void**) m_dLowStressCount);
+		cudaFree((void**) m_dMaxStressCount);
+		cudaFree((void**) m_dMinStressCount);
 		cudaFree((void**) m_dStresses);
 		cudaFree((void**) m_dSpringIDs);
 	}
@@ -131,14 +131,17 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	m_hPos 	  = new float[maxMasses*4];
     m_hVel 	  = new float[maxMasses*4];
 
-	m_hHighStressCount = new ushort[maxSprings];
-	m_hLowStressCount  = new ushort[maxSprings];
+	m_hMaxStressCount = new ushort[maxSprings];
+	m_hMinStressCount  = new ushort[maxSprings];
 
 	m_hStresses  = new float[maxSprings];
 	m_hSpringIDs = new uint[maxSprings];
 	
 	memset(m_hPos, 0, maxMasses*4*sizeof(float));
     memset(m_hVel, 0, maxMasses*4*sizeof(float));
+
+	memset(m_hMaxStressCount, 0, maxSprings*sizeof(ushort));
+    memset(m_hMinStressCount, 0, maxSprings*sizeof(ushort));
 
     memset(m_hStresses, 0, maxSprings * sizeof(float));
     memset(m_hSpringIDs, 0, maxSprings * sizeof(uint));
@@ -161,8 +164,8 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dMats,   springSizefloat4);
 	cudaMalloc((void**)&m_dMats,   springSizefloat4);
 	
-	cudaMalloc((void**)&m_dHighStressCount, springSizeushort);
-	cudaMalloc((void**)&m_dLowStressCount,  springSizeushort);
+	cudaMalloc((void**)&m_dMaxStressCount, springSizeushort);
+	cudaMalloc((void**)&m_dMinStressCount,  springSizeushort);
 
 	cudaMalloc((void**)&m_dStresses,  springSizefloat);
 	cudaMalloc((void**)&m_dSpringIDs,  springSizeuint);
@@ -226,6 +229,10 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	cudaMemcpy(m_dStresses,   m_hStresses,   numSprings*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dSpringIDs,   m_hSpringIDs,   numSprings*sizeof(uint), cudaMemcpyHostToDevice);
 	#endif
+
+	cudaMemcpy(m_dMaxStressCount,   m_hMaxStressCount,   numSprings*sizeof(ushort), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dMinStressCount,    m_hMinStressCount,    numSprings*sizeof(ushort), cudaMemcpyHostToDevice);
+	gpuErrchk( cudaPeekAtLastError() );
 	
 	/*
 	Notes on SM resources:
@@ -273,7 +280,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
-			(ushort*) m_dHighStressCount, (ushort*) m_dLowStressCount,
+			(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 			(float*) m_dStresses, (uint*) m_dSpringIDs,
 			mat_time, step, opt);
 
@@ -290,8 +297,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hHighStressCount,m_dHighStressCount,numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hLowStressCount, m_dLowStressCount, numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hMaxStressCount,m_dMaxStressCount,numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hMinStressCount, m_dMinStressCount, numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
 	#ifdef FULL_STRESS
 	cudaMemcpy(m_hStresses,   m_dStresses,   numSprings*sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hSpringIDs,   m_dSpringIDs,   numSprings*sizeof(uint), cudaMemcpyDeviceToHost);
@@ -310,9 +317,9 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	std::vector<std::tuple<uint, float, uint, uint>> stressHistory;
 
 	for(uint i = 0; i < maxSprings; i++) {
-		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hHighStressCount[i], m_hLowStressCount[i]});
+		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hMaxStressCount[i], m_hMinStressCount[i]});
 	}
-	std::string stressHistoryCSV = util::DataToCSV("id, stress, high_count, low_count",stressHistory);
+	std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
 	util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
 	#endif
 
