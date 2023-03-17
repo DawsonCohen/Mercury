@@ -15,6 +15,11 @@ struct ElementTracker {
 	uint* offset_end;
 };
 
+struct massToSpringMapInfo {
+	ushort massCount;
+	ushort firstSpring;
+};
+
 class Simulator {
 	void _initialize();
 
@@ -56,29 +61,48 @@ protected:
     float step_period = 0.0005f;
     float max_time = 10.0f;
 
-	Mass*			massBuf;
-	Spring*			springBuf;
-	uint*			offsetBuf;
-	Environment*	envBuf;
-
+	Mass			*massBuf;
+	Spring			*springBuf,
+					*lSpringBuf,
+					*rSpringBuf;
+	uint			*offsetBuf;
+	massToSpringMapInfo	*lmassMapBuf,
+						*rmassMapBuf;
+	Environment		*envBuf;
+	
 	// CPU data
-	ushort   *m_hPairs;
-	float  *m_hMats;
-	float  *m_hLbars;
-	float  *m_hPos;
-	float  *m_hVel;
-	ushort *m_hMaxStressCount, *m_hMinStressCount;
-	float  *m_hStresses;
-	uint   *m_hSpringIDs;
+	ushort	*m_hPairs,
+			*m_hlPairs,
+			*m_hrPairs;
+		
+	float	*m_hMats,
+			*m_hlMats,
+			*m_hrMats;
+	float	*m_hLbars,
+			*m_hlLbars,
+			*m_hrLbars;
+	float	*m_hPos;
+	float	*m_hVel;
+	ushort	*m_hMaxStressCount, *m_hMinStressCount;
+	float	*m_hStresses;
+	uint	*m_hSpringIDs;
+	ushort	*m_hlCounts, *m_hrCounts;
 
 	// GPU data
 	float   *m_dPos[2], *m_dVel[2],
-			*m_dMats;
-	ushort	*m_dPairs;
-	float	*m_dLbars;
+			*m_dMats,
+			*m_dlMats,
+			*m_drMats;
+	ushort	*m_dPairs,
+			*m_dlPairs,
+			*m_drPairs;
+	float	*m_dLbars,
+			*m_dlLbars,
+			*m_drLbars;
 	ushort  *m_dMaxStressCount, *m_dMinStressCount;
 	float	*m_dStresses;
 	uint    *m_dSpringIDs;
+	ushort	*m_dlCounts, *m_drCounts;
 
 	unsigned char m_currentRead,
 			 	  m_currentWrite;

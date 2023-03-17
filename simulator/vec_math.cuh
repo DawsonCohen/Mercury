@@ -15,6 +15,13 @@ __device__ __forceinline__ float3 operator+=(const float3 &a, const float3 &b) {
 		__fadd_rn(a.z,b.z) };
 }
 
+__device__ __forceinline__ float3 operator-=(const float3 &a, const float3 &b) {
+	return {
+		__fsub_rn(a.x,b.x),
+		__fsub_rn(a.y,b.y),
+		__fsub_rn(a.z,b.z) };
+}
+
 __device__ __forceinline__ float4 operator+(const float4 &a, const float4 &b) {
 	return {
 		__fadd_rn(a.x,b.x),

@@ -43,10 +43,26 @@ Simulator::~Simulator() {
 	delete[] m_hPairs;
 	delete[] m_hMats;
 
+	delete[] m_hlLbars;
+	delete[] m_hlPairs;
+	delete[] m_hlMats;
+
+	delete[] m_hrLbars;
+	delete[] m_hrPairs;
+	delete[] m_hrMats;
+
+	delete[] m_hlCounts;
+	delete[] m_hrCounts;
+
 	delete[] massBuf;
 	delete[] springBuf;
 	delete[] envBuf;
 	delete[] offsetBuf;
+
+	delete[] lmassMapBuf;
+	delete[] rmassMapBuf;
+	delete[] lSpringBuf;
+	delete[] rSpringBuf;
 
 	delete[] m_hMaxStressCount;
 	delete[] m_hMinStressCount;
@@ -61,10 +77,20 @@ Simulator::~Simulator() {
 	cudaFree((void**) m_dPairs);
 	cudaFree((void**) m_dMats);
 
+	cudaFree((void**) m_dlLbars);
+	cudaFree((void**) m_dlPairs);
+	cudaFree((void**) m_dlMats);
+	cudaFree((void**) m_drLbars);
+	cudaFree((void**) m_drPairs);
+	cudaFree((void**) m_drMats);
+
 	cudaFree((void**) m_dMaxStressCount);
 	cudaFree((void**) m_dMinStressCount);
 	cudaFree((void**) m_dStresses);
 	cudaFree((void**) m_dSpringIDs);
+
+	cudaFree((void**) m_dlCounts);
+	cudaFree((void**) m_drCounts);
 }
 
 void Simulator::Initialize(Element prototype, uint maxElements) {
@@ -91,10 +117,26 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		delete[] m_hPairs;
 		delete[] m_hMats;
 
+		delete[] m_hlLbars;
+		delete[] m_hlPairs;
+		delete[] m_hlMats;
+
+		delete[] m_hrLbars;
+		delete[] m_hrPairs;
+		delete[] m_hrMats;
+
+		delete[] m_hlCounts;
+		delete[] m_hrCounts;
+
 		delete[] massBuf;
 		delete[] springBuf;
 		delete[] envBuf;
 		delete[] offsetBuf;
+
+		delete[] lmassMapBuf;
+		delete[] rmassMapBuf;
+		delete[] lSpringBuf;
+		delete[] rSpringBuf;
 
 		delete[] m_hMaxStressCount;
 		delete[] m_hMinStressCount;
@@ -109,10 +151,20 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dPairs);
 		cudaFree((void**) m_dMats);
 
+		cudaFree((void**) m_dlLbars);
+		cudaFree((void**) m_dlPairs);
+		cudaFree((void**) m_dlMats);
+		cudaFree((void**) m_drLbars);
+		cudaFree((void**) m_drPairs);
+		cudaFree((void**) m_drMats);
+
 		cudaFree((void**) m_dMaxStressCount);
 		cudaFree((void**) m_dMinStressCount);
 		cudaFree((void**) m_dStresses);
 		cudaFree((void**) m_dSpringIDs);
+
+		cudaFree((void**) m_dlCounts);
+		cudaFree((void**) m_drCounts);
 	}
 	initialized = true;
 	
@@ -136,6 +188,23 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
 	m_hStresses  = new float[maxSprings];
 	m_hSpringIDs = new uint[maxSprings];
+
+	lmassMapBuf = new massToSpringMapInfo[maxMasses];
+	rmassMapBuf = new massToSpringMapInfo[maxMasses];
+	springBuf = new Spring[maxSprings];
+	lSpringBuf = new Spring[maxSprings];
+	rSpringBuf = new Spring[maxSprings];
+
+	m_hlLbars  = new float[maxSprings];
+	m_hlPairs  = new ushort[maxSprings*2];
+	m_hlMats   = new float[maxSprings*4];
+
+	m_hrLbars  = new float[maxSprings];
+	m_hrPairs  = new ushort[maxSprings*2];
+	m_hrMats   = new float[maxSprings*4];
+
+	m_hlCounts   = new ushort[maxMasses*2];
+	m_hrCounts   = new ushort[maxMasses*2];
 	
 	memset(m_hPos, 0, maxMasses*4*sizeof(float));
     memset(m_hVel, 0, maxMasses*4*sizeof(float));
@@ -147,6 +216,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
     memset(m_hSpringIDs, 0, maxSprings * sizeof(uint));
 	
     unsigned int massSizefloat4     = sizeof(float)  * 4 * maxMasses;
+    unsigned int massSizeuint2      = sizeof(uint)   * 2 * maxMasses;
     unsigned int springSizeushort	= sizeof(ushort) * 1 * maxSprings;
     unsigned int springSizefloat    = sizeof(float)  * 1 * maxSprings;
     unsigned int springSizefloat4   = sizeof(float)  * 4 * maxSprings;
@@ -169,6 +239,17 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
 	cudaMalloc((void**)&m_dStresses,  springSizefloat);
 	cudaMalloc((void**)&m_dSpringIDs,  springSizeuint);
+
+	cudaMalloc((void**)&m_dlPairs,  springSizeushort2);
+	cudaMalloc((void**)&m_dlLbars,  springSizefloat);
+	cudaMalloc((void**)&m_dlMats,   springSizefloat4);
+
+	cudaMalloc((void**)&m_drPairs,  springSizeushort2);
+	cudaMalloc((void**)&m_drLbars,  springSizefloat);
+	cudaMalloc((void**)&m_drMats,   springSizefloat4);
+
+	cudaMalloc((void**)&m_drCounts,   massSizeuint2);
+	cudaMalloc((void**)&m_dlCounts,   massSizeuint2);
 
 	envBuf[0] = Environment();
 	envCount++;
@@ -198,6 +279,12 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		m_hVel[4*i]   = vel.x;
 		m_hVel[4*i+1] = vel.y;
 		m_hVel[4*i+2] = vel.z;
+
+		m_hlCounts[2*i]	  = lmassMapBuf[i].massCount;
+		m_hlCounts[2*i+1] = lmassMapBuf[i].firstSpring;
+
+		m_hrCounts[2*i]   = rmassMapBuf[i].massCount;
+		m_hrCounts[2*i+1] = rmassMapBuf[i].firstSpring;
 	}
 
 	for(uint i = 0; i < numSprings; i++) {
@@ -206,7 +293,15 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		uint	 left   = springBuf[i].m0,
 			     right  = springBuf[i].m1;
 
-		// printf("%u:\t%u\n",offsetBuf[i],springBuf[i].m0);
+		Material lmat    = lSpringBuf[i].material;
+		float    llbar   = lSpringBuf[i].mean_length;
+		uint	 lleft   = lSpringBuf[i].m0,
+			     lright  = lSpringBuf[i].m1;
+
+		Material rmat    = rSpringBuf[i].material;
+		float    rlbar   = rSpringBuf[i].mean_length;
+		uint	 rleft   = rSpringBuf[i].m0,
+			     rright  = rSpringBuf[i].m1;
 
 		m_hMats[4*i]   = mat.k;
 		m_hMats[4*i+1] = mat.dL0;
@@ -218,6 +313,24 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		m_hLbars[i] 	= lbar;
 
 		m_hSpringIDs[i] = i;
+
+		m_hlMats[4*i]   = lmat.k;
+		m_hlMats[4*i+1] = lmat.dL0;
+		m_hlMats[4*i+2] = lmat.omega;
+		m_hlMats[4*i+3] = lmat.phi;
+
+		m_hlPairs[2*i]   = lleft;
+		m_hlPairs[2*i+1] = lright;
+		m_hlLbars[i] 	 = llbar;
+
+		m_hrMats[4*i]   = rmat.k;
+		m_hrMats[4*i+1] = rmat.dL0;
+		m_hrMats[4*i+2] = rmat.omega;
+		m_hrMats[4*i+3] = rmat.phi;
+
+		m_hrPairs[2*i]   = rleft;
+		m_hrPairs[2*i+1] = rright;
+		m_hrLbars[i] 	 = rlbar;
 	}
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
@@ -225,13 +338,18 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	cudaMemcpy(m_dPairs,  m_hPairs,  numSprings *2*sizeof(ushort),  cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dLbars,  m_hLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMats,   m_hMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
-	#ifdef FULL_STRESS
-	cudaMemcpy(m_dStresses,   m_hStresses,   numSprings*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dSpringIDs,   m_hSpringIDs,   numSprings*sizeof(uint), cudaMemcpyHostToDevice);
-	#endif
 
-	cudaMemcpy(m_dMaxStressCount,   m_hMaxStressCount,   numSprings*sizeof(ushort), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dMinStressCount,    m_hMinStressCount,    numSprings*sizeof(ushort), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dlPairs,  m_hlPairs,  numSprings *2*sizeof(ushort),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dlLbars,  m_hlLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dlMats,   m_hlMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
+
+	cudaMemcpy(m_drPairs,  m_hrPairs,  numSprings *2*sizeof(ushort),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_drLbars,  m_hrLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_drMats,   m_hrMats,   numSprings *4*sizeof(float), cudaMemcpyHostToDevice);
+	
+	cudaMemcpy(m_dlCounts,  m_hlCounts,  numMasses *2*sizeof(ushort),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_drCounts,  m_hrCounts,  numMasses *2*sizeof(ushort),  cudaMemcpyHostToDevice);
+
 	gpuErrchk( cudaPeekAtLastError() );
 	
 	/*
@@ -279,9 +397,9 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
-			(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
-			(float*) m_dStresses, (uint*) m_dSpringIDs,
+			(ushort2*)  m_dlPairs,  (float4*) m_dlMats,  (float*) m_dlLbars,
+			(ushort2*)  m_drPairs,  (float4*) m_drMats,  (float*) m_drLbars,
+			(ushort2*) m_dlCounts, (ushort2*) m_drCounts,
 			mat_time, step, opt);
 
 			
@@ -289,20 +407,16 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		cudaDeviceSynchronize();
 		
 		std::swap(m_currentRead, m_currentWrite);
+
 		
 		step++;
 		total_time += step_period;
 		step_time += step_period;
 	}
+	// exit(0);
 
 	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hMaxStressCount,m_dMaxStressCount,numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hMinStressCount, m_dMinStressCount, numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
-	#ifdef FULL_STRESS
-	cudaMemcpy(m_hStresses,   m_dStresses,   numSprings*sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hSpringIDs,   m_dSpringIDs,   numSprings*sizeof(uint), cudaMemcpyDeviceToHost);
-	#endif
 
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
@@ -312,16 +426,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		// printf("%u: {%f,%f,%f}\n",i,pos.x,pos.y,pos.z);
 		massBuf[i].vel = glm::vec3(vel.x,vel.y,vel.z);
 	}
-
-	#if defined(FULL_STRESS) && defined(WRITE_STRESS)
-	std::vector<std::tuple<uint, float, uint, uint>> stressHistory;
-
-	for(uint i = 0; i < maxSprings; i++) {
-		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hMaxStressCount[i], m_hMinStressCount[i]});
-	}
-	std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
-	util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
-	#endif
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
@@ -354,26 +458,49 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 	
 	numElements++;
 	
-	for(const Mass& m : e.masses) {
-		massBuf[numMasses] = m;
+	for(uint i = 0; i < e.masses.size(); i++) {
+		massBuf[numMasses] = e.masses[i];
 		tracker.mass_end++;
 		numMasses++;
+
+		lmassMapBuf[massOffset+i] = {0,(ushort) -1};
+		rmassMapBuf[massOffset+i] = {0,(ushort) -1};
 	}
 
-	uint i = 0;
+	std::vector<Spring> lSprings(e.springs);
+	std::vector<Spring> rSprings(e.springs);
 
-	unsigned seed = rand();
-	std::vector<Spring> shuffledSprings(e.springs);
-	std::shuffle(shuffledSprings.begin(), shuffledSprings.end(), std::default_random_engine(seed));
+	std::sort(lSprings.begin(), lSprings.end(), [](const Spring& s1, const Spring& s2) {
+		return s1.m0 < s2.m0;
+	});
 
-	for(const Spring& s : shuffledSprings) {
-		springBuf[numSprings] = s;
+	std::sort(rSprings.begin(), rSprings.end(), [](const Spring& s1, const Spring& s2) {
+		return s1.m1 < s2.m1;
+	});
+
+	uint first = numSprings;
+	for(uint i = 0; i < e.springs.size(); i++) {
+		springBuf[numSprings] = e.springs[i];
+		lSpringBuf[numSprings] = lSprings[i];
+		rSpringBuf[numSprings] = rSprings[i];
 		tracker.spring_end++;
 
 		offsetBuf[numSprings] = massOffset;
 		tracker.offset_end++;
 		numSprings++;
-		i++;
+	}
+	uint last = numSprings;
+
+	for(uint i = first; i < last; i++) {
+		lmassMapBuf[massOffset+lSpringBuf[i].m0].massCount++;
+		rmassMapBuf[massOffset+rSpringBuf[i].m1].massCount++;
+
+		if(lmassMapBuf[massOffset+lSpringBuf[i].m0].firstSpring == (ushort) -1) {
+			lmassMapBuf[massOffset+lSpringBuf[i].m0].firstSpring = i;
+		}
+		if(rmassMapBuf[massOffset+lSpringBuf[i].m1].firstSpring == (ushort) -1) {
+			rmassMapBuf[massOffset+lSpringBuf[i].m1].firstSpring = i;
+		}
 	}
 	
 	return tracker;

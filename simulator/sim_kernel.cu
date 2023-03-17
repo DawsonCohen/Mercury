@@ -84,29 +84,36 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 	float3	dir, diff;
 	// float3 b0pos, b1pos;
 
-	// float	relative_change,
-	float	rest_length,
+	float	relative_change,
+			rest_length,
 			L;
 
 	// b0pos = {bl.x, bl.y, bl.z};
 	// b1pos = {br.x, br.y, br.z};
 
-	rest_length = __fmaf_rn(mean_length*mat.y, sinf(mat.z*time+mat.w), mean_length);
+	// rest_length = __fmaf_rn(mean_length*mat.y, sinf(__fmaf(mat.z,time,mat.w)), mean_length);
 
-	// relative_change = mat.y * sinf(mat.z*time+mat.w);
-	// rest_length = mean_length * (1 + relative_change);
+	relative_change = mat.y * sinf(mat.z*time+mat.w);
+	// rest_length = __fmaf_rn(relative_change,mean_length,mean_length);
+	rest_length = mean_length * (1 + relative_change);
 
 	diff.x = bl.x - br.x;
 	diff.y = bl.y - br.y;
 	diff.z = bl.z - br.z;
 
 	L = l2norm(diff);
-	dir = normalize(diff);
+	// L = norm3df(diff.x,diff.y,diff.z);
+	dir = {
+		__fdiv_rn(diff.x, L),
+        __fdiv_rn(diff.y, L),
+        __fdiv_rn(diff.z, L) };
+	// dir = normalize(diff);
 
-	magF = mat.x*(rest_length-L);
+	// magF = mat.x*(rest_length-L);
+	magF = __fmaf_rn(mat.x / 1000,rest_length,-mat.x*L / 1000);
 
 	force = magF * dir;
-	
+
 	return force;
 }
 
@@ -120,29 +127,24 @@ struct SimOptions {
 	short shiftskip;
 };
 
-// TODO: test with single spring
 __global__ void
-integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
-				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
-				ushort2 *__restrict__ pairs, float4 *__restrict__ mats, float *__restrict__ Lbars,
-				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
-				float *__restrict__ stresses, uint *__restrict__ ids,
-				float time, uint step, SimOptions opt)
+integrateBodies(
+			float4 *__restrict__ newPos, float4 *__restrict__ newVel,
+			float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
+			ushort2 *__restrict__ lpairs, float4 *__restrict__ lmats, float *__restrict__ lLbars,
+			ushort2 *__restrict__ rpairs, float4 *__restrict__ rmats, float *__restrict__ rLbars,
+			ushort2 *__restrict__ lCounts, ushort2 *__restrict__ rCounts,
+			float time, uint step, SimOptions opt)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
 	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
-
-	#ifdef STRESS_COUNT
-	__shared__ ushort maxStressedSprings[1024];
-	__shared__ ushort minStressedSprings[1024];
-	#endif
 	
 	uint massOffset   = blockIdx.x * opt.massesPerBlock;
 	uint springOffset = blockIdx.x * opt.springsPerBlock;
 
-	int tid    = threadIdx.x;
-	int stride = blockDim.x;
+	uint tid    = threadIdx.x;
+	uint stride = blockDim.x;
 	
 	// Initialize and compute environment forces
 	float4 pos4;
@@ -152,154 +154,63 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
 	}
 	__syncthreads();
 
 	float4	mat;
 	float3	bl, br;
-	float3	force;
+	float3	tforce, force;
 	ushort2	pair;
 	float	Lbar,
 			magF;
 	ushort	left, right;
-
-	#ifdef STRESS_COUNT
-	float	minStress = 0.0f,
-			maxStress  = 0.0f,
-			nextMinStress = 0.0f;
-	ushort	maxSpringIdx = tid,
-			minSpringIdx = tid,
-			nextMinSpringIdx = tid+stride,
-			nextGroup_MaxSpringIdx,
-			nextGroup_MinSpringIdx;
-	#endif
 	
-	uint i;
-	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
-		pair = __ldg(&pairs[i+springOffset]);
-		left  = pair.x;
-		right = pair.y;
-		bl = s_pos[left];
-		br = s_pos[right];
-		mat = __ldg(&mats[i+springOffset]);
-		Lbar = __ldg(&Lbars[i+springOffset]);
-		springForce(bl,br,mat,Lbar,time, force, magF);
+	uint i, j;
+	ushort	lspring = 0,
+			rspring = 0;
+	for(i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+		tforce = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+		lspring = lCounts[i].y;
+		rspring = rCounts[i].y;
 
-		// if(fabsf(magF) > 0.0f) {
-		atomicAdd(&(s_force[left].x), force.x);
-		atomicAdd(&(s_force[left].y), force.y);
-		atomicAdd(&(s_force[left].z), force.z);
+		// printf("%u--%u\n",lCounts[i].y,rCounts[i].y);
+		for(j = 0; j < lCounts[i].x; j++) {
+			pair = __ldg(&lpairs[lspring+springOffset]);
+			left  = pair.x;
+			right = pair.y;
+			bl = s_pos[left];
+			br = s_pos[right];
+			mat = __ldg(&lmats[lspring+springOffset]);
+			Lbar = __ldg(&lLbars[lspring+springOffset]);
+			springForce(bl,br,mat,Lbar,time, force, magF);
+			tforce.x += force.x;
+			tforce.y += force.y;
+			tforce.z += force.z;
+			// printf("{%f,%f,%f}\n",lforce.x,lforce.y,lforce.z);
 
-		atomicAdd(&(s_force[right].x), -force.x);
-		atomicAdd(&(s_force[right].y), -force.y);
-		atomicAdd(&(s_force[right].z), -force.z);
+			lspring++;
+		}
+		// for(j = 0; j < rCounts[i].x; j++) {
+		// 	// pair = __ldg(&rpairs[rspring+springOffset]);
+		// 	left  = pair.x;
+		// 	right = pair.y;
+		// 	bl = s_pos[left];
+		// 	br = s_pos[right];
+		// 	mat = __ldg(&rmats[rspring+springOffset]);
+		// 	Lbar = __ldg(&rLbars[rspring+springOffset]);
+		// 	springForce(bl,br,mat,Lbar,time, force, magF);
+
+		// 	tforce.x += force.x;
+		// 	tforce.y += force.y;
+		// 	tforce.z += force.z;
+		// 	// printf("{%f,%f,%f}\n",rforce.x,rforce.y,rforce.z);
+
+		// 	rspring++;
 		// }
-
-		#ifdef STRESS_COUNT
-		if(fabsf(magF) > maxStress) {
-			maxStress = fabsf(magF);
-			maxSpringIdx = i;
-		}
-		if(((fabsf(magF) < minStress) || (minStress == 0.0f)) && fabsf(magF) > 0.0f) {
-			if(i > tid) {
-				nextMinStress = minStress;
-				nextMinSpringIdx = minSpringIdx;
-			}
-
-			minStress = fabsf(magF);
-			minSpringIdx = i;
-			
-		}
-		#endif
-
-		#ifdef FULL_STRESS
-		stresses[i + springOffset] = stresses[i + springOffset] + fabsf(magF);
-		#endif
+		// printf("{%f,%f,%f}-{%f,%f,%f}\n",lforce.x,lforce.y, lforce.z,rforce.x,rforce.y,rforce.z);
+		s_force[i] = tforce;
 	}
-
-	#ifdef STRESS_COUNT
-	ushort2 cMaxPair,
-			cMinPair;
-	ushort	cMax_MaxCount,
-			cMax_MinCount,
-			cMin_MaxCount,
-			cMin_MinCount;
-	float4	cMaxMat,
-			cMinMat;
-	float	cMaxLbar,
-			cMinLbar;
-	#ifdef FULL_STRESS
-	float	cMaxStress,
-			cMinStress;
-	float	cMaxID,
-			cMinID;
-	#endif
-
-	
-	if(minSpringIdx == maxSpringIdx) { // guarentees not both max and min
-		minSpringIdx = nextMinSpringIdx;
-		minStress = nextMinStress;
-	}
-
-	if(step % (opt.shiftskip+1) == 0) {
-		maxStressCount[maxSpringIdx + springOffset] += (maxStress > 0.0f);
-		minStressCount[minSpringIdx + springOffset] += (minStress > 0.0f);
-		maxStressedSprings[tid]  = maxSpringIdx;
-		minStressedSprings[tid]  = minSpringIdx;
-		
-		// current thread max spring info
-		cMaxPair = pairs[maxSpringIdx + springOffset];
-		cMax_MaxCount = maxStressCount[maxSpringIdx + springOffset];
-		cMax_MinCount = minStressCount[maxSpringIdx + springOffset];
-		cMaxMat = mats[maxSpringIdx + springOffset];
-		cMaxLbar = Lbars[maxSpringIdx + springOffset];
-
-		cMinPair = pairs[minSpringIdx + springOffset];
-		cMin_MaxCount = maxStressCount[minSpringIdx + springOffset];
-		cMin_MinCount = minStressCount[minSpringIdx + springOffset];
-		cMinMat = mats[minSpringIdx + springOffset];
-		cMinLbar = Lbars[minSpringIdx + springOffset];
-
-		#ifdef FULL_STRESS
-		cMaxStress = stresses[maxSpringIdx + springOffset];
-		cMaxID = ids[maxSpringIdx + springOffset];
-		cMinStress = stresses[minSpringIdx + springOffset];
-		cMinID = ids[minSpringIdx + springOffset];
-		#endif
-	}
-	#endif
 	__syncthreads();
-
-	#ifdef STRESS_COUNT
-	int tid_next = (tid+1) % blockDim.x;
-	if(step % (opt.shiftskip+1) == 0) {
-		// shift current index to next spring
-		nextGroup_MaxSpringIdx  = maxStressedSprings[tid_next];
-		nextGroup_MinSpringIdx = minStressedSprings[tid_next];
-
-		pairs[nextGroup_MaxSpringIdx + springOffset] = cMaxPair;
-		mats[nextGroup_MaxSpringIdx + springOffset] = cMaxMat;
-		Lbars[nextGroup_MaxSpringIdx + springOffset] = cMaxLbar;
-		maxStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MaxCount;
-		minStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MinCount;
-
-		pairs[nextGroup_MinSpringIdx + springOffset] = cMinPair;
-		mats[nextGroup_MinSpringIdx + springOffset] = cMinMat;
-		Lbars[nextGroup_MinSpringIdx + springOffset] = cMinLbar;
-		maxStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MaxCount;
-		minStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MinCount;
-
-		#ifdef FULL_STRESS
-		stresses[nextGroup_MaxSpringIdx + springOffset] = cMaxStress;
-		ids[nextGroup_MaxSpringIdx + springOffset] = cMaxID;
-
-		stresses[nextGroup_MinSpringIdx + springOffset] = cMinStress;
-		ids[nextGroup_MinSpringIdx + springOffset] = cMinID;
-		#endif
-	}
-	#endif
-
 	// Calculate and store new mass states
 	float4 vel;
 	float3 pos3;
