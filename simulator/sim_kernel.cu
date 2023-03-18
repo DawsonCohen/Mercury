@@ -6,7 +6,7 @@
 
 // Explicity assumes each mass is of unit 1 mass
 __device__
-float3 gravityForce(float4 env) {
+float3 gravityForce() {
 	return {0, -9.81f, 0};
 }
 
@@ -58,7 +58,7 @@ float3 collisionForce(float3 pos, float4 vel, float3 force,
 __device__
 float3 environmentForce(float3 pos, float4 vel, float3 force,
 						float4 env) {
-	force = gravityForce(env);
+	force = gravityForce();
 	force = collisionForce(pos,vel,force,env);
 	return force;
 }
@@ -82,26 +82,30 @@ float3 springForce(float3 bl, float3 br, float4 mat,
 	}
 
 	float3	dir, diff;
-	// float3 b0pos, b1pos;
 
-	// float	relative_change,
-	float	rest_length,
+	float	relative_change,
+			rest_length,
 			L;
 
 	// b0pos = {bl.x, bl.y, bl.z};
 	// b1pos = {br.x, br.y, br.z};
 
-	rest_length = __fmaf_rn(mean_length*mat.y, sinf(mat.z*time+mat.w), mean_length);
-
-	// relative_change = mat.y * sinf(mat.z*time+mat.w);
 	// rest_length = mean_length * (1 + relative_change);
-
+	relative_change = mat.y * sinf(mat.z*time+mat.w);
+	rest_length = __fmaf_rn(mean_length, relative_change, mean_length);
+	
+	// rest_length = __fmaf_rn(mean_length*mat.y, sinf(mat.z*time+mat.w), mean_length);
+	
 	diff.x = bl.x - br.x;
 	diff.y = bl.y - br.y;
 	diff.z = bl.z - br.z;
 
 	L = l2norm(diff);
-	dir = normalize(diff);
+	dir = {
+		__fdiv_rn(diff.x,L),
+		__fdiv_rn(diff.y,L),
+		__fdiv_rn(diff.z,L)
+	};
 
 	magF = mat.x*(rest_length-L);
 
@@ -197,19 +201,21 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		// }
 
 		#ifdef STRESS_COUNT
-		if(fabsf(magF) > maxStress) {
-			maxStress = fabsf(magF);
-			maxSpringIdx = i;
-		}
-		if(((fabsf(magF) < minStress) || (minStress == 0.0f)) && fabsf(magF) > 0.0f) {
-			if(i > tid) {
-				nextMinStress = minStress;
-				nextMinSpringIdx = minSpringIdx;
+		if(step % (opt.shiftskip+1) == 0) {
+			if(fabsf(magF) > maxStress) {
+				maxStress = fabsf(magF);
+				maxSpringIdx = i;
 			}
+			if(((fabsf(magF) < minStress) || (minStress == 0.0f)) && fabsf(magF) > 0.0f) {
+				if(i > tid) {
+					nextMinStress = minStress;
+					nextMinSpringIdx = minSpringIdx;
+				}
 
-			minStress = fabsf(magF);
-			minSpringIdx = i;
-			
+				minStress = fabsf(magF);
+				minSpringIdx = i;
+				
+			}
 		}
 		#endif
 
