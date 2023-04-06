@@ -1,6 +1,7 @@
 #include "Simulator.h"
 #include "optimizer.h"
-#include "plane.h"
+#include "plane_model.h"
+#include "robot_model.h"
 #include "util.h"
 
 #include "Renderer.h"
@@ -40,6 +41,8 @@
 uint runID = 0;
 uint solID = 0;
 
+#define ROBOT_TYPE VoxelRobot
+
 struct IOLocations {
     char in_file[MAX_FILE_PATH];
     char out_dir[MAX_FILE_PATH];
@@ -54,10 +57,10 @@ struct IOLocations {
 };
 
 struct OptimizationStrats {
-    Optimizer<Robot>::MutationStrat mutator = Optimizer<Robot>::MUTATE;
-    Optimizer<Robot>::CrossoverStrat crossover = Optimizer<Robot>::CROSS_SWAP;
-    Optimizer<Robot>::NichingStrat niche = Optimizer<Robot>::NICHE_NONE;
-    Robot::Encoding encoding = Robot::ENCODE_RADIUS;
+    Optimizer<ROBOT_TYPE>::MutationStrat mutator = Optimizer<ROBOT_TYPE>::MUTATE;
+    Optimizer<ROBOT_TYPE>::CrossoverStrat crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
+    Optimizer<ROBOT_TYPE>::NichingStrat niche = Optimizer<ROBOT_TYPE>::NICHE_NONE;
+    ROBOT_TYPE::Encoding encoding = ROBOT_TYPE::ENCODE_RADIUS;
 };
 
 void handle_commandline_args(const int& argc, char** argv);
@@ -65,9 +68,9 @@ void handle_file_io();
 GLFWwindow* GLFWsetup(bool visualize);
 void GLFWinitialize();
 
-std::vector<Robot> Solve();
-void Render(Robot& R);
-void Visualize(std::vector<Robot>& R);
+std::vector<ROBOT_TYPE> Solve();
+void Render(ROBOT_TYPE& R);
+void Visualize(std::vector<ROBOT_TYPE>& R);
 
 OptimizationStrats strats;
 IOLocations io;
@@ -79,8 +82,8 @@ int main(int argc, char** argv)
 	handle_file_io();
 	printf("Output directory: %s\n",io.out_dir);
 
-	std::vector<Robot> solutions;
-	Evaluator<Robot>::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
+	std::vector<ROBOT_TYPE> solutions;
+	Evaluator<ROBOT_TYPE>::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
 	
 	#ifdef OPTIMIZE
 	solutions = Solve();
@@ -96,65 +99,30 @@ int main(int argc, char** argv)
 		if (!std::filesystem::exists(filepath)) break;
 		
 		printf("Verifying file %s\n", filepath);
-		solutions.push_back(ReadRobot(filepath));
+		solutions.push_back(ReadVoxelRobot(filepath));
 
 		sol++;
 	}
-	#endif
-
-	// TODO
-	#ifdef ZOO
-	strcpy(io.out_dir, "../z_results/Zoo");
-
-	SoftBody zoo;
-
-	char best_files[9][MAX_FILE_PATH];
-	strcpy(best_files[0], "../z_results/MALPS/Mutate/DC/Simple/solution_0.csv");
-	strcpy(best_files[1], "../z_results/MALPS/Mutate/DC/Simple/solution_1.csv");
-	strcpy(best_files[2], "../z_results/MALPS/Mutate/DC/Simple/solution_2.csv");
-
-	strcpy(best_files[3], "../z_results/NoNiche/Random/Nonparallel/Simple/solution_0.csv");
-	strcpy(best_files[4], "../z_results/NoNiche/Random/Nonparallel/Simple/solution_1.csv");
-	strcpy(best_files[5], "../z_results/NoNiche/Random/Nonparallel/Simple/solution_2.csv");
-
-	strcpy(best_files[6], "../z_results/NoNiche/Mutate/Swap/Simple/solution_0.csv");
-	strcpy(best_files[7], "../z_results/NoNiche/Mutate/Swap/Simple/solution_1.csv");
-	strcpy(best_files[8], "../z_results/NoNiche/Mutate/Swap/Simple/solution_2.csv");
-	
-	for(uint i = 0; i < 9; i++) {
-		Robot sol = ReadRobot(best_files[i]);
-		float x = (i % 3) * 5.0f;
-		float z = (i/3) * 5.0f;
-		sol.translate(glm::vec3(x, 0.0f, -z));
-		zoo.append(sol);
-	}
-
-	zoo = Robot();
-
-	printf("Total Masses: %lu\n",zoo.getMasses().size());
-	printf("Total Springs: %lu\n",zoo.getSprings().size());
-
-	solution = zoo;
 	#endif
 
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
 	for(uint i = 0; i < POP_SIZE; i++) {
-		Robot solution = Robot();
+		ROBOT_TYPE solution = ROBOT_TYPE();
 		solution.Randomize();
 		solutions.push_back(solution);
 	}
 	#endif
 
 	#ifdef BOUNCE
-	for(Robot& R : solutions) {
+	for(ROBOT_TYPE& R : solutions) {
 		R.translate(glm::vec3(0.0f,7.0f,0.0f));
 	}
 	#endif
 
 	#ifdef WRITE_VIDEO
-	for(Robot& R : solutions) {
+	for(ROBOT_TYPE& R : solutions) {
 		Render(R);
 	}
 	#endif
@@ -166,8 +134,8 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-std::vector<Robot> Solve() {
-	Optimizer<Robot> O;
+std::vector<ROBOT_TYPE> Solve() {
+	Optimizer<ROBOT_TYPE> O;
 	sim.setMaxTime(MAX_TIME);
 	
 	O.niche_count = NICHE_COUNT;
@@ -187,7 +155,7 @@ std::vector<Robot> Solve() {
 	
     for(unsigned N = 0; N < REPEATS; N++) {
         printf("Started Run %i\n",N);
-		std::vector<Robot> solutions = O.Solve();
+		std::vector<ROBOT_TYPE> solutions = O.Solve();
 
 		printf("SOLUTIONS: %lu\n", solutions.size());
 
@@ -210,7 +178,7 @@ std::vector<Robot> Solve() {
 
 		for(uint i = 0; i < solutions.size(); i++) {
 			if(snprintf(io.out_sol_file,sizeof(io.out_sol_file),"%s/solution_%i_%i.csv",io.out_dir,N,i) < (int) sizeof(io.out_sol_file)){
-				std::string solutionCSV = util::SolutionToCSV(solutions[i]);
+				std::string solutionCSV = util::SolutionToCSV<ROBOT_TYPE>(solutions[i]);
 				util::WriteCSV(io.out_sol_file,solutionCSV);
 			} else {
 				printf("Something went terribly wrong");
@@ -223,8 +191,10 @@ std::vector<Robot> Solve() {
 	return O.getSolutions();
 }
 
-void Render(Robot& R) {
+void Render(ROBOT_TYPE& R) {
 	printf("RENDERING\n");
+
+	RobotModel<ROBOT_TYPE> model(R);
 
 	GLFWwindow* window = GLFWsetup(false);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
@@ -232,7 +202,7 @@ void Render(Robot& R) {
 	Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
 	// Camera camera(WIDTH, HEIGHT, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
 
-	R.Bind();
+	model.Bind();
 
 	shader.Unbind();
 	
@@ -262,7 +232,7 @@ void Render(Robot& R) {
 	else printf("Something Failed\n");
 	#endif
 
-	Plane p;
+	PlaneModel p;
 
 	float max_render_time = 15;
 	sim.setMaxTime(1 / FPS);
@@ -276,6 +246,7 @@ void Render(Robot& R) {
 		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
 		std::vector<Element> results = sim.Collect(trackers);
 		R.Update(results[0]);
+		model.Update(R);
 
 		printf("%f\n", sim.getTotalTime());
 
@@ -289,7 +260,7 @@ void Render(Robot& R) {
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		R.Draw(shader, camera);
+		model.Draw(shader, camera);
 
 		p.Draw(shader, camera);
 
@@ -326,7 +297,7 @@ void Render(Robot& R) {
 	glfwTerminate();
 }
 
-void Visualize(std::vector<Robot>& robots) {
+void Visualize(std::vector<ROBOT_TYPE>& robots) {
 	printf("VISUALIZING\n");
 
 	// R.printObjectPositions();
@@ -337,9 +308,10 @@ void Visualize(std::vector<Robot>& robots) {
 	Camera camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f, robots.size());
 	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
 
-	Robot R = robots[camera.tabIdx];
+	ROBOT_TYPE R = robots[camera.tabIdx];
+	RobotModel<ROBOT_TYPE> model(R);
 
-	R.Bind();
+	model.Bind();
 
 	shader.Unbind();
 	
@@ -355,7 +327,7 @@ void Visualize(std::vector<Robot>& robots) {
 	else printf("Something Failed\n");
 	#endif
 
-	Plane p;
+	PlaneModel p;
 
 	float prevTime = glfwGetTime();
 
@@ -373,9 +345,10 @@ void Visualize(std::vector<Robot>& robots) {
 	{
 		if(tabId != camera.tabIdx) {
 			tabId = camera.tabIdx;
-			R.Unbind();
+			model.Unbind();
 			R = robots[tabId];
-			R.Bind();
+			model.Update(R);
+			model.Bind();
 			sim.Reset();
 		}
 
@@ -387,6 +360,8 @@ void Visualize(std::vector<Robot>& robots) {
 		std::vector<Element> results = sim.Collect(trackers);
 
 		R.Update(results[0]);
+
+		model.Update(R);
 
 		while ((crntTime - prevTime) < 1 / FPS) {
 			crntTime = glfwGetTime();
@@ -405,7 +380,7 @@ void Visualize(std::vector<Robot>& robots) {
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		R.Draw(shader, camera);
+		model.Draw(shader, camera);
 
 		p.Draw(shader, camera);
 
@@ -446,37 +421,37 @@ void Visualize(std::vector<Robot>& robots) {
 void handle_commandline_args(const int& argc, char** argv) {
     for(int i = 0; i < argc; i++) {
         if(strcmp(argv[i], "-mutate") == 0) {
-			strats.mutator = Optimizer<Robot>::MUTATE;
+			strats.mutator = Optimizer<ROBOT_TYPE>::MUTATE;
 			if(i < argc) {
 				if(strcmp(argv[i+1], "full") == 0) {
-					strats.mutator = Optimizer<Robot>::RANDOMIZE;
+					strats.mutator = Optimizer<ROBOT_TYPE>::RANDOMIZE;
 				} else if(strcmp(argv[i+1], "vox") == 0) {
-					strats.mutator = Optimizer<Robot>::MUTATE;
+					strats.mutator = Optimizer<ROBOT_TYPE>::MUTATE;
 				}
 			}
         }
 
         if(strcmp(argv[i], "-cross") == 0) {
-			strats.crossover = Optimizer<Robot>::CROSS_SWAP;
+			strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
 
             if(strcmp(argv[i+1], "none") == 0) {
-				strats.crossover = Optimizer<Robot>::CROSS_NONE;
+				strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_NONE;
             } else if(strcmp(argv[i+1], "beam") == 0) {
-                strats.crossover = Optimizer<Robot>::CROSS_BEAM;
+                strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_BEAM;
             } else if(strcmp(argv[i+1], "swap") == 0) {
-                strats.crossover = Optimizer<Robot>::CROSS_SWAP;
+                strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
             } else if(strcmp(argv[i+1], "dc") == 0) {
-                strats.crossover = Optimizer<Robot>::CROSS_DC;
+                strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_DC;
             }
         }
 
         if(strcmp(argv[i], "-niche") == 0) {
             if(strcmp(argv[i+1], "none") == 0) {
-                strats.niche = Optimizer<Robot>::NICHE_NONE;
+                strats.niche = Optimizer<ROBOT_TYPE>::NICHE_NONE;
             } else if(strcmp(argv[i+1], "hfc") == 0) {
-                strats.niche = Optimizer<Robot>::NICHE_HFC;
+                strats.niche = Optimizer<ROBOT_TYPE>::NICHE_HFC;
             } else if(strcmp(argv[i+1], "malps") == 0) {
-                strats.niche = Optimizer<Robot>::NICHE_MALPS;
+                strats.niche = Optimizer<ROBOT_TYPE>::NICHE_MALPS;
             }
         }
 		
@@ -490,11 +465,11 @@ void handle_commandline_args(const int& argc, char** argv) {
 
 		if(strcmp(argv[i], "-encode") == 0) {
             if(strcmp(argv[i+1], "rad") == 0) {
-				strats.encoding = Robot::ENCODE_RADIUS;
-				Robot::repr = Robot::ENCODE_RADIUS;
+				strats.encoding = ROBOT_TYPE::ENCODE_RADIUS;
+				ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_RADIUS;
 			} else if(strcmp(argv[i+1], "direct") == 0) {
-				strats.encoding = Robot::ENCODE_DIRECT;
-				Robot::repr = Robot::ENCODE_DIRECT;
+				strats.encoding = ROBOT_TYPE::ENCODE_DIRECT;
+				ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_DIRECT;
 			}
         }
     }
@@ -507,13 +482,13 @@ void handle_file_io() {
 
     switch(strats.niche)
     {
-    case Optimizer<Robot>::NICHE_NONE:
+    case Optimizer<ROBOT_TYPE>::NICHE_NONE:
         strcat(out_dir,"/NoNiche");
         break;
-    case Optimizer<Robot>::NICHE_HFC:
+    case Optimizer<ROBOT_TYPE>::NICHE_HFC:
         strcat(out_dir,"/HFC");
         break;
-    case Optimizer<Robot>::NICHE_MALPS:
+    case Optimizer<ROBOT_TYPE>::NICHE_MALPS:
         strcat(out_dir,"/MALPS");
         break;
     default:
@@ -524,10 +499,10 @@ void handle_file_io() {
 
     switch(strats.mutator)
     {
-    case Optimizer<Robot>::RANDOMIZE:
+    case Optimizer<ROBOT_TYPE>::RANDOMIZE:
         strcat(out_dir,"/Random");
         break;
-    case Optimizer<Robot>::MUTATE:
+    case Optimizer<ROBOT_TYPE>::MUTATE:
         strcat(out_dir,"/Mutate");
         break;
     default:
@@ -538,16 +513,16 @@ void handle_file_io() {
 
     switch(strats.crossover)
     {
-    case Optimizer<Robot>::CROSS_NONE:
+    case Optimizer<ROBOT_TYPE>::CROSS_NONE:
         strcat(out_dir,"/Nonparallel");
         break;
-    case Optimizer<Robot>::CROSS_BEAM:
+    case Optimizer<ROBOT_TYPE>::CROSS_BEAM:
         strcat(out_dir,"/Parallel");
         break;
-    case Optimizer<Robot>::CROSS_SWAP:
+    case Optimizer<ROBOT_TYPE>::CROSS_SWAP:
         strcat(out_dir,"/Swap");
         break;
-    case Optimizer<Robot>::CROSS_DC:
+    case Optimizer<ROBOT_TYPE>::CROSS_DC:
         strcat(out_dir,"/DC");
         break;
     }
@@ -556,10 +531,10 @@ void handle_file_io() {
 
     switch(strats.encoding)
     {
-    case Robot::ENCODE_DIRECT:
+    case ROBOT_TYPE::ENCODE_DIRECT:
         strcat(out_dir,"/Simple");
         break;
-    case Robot::ENCODE_RADIUS:
+    case ROBOT_TYPE::ENCODE_RADIUS:
 	default:
         strcat(out_dir,"/Radius");
         break;

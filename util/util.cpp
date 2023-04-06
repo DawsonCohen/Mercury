@@ -6,7 +6,7 @@
 
 namespace util {
     
-Robot ReadRobot(const char* filename) {
+VoxelRobot ReadVoxelRobot(const char* filename) {
     std::ifstream file(filename);
     std::string line;
     
@@ -75,14 +75,9 @@ Robot ReadRobot(const char* filename) {
         voxels.push_back(v);
     }
     
-    Robot R(sizeX, sizeY, sizeZ, resolution, voxels);
+    VoxelRobot R(sizeX, sizeY, sizeZ, resolution, voxels);
 
     return R;
-}
-
-std::string SolutionToCSV(const Robot& h) {
-    std::string s = h.DirectEncode();
-    return s;
 }
 
 std::string FitnessHistoryToCSV(std::vector<std::tuple<ulong,float>>& h) {

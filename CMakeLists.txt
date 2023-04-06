@@ -34,8 +34,7 @@ set( PHYS
 	evolvables/SoftBody.cpp
 	evolvables/VoxelRobot.cpp
 
-	models/plane.cpp
-	models/robot.cpp
+	models/plane_model.cpp
 
 	util/util.cpp
 )
@@ -43,9 +42,9 @@ set( PHYS
 add_definitions(-Wall -Wextra -O3 -pg)
 
 ## MAIN OPTIONS ##
-
-add_definitions("-DOPTIMIZE -DVISUALIZE")
-# add_definitions("-DVISUALIZE")
+# add_definitions("-DOPTIMIZE")
+# add_definitions("-DOPTIMIZE -DVISUALIZE")
+add_definitions("-DVISUALIZE")
 
 # add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
 # add_definitions("-DVERIFY -DVISUALIZE")

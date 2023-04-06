@@ -5,7 +5,7 @@
 #include "EBO.h"
 #include "Camera.h"
 
-class Plane {
+class PlaneModel {
 	std::vector<Vertex> mVertices;
 	std::vector<GLuint> mIndices;
 
@@ -18,7 +18,7 @@ class Plane {
 
 	public:
 		// Initializes the RigidBody
-		Plane(float scale=100, glm::vec3 objectPos = glm::vec3(0.0f));
+		PlaneModel(float scale=100, glm::vec3 objectPos = glm::vec3(0.0f));
 		void rotate(float deg, glm::vec3 axis);
 		void translate(glm::vec3 translation);
 

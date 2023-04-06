@@ -1,6 +1,6 @@
-#include "plane.h"
+#include "plane_model.h"
 
-Plane::Plane(float scale, glm::vec3 objectPos) : scale(scale)
+PlaneModel::PlaneModel(float scale, glm::vec3 objectPos) : scale(scale)
 {
 	Vertex verts[] =
     {
@@ -19,22 +19,22 @@ Plane::Plane(float scale, glm::vec3 objectPos) : scale(scale)
 		0,4,1
 	};
 
-	Plane::mVertices = std::vector<Vertex>(verts, verts + sizeof(verts) / sizeof(Vertex));
-	Plane::mIndices = std::vector<GLuint>(ind, ind + sizeof(ind) / sizeof(GLuint));
+	PlaneModel::mVertices = std::vector<Vertex>(verts, verts + sizeof(verts) / sizeof(Vertex));
+	PlaneModel::mIndices = std::vector<GLuint>(ind, ind + sizeof(ind) / sizeof(GLuint));
 
-    Plane::mObjectPos = objectPos;
+    PlaneModel::mObjectPos = objectPos;
 
-	Plane::mObjectModel = scale*glm::mat4(1.0f);
-	// Plane::projection = 
+	PlaneModel::mObjectModel = scale*glm::mat4(1.0f);
+	// PlaneModel::projection = 
 	// glm::mat4(glm::vec3(),glm::vec3(),glm::vec3(),glm::vec3());
-	mObjectModel = glm::translate(Plane::mObjectModel, Plane::mObjectPos);
+	mObjectModel = glm::translate(PlaneModel::mObjectModel, PlaneModel::mObjectPos);
 	
 	VAO.GenerateID();
 	VAO.Bind();
 	// Generates Vertex Buffer Object and links it to mVertices
-	VBO VBO(Plane::mVertices);
+	VBO VBO(PlaneModel::mVertices);
 	// Generates Element Buffer Object and links it to mIndices
-	EBO EBO(Plane::mIndices);
+	EBO EBO(PlaneModel::mIndices);
 	// Links VBO attributes such as coordinates and colors to VAO
 	VAO.LinkAttrib(VBO, 0, 3, GL_FLOAT, sizeof(Vertex), (void*)0);
 	VAO.LinkAttrib(VBO, 1, 3, GL_FLOAT, sizeof(Vertex), (void*)(3 * sizeof(float)));
@@ -44,15 +44,15 @@ Plane::Plane(float scale, glm::vec3 objectPos) : scale(scale)
 	EBO.Unbind();
 }
 
-void Plane::rotate(float deg, glm::vec3 axis) {
+void PlaneModel::rotate(float deg, glm::vec3 axis) {
     mObjectModel = glm::rotate(mObjectModel, glm::radians(deg), axis);
 }
 
-void Plane::translate(glm::vec3 translation) {
+void PlaneModel::translate(glm::vec3 translation) {
     mObjectModel = glm::translate(mObjectModel, translation);
 }
 
-// void Plane::Draw(Shader& shader, Camera& camera)
+// void PlaneModel::Draw(Shader& shader, Camera& camera)
 // {
 // 	// Bind shader to be able to access uniforms
 // 	shader.Bind();
@@ -66,7 +66,7 @@ void Plane::translate(glm::vec3 translation) {
 // 	glDrawElements(GL_TRIANGLES, mIndices.size(), GL_UNSIGNED_INT, 0);
 // }
 
-void Plane::Draw(Shader& shader, Camera& camera)
+void PlaneModel::Draw(Shader& shader, Camera& camera)
 {
 	// Bind shader to be able to access uniforms
 	shader.Bind();
