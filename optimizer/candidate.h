@@ -6,9 +6,11 @@
 
 #define MIN_FITNESS (float) 0
 
+template<typename T>
 struct CandidatePair;
 
 class Candidate {
+template<typename U>
 friend class Evaluator;
 
 protected:
@@ -42,15 +44,19 @@ public:
     void setFitness(float fit) { mFitness = fit; }
 
 
-    void Randomize();
+    // void Randomize();
     static void Random();
     void Mutate();
-    static CandidatePair Crossover(const CandidatePair& parents);
+    static CandidatePair<Candidate> Crossover(const CandidatePair<Candidate>& parents);
+
+    static std::vector<float> findDiversity(std::vector<Candidate> pop);
+    static float Distance(const CandidatePair<Candidate>& parents);
 
     static void calcFitness(Candidate&);
-    static float Distance(const CandidatePair& candidates);
 
-    static std::vector<float> findDiversity(std::vector<Candidate> population);
+    virtual void Randomize() {};
+    virtual void Reset() {};
+    virtual void Clear() {};
     
     Candidate& operator=(Candidate src) {
         swap(*this, src);
@@ -79,9 +85,10 @@ public:
     }
 };
 
+template<typename T>
 struct CandidatePair {
-    Candidate first;
-    Candidate second;
+    T first;
+    T second;
 };
 
 #endif

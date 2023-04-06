@@ -1,3 +1,6 @@
+#ifndef __Optimizer_Impl_H__
+#define __Optimizer_Impl_H__
+
 #include "optimizer.h"
 // #include "cuda_runtime.h"
 // #include "device_launch_parameters.h"
@@ -14,10 +17,8 @@
 #include <utility>
 //#include "util.h"
 
-#define max(a,b) a > b ? a : b
-#define min(a,b) a < b ? a : b
-
-Optimizer::Optimizer() {
+template<typename T>
+Optimizer<T>::Optimizer() {
     seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
     gen = std::default_random_engine(seed);
@@ -25,33 +26,37 @@ Optimizer::Optimizer() {
     gamma = std::gamma_distribution<>(1,5);
 }
 
-Optimizer::~Optimizer() {
+template<typename T>
+Optimizer<T>::~Optimizer() {
     
 }
 
-std::vector<float> updateDiversity(std::vector<Robot> pop) {
-    return Robot::findDiversity(pop);
+template<typename T>
+std::vector<float> updateDiversity(std::vector<T> pop) {
+    return T::findDiversity(pop);
 }
 
-void Optimizer::RandomizePopulation(std::vector<Robot>& population) {
+template<typename T>
+void Optimizer<T>::RandomizePopulation(std::vector<T>& population) {
     printf("RANDOMIZING\n");
     for(uint i = 0; i < population.size(); i++) {
         population[i].Randomize();
     }
 
-    std::vector<Robot> evalBuf(population.size());
+    std::vector<T> evalBuf(population.size());
     for(uint i = 0; i < population.size(); i++)
         evalBuf[i] = population[i];
     
-    Evaluator::BatchEvaluate(evalBuf);
+    Evaluator<T>::BatchEvaluate(evalBuf);
 
     for(uint i = 0; i < population.size(); i++) {
         population[i] = evalBuf[i];
     }
 }
 
-Robot Optimizer::RandomizeSolution(Robot& working_sol) {
-    Robot new_sol = working_sol;
+template<typename T>
+T Optimizer<T>::RandomizeSolution(T& working_sol) {
+    T new_sol = working_sol;
 
     new_sol.Randomize();
     new_sol.mAge = 1;
@@ -59,18 +64,20 @@ Robot Optimizer::RandomizeSolution(Robot& working_sol) {
     return new_sol;
 }
 
-Robot Optimizer::MutateSolution(Robot& working_sol) {
-    Robot new_sol = working_sol;
+template<typename T>
+T Optimizer<T>::MutateSolution(T& working_sol) {
+    T new_sol = working_sol;
     new_sol.Mutate();
     new_sol.mAge += 1;
 
     return new_sol;
 }
 
-void Optimizer::MutateStep(subpopulation& subpop) {
+template<typename T>
+void Optimizer<T>::MutateStep(subpopulation<T>& subpop) {
     // TODO: Don't include non-mutated iterations
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        Robot new_sol;
+        T new_sol;
         switch(mutator){
             case RANDOMIZE:
                 new_sol = RandomizeSolution(*i);
@@ -84,20 +91,19 @@ void Optimizer::MutateStep(subpopulation& subpop) {
             }
         }
         i->IncrementAge();
-        AsexualRobotFamily fam{i.base(), new_sol};
+        AsexualFamily<T> fam{i.base(), new_sol};
         subpop.mutationFamilyBuffer.push_back(fam);
     }
 }
 
-
-
-Robot& SelectRoulette(subpopulation& subpop) {
+template<typename T>
+T& SelectRoulette(subpopulation<T>& subpop) {
     std::vector<float> fitness(subpop.size());
     float tot_fitness = 0;
-    for(std::vector<Robot>::iterator i = subpop.begin(); i < subpop.end(); i++) {
+    for(auto i = subpop.begin(); i < subpop.end(); i++) {
         tot_fitness += 1/(-i->fitness());
     }
-    for(std::vector<Robot>::iterator i = subpop.begin(); i < subpop.end(); i++) {
+    for(auto i = subpop.begin(); i < subpop.end(); i++) {
         fitness[i-subpop.begin()] = (1/(-i->fitness())) / tot_fitness;
     }
     
@@ -114,14 +120,15 @@ Robot& SelectRoulette(subpopulation& subpop) {
     return *(subpop.begin()+i);
 }
 
-void Optimizer::CrossoverStep(subpopulation& subpop) {
+template<typename T>
+void Optimizer<T>::CrossoverStep(subpopulation<T>& subpop) {
     uint num_replaced = subpop.size() * crossover_rate;
 
     if(crossover == CROSS_NONE) return;
 
-    RobotPair children;
+    CandidatePair<T> children;
     for(uint i = 0; i < num_replaced; i++) {
-        SolutionPair parents;
+        SolutionPair<T> parents;
 
         parents.first   = &SelectRoulette(subpop);
         parents.second  = &SelectRoulette(subpop);
@@ -129,45 +136,48 @@ void Optimizer::CrossoverStep(subpopulation& subpop) {
         parents.first->IncrementAge();
         parents.second->IncrementAge();
 
-        RobotPair p = {*parents.first, *parents.second};
+        CandidatePair<T> p = {*parents.first, *parents.second};
 
-        children = Robot::Crossover(p);
+        children = T::Crossover(p);
         
         subpop.crossoverFamilyBuffer.push_back({parents, children});
     }
 }
 
-void Optimizer::MutateCollect(std::vector<subpopulation>& subpop_list) {
-    std::vector<Robot> evalBuf;
+template<typename T>
+void Optimizer<T>::MutateCollect(std::vector<subpopulation<T>>& subpop_list) {
+    std::vector<T> evalBuf;
 
-    for(subpopulation& subpop : subpop_list) {
-        for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
+    for(subpopulation<T>& subpop : subpop_list) {
+        for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
             evalBuf.push_back(fam.child);
         }
     }
     
-    Evaluator::BatchEvaluate(evalBuf);
+    Evaluator<T>::BatchEvaluate(evalBuf);
 
     uint count = 0;
-    for(subpopulation& subpop : subpop_list) {
-        for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
+    for(subpopulation<T>& subpop : subpop_list) {
+        for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
             fam.child = evalBuf[count++];
         }
-        Evaluator::pareto_sort(subpop.begin(),subpop.end());
+        Evaluator<T>::pareto_sort(subpop.begin(),subpop.end());
     }
 
-    for(subpopulation& subpop : subpop_list) {
+    for(subpopulation<T>& subpop : subpop_list) {
         int max_elite = elitism * subpop.size();
 
-        for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
+        for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
             uint r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-            Robot* random_robot  = &subpop[r_idx];
-            // while(random_robot->paretoLayer() == 0) {
+            T* random_solution  = &subpop[r_idx];
+
+            // while(random_solution->paretoLayer() == 0) {
             //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-            //     random_robot  = &subpop[r_idx];
+            //     random_solution  = &subpop[r_idx];
             // }
-            assert(r_idx != 0);
-            if(*random_robot <= fam.child) {
+            
+            // assert(r_idx != 0);
+            if(*random_solution <= fam.child) {
                 swap(*(fam.parent), fam.child);
             }
         }
@@ -175,44 +185,45 @@ void Optimizer::MutateCollect(std::vector<subpopulation>& subpop_list) {
     }
 }
 
-void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
-    std::vector<Robot> evalBuf;
+template<typename T>
+void Optimizer<T>::CrossoverCollect(std::vector<subpopulation<T>>& subpop_list) {
+    std::vector<T> evalBuf;
 
-    for(subpopulation& subpop : subpop_list) {
-        for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
+    for(subpopulation<T>& subpop : subpop_list) {
+        for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
             evalBuf.push_back(fam.children.first);
             evalBuf.push_back(fam.children.second);
         }
     }
 
-    Evaluator::BatchEvaluate(evalBuf);
+    Evaluator<T>::BatchEvaluate(evalBuf);
 
     uint count = 0;
-    for(subpopulation& subpop : subpop_list) {
-        for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
+    for(subpopulation<T>& subpop : subpop_list) {
+        for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
             fam.children.first = evalBuf[count++];
             fam.children.second = evalBuf[count++];
         }
-        Evaluator::pareto_sort(subpop.begin(),subpop.end());
+        Evaluator<T>::pareto_sort(subpop.begin(),subpop.end());
     }
 
-    for(subpopulation& subpop : subpop_list) {
+    for(subpopulation<T>& subpop : subpop_list) {
         int max_elite = elitism * subpop.size();
-        for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
+        for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
             switch(crossover) {
                 case CROSS_DC: 
                 {
                     float D00, D11, D01, D10;
-                    RobotPair P0 = {fam.children.first, *fam.parents.first},
-                                  P1 = {fam.children.second, *fam.parents.second},
-                                  P2 = {fam.children.first,  *fam.parents.second},
-                                  P3 = {fam.children.second, *fam.parents.first };
+                    CandidatePair<T> P0 = {fam.children.first, *fam.parents.first},
+                                     P1 = {fam.children.second, *fam.parents.second},
+                                     P2 = {fam.children.first,  *fam.parents.second},
+                                     P3 = {fam.children.second, *fam.parents.first };
 
 
-                    D00 = Robot::Distance(P0);
-                    D11 = Robot::Distance(P1);
-                    D01 = Robot::Distance(P2);
-                    D10 = Robot::Distance(P3);
+                    D00 = T::Distance(P0);
+                    D11 = T::Distance(P1);
+                    D01 = T::Distance(P2);
+                    D10 = T::Distance(P3);
 
                     if(D00 + D11 < D01 + D10) {
                         if(fam.children.first >= *fam.parents.first) swap(fam.children.first,*fam.parents.first);
@@ -226,7 +237,7 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
                 case CROSS_SWAP: 
                 default:
                 {
-                    SolutionPair random;
+                    SolutionPair<T> random;
                     uint r1 = max_elite + (rand() % (subpop.size()-max_elite));
                     uint r2 = max_elite + (rand() % (subpop.size()-max_elite));
                     
@@ -245,9 +256,10 @@ void Optimizer::CrossoverCollect(std::vector<subpopulation>& subpop_list) {
     }
 }
 
-void Optimizer::AlpsMutateStep(subpopulation& subpop) {
+template<typename T>
+void Optimizer<T>::AlpsMutateStep(subpopulation<T>& subpop) {
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        Robot new_sol;
+        T new_sol;
         switch(mutator){
             case RANDOMIZE:
                 new_sol = RandomizeSolution(*i);
@@ -260,13 +272,13 @@ void Optimizer::AlpsMutateStep(subpopulation& subpop) {
                 new_sol = MutateSolution(*i);
             }
         }
-        AsexualRobotFamily fam{i.base(), new_sol};
+        AsexualFamily<T> fam{i.base(), new_sol};
         subpop.mutationFamilyBuffer.push_back(fam);
     }
 }
 
-
-std::vector<Robot> Optimizer::ALPSSolve() {    
+template<typename T>
+std::vector<T> Optimizer<T>::ALPSSolve() {    
     thread_count = 7;
     niche_count = thread_count;
     subpop_size = pop_size/niche_count;
@@ -274,27 +286,27 @@ std::vector<Robot> Optimizer::ALPSSolve() {
     float export_thresh[] = {2,3,5,8,13,21,34,10000};
     
     std::vector<std::thread*> threads(thread_count);
-    subpop_list = std::vector<subpopulation>(niche_count);
-    population = std::vector<Robot>(pop_size);
+    subpop_list = std::vector<subpopulation<T>>(niche_count);
+    population = std::vector<T>(pop_size);
 
     if(subpop_size == 0) {
         niche_count = 1;
         subpop_size = pop_size;
-        std::vector<Robot>::iterator begin = population.begin();
-        std::vector<Robot>::iterator end = population.end();
-        subpop_list[0] = subpopulation(begin, end);
+        auto begin = population.begin();
+        auto end = population.end();
+        subpop_list[0] = subpopulation<T>(begin, end);
         subpop_list[0].export_threshold = 10000;
     } else {
         for(uint i = 0; i < niche_count; i++) {
-            std::vector<Robot>::iterator begin = population.begin() + i*subpop_size;
-            std::vector<Robot>::iterator end = begin + subpop_size;
-            subpop_list[i] = subpopulation(begin, end);
+            auto begin = population.begin() + i*subpop_size;
+            auto end = begin + subpop_size;
+            subpop_list[i] = subpopulation<T>(begin, end);
             subpop_list[i].export_threshold = export_thresh[i];
         }
     }
 
     RandomizePopulation(population);
-    std::sort(population.begin(),population.end(),std::greater<Robot>());
+    std::sort(population.begin(),population.end(),std::greater<T>());
     printf("Initial Best: %f\n",population[0].fitness());
 
     ulong generation = 1;
@@ -302,9 +314,9 @@ std::vector<Robot> Optimizer::ALPSSolve() {
     for(size_t i = 0; i < population.size(); i++)
         generation_history[i] = population[i].fitness();
     std::vector<float> diversity = updateDiversity(population);
-    population_history.push_back({Evaluator::eval_count, generation_history, diversity});
+    population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
 
-    while(Evaluator::eval_count < max_evals) {
+    while(Evaluator<T>::eval_count < max_evals) {
         printf("------MUTATE-----\n");
 
         for(size_t i = 0; i < subpop_list.size(); i++) {
@@ -313,8 +325,8 @@ std::vector<Robot> Optimizer::ALPSSolve() {
 
         MutateCollect(subpop_list);
 
-        for(subpopulation& subpop : subpop_list) {
-            Evaluator::pareto_sort(subpop.begin(),subpop.end());
+        for(subpopulation<T>& subpop : subpop_list) {
+            Evaluator<T>::pareto_sort(subpop.begin(),subpop.end());
         }
 
         printf("----CROSSOVER----\n");
@@ -329,15 +341,15 @@ std::vector<Robot> Optimizer::ALPSSolve() {
             delete threads[i];
         }
 
-        for(subpopulation& subpop : subpop_list) {
-            Evaluator::pareto_sort(subpop.begin(),subpop.end());
+        for(subpopulation<T>& subpop : subpop_list) {
+            Evaluator<T>::pareto_sort(subpop.begin(),subpop.end());
         }
 
-        Evaluator::pareto_sort(population.begin(),population.end());
+        Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         diversity = updateDiversity(population);
 
-        Robot archived_solution;
+        T archived_solution;
         archived_solution = population[0];
         uint i = 1;
         while (population[i] <= population[i+1] && i < population.size())
@@ -347,26 +359,26 @@ std::vector<Robot> Optimizer::ALPSSolve() {
             i++;
         }
 
-        solution_history.push_back({Evaluator::eval_count, archived_solution});
-        fitness_history.push_back({Evaluator::eval_count, archived_solution.fitness()});
-        diversity_history.push_back({Evaluator::eval_count, diversity[0]});
+        solution_history.push_back({Evaluator<T>::eval_count, archived_solution});
+        fitness_history.push_back({Evaluator<T>::eval_count, archived_solution.fitness()});
+        diversity_history.push_back({Evaluator<T>::eval_count, diversity[0]});
 
         //generation_digits = floor(log10(generation));
         if(generation % print_skip == 0) {
         // if(generation/pow(hist_skip_factor,generation_digits) == 1) {
             for(size_t i = 0; i < population.size(); i++)
                 generation_history[i] = population[i].fitness();
-            population_history.push_back({Evaluator::eval_count, generation_history, diversity});
+            population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
         }
 
         if(generation % print_skip == 0) {
             printf("Generation: %lu, Evlauation: %lu\t%s\n",
                     generation,
-                    Evaluator::eval_count,
+                    Evaluator<T>::eval_count,
                     population[0].fitnessReadout().data());
             printf("----PARETO SOLUTIONS----\n");
             uint i = 0;
-            Robot sol;
+            T sol;
             while(i < pop_size) {
                 if(population[i] < population[0]) break;
                 sol = population[i];
@@ -379,7 +391,7 @@ std::vector<Robot> Optimizer::ALPSSolve() {
         }
     }
 
-    Evaluator::pareto_sort(population.begin(),population.end());
+    Evaluator<T>::pareto_sort(population.begin(),population.end());
 
     solutions.clear();
     solutions.push_back(population[0]);
@@ -393,32 +405,32 @@ std::vector<Robot> Optimizer::ALPSSolve() {
     return solutions;
 }
 
-
-std::vector<Robot> Optimizer::NoNicheSolve() {
+template<typename T>
+std::vector<T> Optimizer<T>::NoNicheSolve() {
     niche_count = thread_count;
     subpop_size = pop_size/niche_count;
     
     std::vector<std::thread*> threads(niche_count);
-    std::vector<Robot> population(pop_size);
-    subpop_list = std::vector<subpopulation>(niche_count);
-    subpopulation full_pop(population.begin(), population.end());
+    std::vector<T> population(pop_size);
+    subpop_list = std::vector<subpopulation<T>>(niche_count);
+    subpopulation<T> full_pop(population.begin(), population.end());
 
     if(subpop_size == 0) {
         niche_count = 1;
         subpop_size = pop_size;
-        std::vector<Robot>::iterator begin = population.begin();
-        std::vector<Robot>::iterator end = population.end();
-        subpop_list[0] = subpopulation(begin, end);
+        auto begin = population.begin();
+        auto end = population.end();
+        subpop_list[0] = subpopulation<T>(begin, end);
     } else {
         for(uint i = 0; i < niche_count; i++) {
-            std::vector<Robot>::iterator begin = population.begin() + i*subpop_size;
-            std::vector<Robot>::iterator end = begin + subpop_size;
-            subpop_list[i] = subpopulation(begin, end);
+            auto begin = population.begin() + i*subpop_size;
+            auto end = begin + subpop_size;
+            subpop_list[i] = subpopulation<T>(begin, end);
         }
     }
 
     RandomizePopulation(population);
-    Evaluator::pareto_sort(population.begin(),population.end());
+    Evaluator<T>::pareto_sort(population.begin(),population.end());
     printf("Initial Best: %f\n",population[0].fitness());
 
     ulong generation = 1;
@@ -426,9 +438,9 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
     for(size_t i = 0; i < population.size(); i++)
         generation_history[i] = population[i].fitness();
     std::vector<float> diversity = updateDiversity(population);
-    population_history.push_back({Evaluator::eval_count, generation_history, diversity});
+    population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
 
-    while(Evaluator::eval_count < max_evals) {
+    while(Evaluator<T>::eval_count < max_evals) {
         printf("------MUTATE-----\n");
 
         for(size_t i = 0; i < subpop_list.size(); i++) {
@@ -437,7 +449,7 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
 
         MutateCollect(subpop_list);
 
-        Evaluator::pareto_sort(population.begin(),population.end());
+        Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         printf("----CROSSOVER----\n");
         CrossoverStep(full_pop);
@@ -446,16 +458,16 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
             population[i].IncrementAge();
         }
 
-        std::vector<subpopulation> temp_pop_list;
+        std::vector<subpopulation<T>> temp_pop_list;
         temp_pop_list.push_back(full_pop);
         CrossoverCollect(temp_pop_list);
         full_pop.crossoverFamilyBuffer.clear();
         
-        Evaluator::pareto_sort(population.begin(),population.end());
+        Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         diversity = updateDiversity(population);
 
-        Robot archived_solution;
+        T archived_solution;
         archived_solution = population[0];
         uint i = 1;
         while (population[i] <= population[i+1] && i < population.size())
@@ -465,26 +477,26 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
             i++;
         }
 
-        solution_history.push_back({Evaluator::eval_count, archived_solution});
-        fitness_history.push_back({Evaluator::eval_count, archived_solution.fitness()});
-        diversity_history.push_back({Evaluator::eval_count, diversity[0]});
+        solution_history.push_back({Evaluator<T>::eval_count, archived_solution});
+        fitness_history.push_back({Evaluator<T>::eval_count, archived_solution.fitness()});
+        diversity_history.push_back({Evaluator<T>::eval_count, diversity[0]});
 
         //generation_digits = floor(log10(generation));
         if(generation % print_skip == 0) {
         // if(generation/pow(hist_skip_factor,generation_digits) == 1) {
             for(size_t i = 0; i < population.size(); i++)
                 generation_history[i] = population[i].fitness();
-            population_history.push_back({Evaluator::eval_count, generation_history, diversity});
+            population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
         }
 
         if(generation % print_skip == 0) {
             printf("Generation: %lu, Evlauation: %lu\t%s\n",
                 generation,
-                Evaluator::eval_count,
+                Evaluator<T>::eval_count,
                 population[0].fitnessReadout().data());
             printf("----PARETO SOLUTIONS----\n");
             uint i = 0;
-            Robot sol;
+            T sol;
             while(i < pop_size) {
                 if(population[i].paretoLayer() > 0) break;
                 sol = population[i];
@@ -498,7 +510,7 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
         generation++;
     }
 
-    Evaluator::pareto_sort(population.begin(),population.end());
+    Evaluator<T>::pareto_sort(population.begin(),population.end());
 
     solutions.clear();
     solutions.push_back(population[0]);
@@ -511,7 +523,8 @@ std::vector<Robot> Optimizer::NoNicheSolve() {
     return solutions;
 }
 
-std::vector<Robot> Optimizer::Solve() {
+template<typename T>
+std::vector<T> Optimizer<T>::Solve() {
     switch(niche){
         case NICHE_NONE:
             return NoNicheSolve();
@@ -521,3 +534,5 @@ std::vector<Robot> Optimizer::Solve() {
             break;
     }
 }
+
+#endif

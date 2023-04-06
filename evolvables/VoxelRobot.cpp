@@ -405,8 +405,8 @@ void VoxelRobot::Randomize() {
     }
 }
 
-VoxelRobotPair VoxelRobot::TwoPointChildren(const VoxelRobotPair& parents) {
-    VoxelRobotPair children = {parents.first, parents.second};
+CandidatePair<VoxelRobot> VoxelRobot::TwoPointChildren(const CandidatePair<VoxelRobot>& parents) {
+    CandidatePair<VoxelRobot> children = {parents.first, parents.second};
 
     uint range = children.first.voxels.size();
     float uni = uniform(gen);
@@ -424,8 +424,8 @@ VoxelRobotPair VoxelRobot::TwoPointChildren(const VoxelRobotPair& parents) {
     return children;
 }
 
-VoxelRobotPair VoxelRobot::RadiusChildren(const VoxelRobotPair& parents) {
-    VoxelRobotPair children = {parents.first, parents.second};
+CandidatePair<VoxelRobot> VoxelRobot::RadiusChildren(const CandidatePair<VoxelRobot>& parents) {
+    CandidatePair<VoxelRobot> children = {parents.first, parents.second};
 
     uint num_swapped = rand() % children.first.circles.size();
 
@@ -444,8 +444,8 @@ VoxelRobotPair VoxelRobot::RadiusChildren(const VoxelRobotPair& parents) {
     return children;
 }
 
-VoxelRobotPair VoxelRobot::Crossover(const VoxelRobotPair& parents) {
-    VoxelRobotPair children;
+CandidatePair<VoxelRobot> VoxelRobot::Crossover(const CandidatePair<VoxelRobot>& parents) {
+    CandidatePair<VoxelRobot> children;
     switch(repr) {
         case ENCODE_DIRECT: 
             children = TwoPointChildren(parents);
@@ -538,7 +538,7 @@ void VoxelRobot::calcFitness(VoxelRobot& R) {
     }
 }
 
-float VoxelRobot::Distance(const VoxelRobotPair& robots) {
+float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
     float dist = 0;
     std::vector<Voxel> s1 = robots.first.voxels;
     std::vector<Voxel> s2 = robots.second.voxels;

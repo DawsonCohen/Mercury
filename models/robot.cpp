@@ -13,15 +13,15 @@ Robot::Robot(VoxelRobot& v) : VoxelRobot(v), Model() {
     updateMesh();
 };
 
-RobotPair Robot::Crossover(const RobotPair& parents) {
-    VoxelRobotPair voxelParents(parents.first, parents.second);
-    VoxelRobotPair voxelChildren = VoxelRobot::Crossover(voxelParents);
-    RobotPair results = {voxelChildren.first, voxelChildren.second};
+CandidatePair<Robot> Robot::Crossover(const CandidatePair<Robot>& parents) {
+    CandidatePair<VoxelRobot> voxelParents(parents.first, parents.second);
+    CandidatePair<VoxelRobot> voxelChildren = VoxelRobot::Crossover(voxelParents);
+    CandidatePair<Robot> results = {voxelChildren.first, voxelChildren.second};
     return results;
 }
 
-float Robot::Distance(const RobotPair& robots) {
-    VoxelRobotPair voxelRobots(robots.first, robots.second);
+float Robot::Distance(const CandidatePair<Robot>& robots) {
+    CandidatePair<VoxelRobot> voxelRobots(robots.first, robots.second);
     return VoxelRobot::Distance(voxelRobots);
 }
 

@@ -5,8 +5,6 @@
 #include "VoxelRobot.h"
 #include "Model.h"
 
-struct RobotPair;
-
 class Robot : public VoxelRobot, public Model {
 public:
     Robot(float x, float y, float z, float res, std::vector<Voxel> voxels) :
@@ -25,9 +23,9 @@ public:
 
     static std::vector<float> findDiversity(std::vector<Robot> pop);
 
-    static RobotPair Crossover(const RobotPair& parents);
+    static CandidatePair<Robot> Crossover(const CandidatePair<Robot>& parents);
 
-    static float Distance(const RobotPair& robots);
+    static float Distance(const CandidatePair<Robot>& robots);
 
     void rotate(float deg, glm::vec3 axis) {
         VoxelRobot::rotate(deg, axis);
@@ -89,11 +87,6 @@ public:
         VoxelRobot::Build();
         updateMesh();
     }
-};
-
-struct RobotPair {
-    Robot first;
-    Robot second;
 };
 
 #endif

@@ -1,28 +1,29 @@
 #ifndef __EVALUATOR_H__
 #define __EVALUATOR_H__
 
-#include "robot.h"
+#include "candidate.h"
 #include "Simulator.h"
 #include <vector>
 #include <algorithm>
 
+template<typename T>
 struct SolutionPair {
-    Robot* first;
-    Robot* second;
+    T* first;
+    T* second;
+};
+template<typename T>
+struct SexualFamily {
+    SolutionPair<T> parents;
+    CandidatePair<T> children;
+};
+template<typename T>
+struct AsexualFamily {
+    T* parent;
+    T child;
 };
 
-struct SexualRobotFamily {
-    SolutionPair parents;
-    RobotPair children;
-};
-
-struct AsexualRobotFamily {
-    Robot* parent;
-    Robot child;
-};
-
+template<typename T>
 class Evaluator {
-
 public:
     static ulong eval_count;
     static Simulator Sim;
@@ -30,10 +31,10 @@ public:
     static float evaluationTime;
 
     static void Initialize(uint pop_size, float base_time, float eval_time);
-    static void BatchEvaluate(std::vector<Robot>&);
-    static float Distance(const RobotPair& robots);
+    static void BatchEvaluate(std::vector<T>&);
+    static float Distance(const CandidatePair<T>& solutions);
 
-    static void pareto_sort(std::vector<Robot>::iterator begin, std::vector<Robot>::iterator end) {
+    static void pareto_sort(std::vector<T>::iterator begin, std::vector<T>::iterator end) {
         for(auto i = begin; i < end; i++) {
             i->mParetoLayer = 0;
         }
@@ -65,8 +66,10 @@ public:
             if(Delta == 0) break;
             run++;
         }
-        std::sort(begin,end,std::greater<Robot>());
+        std::sort(begin,end,std::greater<T>());
     }
 };
+
+#include "Evaluator_impl.h"
 
 #endif

@@ -10,23 +10,23 @@
 #include <map>
 #include <vector>
 #include "Evaluator.h"
-#include "robot.h"
 
+template<typename T>
 struct subpopulation {
     float export_threshold = 0;
-    std::vector<Robot>::iterator mBegin{};
-    std::vector<Robot>::iterator mEnd{};
+    std::vector<T>::iterator mBegin{};
+    std::vector<T>::iterator mEnd{};
     size_t mSize = 0;
     std::mutex a_mutex;
     std::mutex p_mutex;
-    std::queue<Robot> admissionBuffer;
-    std::vector<AsexualRobotFamily> mutationFamilyBuffer;
-    std::vector<SexualRobotFamily> crossoverFamilyBuffer;
+    std::queue<T> admissionBuffer;
+    std::vector<AsexualFamily<T>> mutationFamilyBuffer;
+    std::vector<SexualFamily<T>> crossoverFamilyBuffer;
 
     subpopulation(void) {
     }
 
-    subpopulation(const subpopulation& src): 
+    subpopulation(const subpopulation<T>& src): 
     export_threshold(src.export_threshold), mBegin(src.mBegin),
     mEnd(src.mEnd), mSize(src.mSize),
     admissionBuffer(src.admissionBuffer),
@@ -34,8 +34,8 @@ struct subpopulation {
     crossoverFamilyBuffer(src.crossoverFamilyBuffer)
     {}
 
-    subpopulation(std::vector<Robot>::iterator _begin,
-                    std::vector<Robot>::iterator _end,
+    subpopulation(std::vector<T>::iterator _begin,
+                    std::vector<T>::iterator _end,
                     int _et = 0) {
         export_threshold = _et;
 
@@ -44,17 +44,17 @@ struct subpopulation {
         mSize = (size_t) (_end-_begin);
     }
 
-    std::vector<Robot>::iterator begin() {
+    std::vector<T>::iterator begin() {
         return mBegin;
     }
 
-    std::vector<Robot>::iterator end() {
+    std::vector<T>::iterator end() {
         return mEnd;
     }
 
     size_t size() { return mSize; }
 
-    subpopulation &operator=(const subpopulation r) {
+    subpopulation &operator=(const subpopulation<T> r) {
       export_threshold=r.export_threshold;
       mBegin=r.mBegin;
       mEnd=r.mEnd;
@@ -62,11 +62,12 @@ struct subpopulation {
       return *this;
    }
 
-    Robot& operator[](size_t i) {
+    T& operator[](size_t i) {
         return *(mBegin+i);
     }
 };
 
+template<typename T>
 class Optimizer {
 public:
     enum MutationStrat {
@@ -132,56 +133,58 @@ private:
     ulong eval_count = 0;
     ulong subpop_size;
     
-    std::vector<Robot> population;
-    std::vector<subpopulation> subpop_list;
+    std::vector<T> population;
+    std::vector<subpopulation<T>> subpop_list;
 
-    std::vector<std::tuple<ulong,Robot>> solution_history;
+    std::vector<std::tuple<ulong,T>> solution_history;
     std::vector<std::tuple<ulong,float>> fitness_history;
     std::vector<std::tuple<ulong,float>> diversity_history;
     std::vector<std::tuple<ulong,std::vector<float>,std::vector<float>>> population_history;
-    std::vector<Robot> solutions;
+    std::vector<T> solutions;
     
-    void RandomizePopulation(std::vector<Robot>& population);
-    Robot RandomizeSolution(Robot&);
-    Robot MutateSolution(Robot&); // TODO Rename
-    void SimulatedAnnealingStep(Robot&);
-    // void MutateStep(std::vector<Robot>&);
-    void MutateStep(subpopulation& subpop);
-    void MutateCollect(std::vector<subpopulation>& subpop_list);
+    void RandomizePopulation(std::vector<T>& population);
+    T RandomizeSolution(T&);
+    T MutateSolution(T&); // TODO Rename
+    void SimulatedAnnealingStep(T&);
+    // void MutateStep(std::vector<T>&);
+    void MutateStep(subpopulation<T>& subpop);
+    void MutateCollect(std::vector<subpopulation<T>>& subpop_list);
     
-    void AlpsMutateStep(subpopulation& subpop);
-    void AlpsCollectStep(std::vector<subpopulation>& subpop_list);
+    void AlpsMutateStep(subpopulation<T>& subpop);
+    void AlpsCollectStep(std::vector<subpopulation<T>>& subpop_list);
 
-    void CrossoverStep(subpopulation&);
-    void CrossoverCollect(std::vector<subpopulation>& subpop_list);
+    void CrossoverStep(subpopulation<T>&);
+    void CrossoverCollect(std::vector<subpopulation<T>>& subpop_list);
     void CalibrateStep(void);
     void Calibrate(void);
-    void HFCStep(subpopulation&, uint);
-    void SteadyStateReplace(subpopulation& subpop, RobotPair& parents, RobotPair& children, size_t P1, size_t P2);
-    void SteadyStateMutate(Robot&);
-    void SteadyStateStep(subpopulation&);
-    void MALPSCrossover(std::vector<Robot>&, uint);
-    void MALPSStep(std::vector<Robot>&, uint);
+    void HFCStep(subpopulation<T>&, uint);
+    void SteadyStateReplace(subpopulation<T>& subpop, CandidatePair<T>& parents, CandidatePair<T>& children, size_t P1, size_t P2);
+    void SteadyStateMutate(T&);
+    void SteadyStateStep(subpopulation<T>&);
+    void MALPSCrossover(std::vector<T>&, uint);
+    void MALPSStep(std::vector<T>&, uint);
 
-    std::vector<Robot> NoNicheSolve();
-    std::vector<Robot> HFCSolve();
-    std::vector<Robot> ALPSSolve();
-    std::vector<Robot> MALPSSolve();
+    std::vector<T> NoNicheSolve();
+    std::vector<T> HFCSolve();
+    std::vector<T> ALPSSolve();
+    std::vector<T> MALPSSolve();
 
 public:
     void reset(void) {
-        Evaluator::eval_count = 0;
+        Evaluator<T>::eval_count = 0;
         solution_history.clear();
         fitness_history.clear();
         population_history.clear();
     }
-    std::vector<Robot> Solve();
+    std::vector<T> Solve();
     
-    std::vector<Robot>& getSolutions() {return solutions;}
+    std::vector<T>& getSolutions() {return solutions;}
     
-    std::vector<std::tuple<ulong, Robot>>& getSolutionHistory() {return solution_history;}
+    std::vector<std::tuple<ulong, T>>& getSolutionHistory() {return solution_history;}
     std::vector<std::tuple<ulong, float>>& getFitnessHistory() {return fitness_history;}
     std::vector<std::tuple<ulong,std::vector<float>,std::vector<float>>>& getPopulationHistory() {return population_history;}
 };
+
+#include "optimizer_impl.h"
 
 #endif

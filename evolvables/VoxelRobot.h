@@ -8,8 +8,6 @@
 
 #define MIN_FITNESS (float) 0
 
-struct VoxelRobotPair;
-
 struct BasisIdx {
     int x;
     int y;
@@ -74,7 +72,6 @@ struct Voxel {
 };
 
 class VoxelRobot : public SoftBody {
-friend class Evaluator;
 
 public:
 enum Encoding {
@@ -99,8 +96,8 @@ public:
 
     float Distance();
 
-    static VoxelRobotPair TwoPointChildren(const VoxelRobotPair& parents);
-    static VoxelRobotPair RadiusChildren(const VoxelRobotPair& parents);
+    static CandidatePair<VoxelRobot> TwoPointChildren(const CandidatePair<VoxelRobot>& parents);
+    static CandidatePair<VoxelRobot> RadiusChildren(const CandidatePair<VoxelRobot>& parents);
     void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, bool* visit_list, uint srcIdx = 0);
     void BuildFromCircles();
     void Build();
@@ -210,18 +207,18 @@ public:
     glm::vec3 COM() const { return mBaseCOM; }
     glm::vec3 skew() const { return mSkew; }
 
-    void Randomize();
     static void Random();
+    void Randomize();
     void Duplicate(const VoxelRobot&);
     
     void Mutate();
-    static VoxelRobotPair Crossover(const VoxelRobotPair& parents);
+    static CandidatePair<VoxelRobot> Crossover(const CandidatePair<VoxelRobot>& parents);
 
     static glm::vec3 calcMeanPos(VoxelRobot&);
     static glm::vec3 calcClosestPos(VoxelRobot&);
     static glm::vec3 calcSkew(VoxelRobot&);
     static void calcFitness(VoxelRobot&);
-    static float Distance(const VoxelRobotPair& robots);
+    static float Distance(const CandidatePair<VoxelRobot>& robots);
     static float calcLength(VoxelRobot&);
 
     std::string DirectEncode() const;
@@ -275,16 +272,6 @@ public:
     }
 
     static std::vector<float> findDiversity(std::vector<VoxelRobot> pop);
-};
-
-struct VoxelRobotPair {
-    VoxelRobot first;
-    VoxelRobot second;
-
-    VoxelRobotPair(const VoxelRobot _first, const VoxelRobot _second) : 
-        first(_first), second(_second) {}
-    
-    VoxelRobotPair() {}
 };
 
 #endif

@@ -54,9 +54,9 @@ struct IOLocations {
 };
 
 struct OptimizationStrats {
-    Optimizer::MutationStrat mutator = Optimizer::MUTATE;
-    Optimizer::CrossoverStrat crossover = Optimizer::CROSS_SWAP;
-    Optimizer::NichingStrat niche = Optimizer::NICHE_NONE;
+    Optimizer<Robot>::MutationStrat mutator = Optimizer<Robot>::MUTATE;
+    Optimizer<Robot>::CrossoverStrat crossover = Optimizer<Robot>::CROSS_SWAP;
+    Optimizer<Robot>::NichingStrat niche = Optimizer<Robot>::NICHE_NONE;
     Robot::Encoding encoding = Robot::ENCODE_RADIUS;
 };
 
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 	printf("Output directory: %s\n",io.out_dir);
 
 	std::vector<Robot> solutions;
-	Evaluator::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
+	Evaluator<Robot>::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
 	
 	#ifdef OPTIMIZE
 	solutions = Solve();
@@ -167,7 +167,7 @@ int main(int argc, char** argv)
 }
 
 std::vector<Robot> Solve() {
-	Optimizer O;
+	Optimizer<Robot> O;
 	sim.setMaxTime(MAX_TIME);
 	
 	O.niche_count = NICHE_COUNT;
@@ -446,37 +446,37 @@ void Visualize(std::vector<Robot>& robots) {
 void handle_commandline_args(const int& argc, char** argv) {
     for(int i = 0; i < argc; i++) {
         if(strcmp(argv[i], "-mutate") == 0) {
-			strats.mutator = Optimizer::MUTATE;
+			strats.mutator = Optimizer<Robot>::MUTATE;
 			if(i < argc) {
 				if(strcmp(argv[i+1], "full") == 0) {
-					strats.mutator = Optimizer::RANDOMIZE;
+					strats.mutator = Optimizer<Robot>::RANDOMIZE;
 				} else if(strcmp(argv[i+1], "vox") == 0) {
-					strats.mutator = Optimizer::MUTATE;
+					strats.mutator = Optimizer<Robot>::MUTATE;
 				}
 			}
         }
 
         if(strcmp(argv[i], "-cross") == 0) {
-			strats.crossover = Optimizer::CROSS_SWAP;
+			strats.crossover = Optimizer<Robot>::CROSS_SWAP;
 
             if(strcmp(argv[i+1], "none") == 0) {
-				strats.crossover = Optimizer::CROSS_NONE;
+				strats.crossover = Optimizer<Robot>::CROSS_NONE;
             } else if(strcmp(argv[i+1], "beam") == 0) {
-                strats.crossover = Optimizer::CROSS_BEAM;
+                strats.crossover = Optimizer<Robot>::CROSS_BEAM;
             } else if(strcmp(argv[i+1], "swap") == 0) {
-                strats.crossover = Optimizer::CROSS_SWAP;
+                strats.crossover = Optimizer<Robot>::CROSS_SWAP;
             } else if(strcmp(argv[i+1], "dc") == 0) {
-                strats.crossover = Optimizer::CROSS_DC;
+                strats.crossover = Optimizer<Robot>::CROSS_DC;
             }
         }
 
         if(strcmp(argv[i], "-niche") == 0) {
             if(strcmp(argv[i+1], "none") == 0) {
-                strats.niche = Optimizer::NICHE_NONE;
+                strats.niche = Optimizer<Robot>::NICHE_NONE;
             } else if(strcmp(argv[i+1], "hfc") == 0) {
-                strats.niche = Optimizer::NICHE_HFC;
+                strats.niche = Optimizer<Robot>::NICHE_HFC;
             } else if(strcmp(argv[i+1], "malps") == 0) {
-                strats.niche = Optimizer::NICHE_MALPS;
+                strats.niche = Optimizer<Robot>::NICHE_MALPS;
             }
         }
 		
@@ -507,13 +507,13 @@ void handle_file_io() {
 
     switch(strats.niche)
     {
-    case Optimizer::NICHE_NONE:
+    case Optimizer<Robot>::NICHE_NONE:
         strcat(out_dir,"/NoNiche");
         break;
-    case Optimizer::NICHE_HFC:
+    case Optimizer<Robot>::NICHE_HFC:
         strcat(out_dir,"/HFC");
         break;
-    case Optimizer::NICHE_MALPS:
+    case Optimizer<Robot>::NICHE_MALPS:
         strcat(out_dir,"/MALPS");
         break;
     default:
@@ -524,10 +524,10 @@ void handle_file_io() {
 
     switch(strats.mutator)
     {
-    case Optimizer::RANDOMIZE:
+    case Optimizer<Robot>::RANDOMIZE:
         strcat(out_dir,"/Random");
         break;
-    case Optimizer::MUTATE:
+    case Optimizer<Robot>::MUTATE:
         strcat(out_dir,"/Mutate");
         break;
     default:
@@ -538,16 +538,16 @@ void handle_file_io() {
 
     switch(strats.crossover)
     {
-    case Optimizer::CROSS_NONE:
+    case Optimizer<Robot>::CROSS_NONE:
         strcat(out_dir,"/Nonparallel");
         break;
-    case Optimizer::CROSS_BEAM:
+    case Optimizer<Robot>::CROSS_BEAM:
         strcat(out_dir,"/Parallel");
         break;
-    case Optimizer::CROSS_SWAP:
+    case Optimizer<Robot>::CROSS_SWAP:
         strcat(out_dir,"/Swap");
         break;
-    case Optimizer::CROSS_DC:
+    case Optimizer<Robot>::CROSS_DC:
         strcat(out_dir,"/DC");
         break;
     }
