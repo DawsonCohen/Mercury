@@ -1,6 +1,9 @@
 #include <fstream>
 #include <iostream>
-#include <filesystem>
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <cstring>
 #include <memory>
 #include "util.h"
 
@@ -138,8 +141,31 @@ int WriteCSV(const char* filename, std::string datastring) {
 }
 
 void RemoveOldFiles(const char* dir) {
-    for (const auto& entry : std::filesystem::directory_iterator(dir)) 
-        std::filesystem::remove_all(entry.path());
-}
+    DIR* directory = opendir(dir);
+    if (directory == nullptr) {
+        return;
+    }
 
+    dirent* entry;
+    while ((entry = readdir(directory)) != nullptr) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        const char* path = entry->d_name;
+        struct stat file_info;
+        if (stat(path, &file_info) == -1) {
+            continue;
+        }
+
+        if (S_ISDIR(file_info.st_mode)) {
+            RemoveOldFiles(path);
+            rmdir(path);
+        } else {
+            unlink(path);
+        }
+    }
+
+    closedir(directory);
+}
 }

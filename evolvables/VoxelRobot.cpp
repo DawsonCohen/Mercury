@@ -1,7 +1,6 @@
 #include <chrono>
 #include <csignal>
 #include <algorithm>
-#include <glm/gtx/norm.hpp>
 #include <map>
 #include "VoxelRobot.h"
 
