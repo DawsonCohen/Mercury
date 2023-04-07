@@ -29,7 +29,7 @@ struct BasisIdx {
 struct Circle {
     Material mat = materials::bone;
     float radius = 0;
-    glm::vec3 center = glm::vec3(0.0f);
+    Eigen::Vector3f center = Eigen::Vector3f::Zero();
     float max_radius = 6.0f;
     void Randomize(float xlim, float ylim, float zlim);
 
@@ -43,8 +43,8 @@ struct Circle {
 struct Voxel {
     uint ID;
     BasisIdx indices;
-    glm::vec3 center;
-    glm::vec3 base;
+    Eigen::Vector3f center;
+    Eigen::Vector3f base;
     Material mat;
 
     void setRandomMaterial() {
@@ -56,12 +56,12 @@ struct Voxel {
                 std::to_string(indices.x) + "," + 
                 std::to_string(indices.y) + "," + 
                 std::to_string(indices.z) + "," +
-                std::to_string(center.x) + "," + 
-                std::to_string(center.y) + "," + 
-                std::to_string(center.z) + "," +
-                std::to_string(base.x) + "," + 
-                std::to_string(base.y) + "," + 
-                std::to_string(base.z) + "," +
+                std::to_string(center.x()) + "," + 
+                std::to_string(center.y()) + "," + 
+                std::to_string(center.z()) + "," +
+                std::to_string(base.x()) + "," + 
+                std::to_string(base.y()) + "," + 
+                std::to_string(base.z()) + "," +
                 mat.to_string();
     }
 
@@ -86,8 +86,8 @@ private:
     uint    mVolume = 0;
 
 public:
-    glm::vec3 mBaseCOM;
-    glm::vec3 mSkew;
+    Eigen::Vector3f mBaseCOM;
+    Eigen::Vector3f mSkew;
     float mLength = 1.0f;
 
     static unsigned seed;
@@ -116,7 +116,7 @@ private:
     float ySize = 12.0f;
     float zSize = 12.0f;
     float resolution = 1.0f; // Masses per meter
-    glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
+    Eigen::Vector3f center = Eigen::Vector3f(xSize/2.0f, ySize/2.0f, 0.0f);
     std::vector<Voxel> voxels;
     std::vector<Circle> circles;
     uint xCount;
@@ -187,11 +187,11 @@ public:
     VoxelRobot(const SoftBody& src) : SoftBody(src) { }
 
     // TODO: line method, don't assume rect.prism.
-    bool isInside(glm::vec3 point) {
+    bool isInside(Eigen::Vector3f point) {
         return 
-            point.x <= xSize && point.x >= 0 &&
-            point.y <= ySize && point.y >= 0 &&
-            point.z <= zSize && point.z >= 0;
+            point.x() <= xSize && point.x() >= 0 &&
+            point.y() <= ySize && point.y() >= 0 &&
+            point.z() <= zSize && point.z() >= 0;
     }
 
     bool isValidIdx(BasisIdx ind) {
@@ -204,8 +204,8 @@ public:
     std::vector<Voxel>& getVoxels() { return voxels; }
 
     uint volume() const { return mVolume; }
-    glm::vec3 COM() const { return mBaseCOM; }
-    glm::vec3 skew() const { return mSkew; }
+    Eigen::Vector3f COM() const { return mBaseCOM; }
+    Eigen::Vector3f skew() const { return mSkew; }
 
     static void Random();
     void Randomize();
@@ -214,9 +214,9 @@ public:
     void Mutate();
     static CandidatePair<VoxelRobot> Crossover(const CandidatePair<VoxelRobot>& parents);
 
-    static glm::vec3 calcMeanPos(VoxelRobot&);
-    static glm::vec3 calcClosestPos(VoxelRobot&);
-    static glm::vec3 calcSkew(VoxelRobot&);
+    static Eigen::Vector3f calcMeanPos(VoxelRobot&);
+    static Eigen::Vector3f calcClosestPos(VoxelRobot&);
+    static Eigen::Vector3f calcSkew(VoxelRobot&);
     static void calcFitness(VoxelRobot&);
     static float Distance(const CandidatePair<VoxelRobot>& robots);
     static float calcLength(VoxelRobot&);

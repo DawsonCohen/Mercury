@@ -3,6 +3,7 @@
 
 #include "element.h"
 #include "candidate.h"
+#include <Eigen/Geometry>
 #include <memory>
 
 struct MaterialRadii {
@@ -39,8 +40,8 @@ public:
 		swap(s1.mRadiiEncoding, s2.mRadiiEncoding);
 	}
 
-	void rotate(float deg, glm::vec3 axis);
-	void translate(glm::vec3 translation);
+	void rotate(float deg, Eigen::Vector3f& axis);
+	void translate(Eigen::Vector3f& translation);
 
 	const std::vector<Mass>& getMasses() const { return masses; };
 	const std::vector<Spring>& getSprings() const { return springs; }

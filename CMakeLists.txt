@@ -62,6 +62,8 @@ add_executable( phys
 ${PHYS} 
 )
 
+
+target_include_directories(phys PUBLIC lib)
 target_include_directories(phys PUBLIC renderer/src)
 target_include_directories(phys PUBLIC simulator)
 target_include_directories(phys PUBLIC optimizer)
@@ -84,4 +86,6 @@ target_compile_options(phys PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:
 					-ftz=true
 					-prec-div=false
 					-prec-sqrt=false
+					-Wno-unknown-pragmas
+					--expt-relaxed-constexpr
 					>)

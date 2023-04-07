@@ -1,26 +1,57 @@
 #include "SoftBody.h"
-#include<glm/gtc/matrix_transform.hpp>
-#include<glm/gtx/rotate_vector.hpp>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <iostream>
 #include <map>
+
+Eigen::Matrix3f rotation_matrix(double degrees, const Eigen::Vector3f& axis)
+{
+    // Convert angle to radians
+    float radians = degrees * M_PI / 180.0;
+
+    // Calculate sine and cosine of half angle
+    float theta = radians / 2.0;
+    float sin_theta = sin(theta);
+    float cos_theta = cos(theta);
+
+    // Create unit vector for axis of rotation
+    Eigen::Vector3f u = axis.normalized();
+
+    // Create quaternion for rotation
+    Eigen::Quaternionf q(cos_theta, sin_theta * u.x(), sin_theta * u.y(), sin_theta * u.z());
+
+    // Convert quaternion to rotation matrix
+    Eigen::Matrix3f R = q.toRotationMatrix();
+
+    return R;
+}
+
+Eigen::Matrix4f translation_matrix(const Eigen::Vector3f& translation)
+{
+    Eigen::Affine3f affine;
+    affine = Eigen::Translation3f(translation);
+    return affine.matrix();
+}
 
 SoftBody::SoftBody( const SoftBody& src )
 : Element{src.masses, src.springs}, Candidate(src),
 mDirectEncoding(src.mDirectEncoding), mRadiiEncoding(src.mRadiiEncoding)
 {}
 
-void SoftBody::rotate(float deg, glm::vec3 axis) {
-	glm::mat4 transform = glm::rotate(glm::mat4(1.0f), glm::radians(deg), axis);
+void SoftBody::rotate(float deg, Eigen::Vector3f& axis) {
+	Eigen::Matrix3f transform = rotation_matrix(deg, axis);
 	for(auto& m : masses) {
-		m.pos = (transform * glm::vec4(m.pos,1.0f));
+		m.pos = (transform * Eigen::Vector3f(m.pos));
         m.protoPos = (m.pos);
 	}
 }
 
-void SoftBody::translate(glm::vec3 translation) {
-	glm::mat4 transform = glm::translate(glm::mat4(1.0f), translation);
+void SoftBody::translate(Eigen::Vector3f& translation) {
+	Eigen::Matrix4f transform = translation_matrix(translation);
 	for(Mass& m : masses) {
-		m.pos = (transform * glm::vec4(m.pos,1.0f));
+        Eigen::Vector4f v_homogeneous(m.pos.x(), m.pos.y(), m.pos.z(), 1.0f);
+        Eigen::Vector4f v_transformed_homogeneous = transform * v_homogeneous;
+		m.pos = Eigen::Vector3f(v_transformed_homogeneous.x(), v_transformed_homogeneous.y(), v_transformed_homogeneous.z());
         m.protoPos = (m.pos);
 	}
 }
@@ -61,9 +92,9 @@ void SoftBody::append(SoftBody src) {
 }
 
 void SoftBody::printObjectPositions() {
-	glm::vec3 p(0.0f);
+    Eigen::Vector3f p = Eigen::Vector3f::Zero();
 	for(const Mass& m : masses) {
 		p = m.pos; 
-		printf("%u - %f, %f, %f\n", m.id, p.x, p.y, p.z);
+		printf("%u - %f, %f, %f\n", m.id, p.x(), p.y(), p.z());
 	}
 }

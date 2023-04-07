@@ -59,17 +59,17 @@ VoxelRobot ReadVoxelRobot(const char* filename) {
         std::getline(file, line, ',');
         mat.phi = atof(line.data());
         std::getline(file, line, ',');
-        mat.color.x = atof(line.data());
+        mat.color.r = atof(line.data());
         std::getline(file, line, ',');
-        mat.color.y = atof(line.data());
+        mat.color.g = atof(line.data());
         std::getline(file, line, ',');
-        mat.color.z = atof(line.data());
+        mat.color.b = atof(line.data());
         std::getline(file, line, '\n');
-        mat.color.w = atof(line.data());
+        mat.color.a = atof(line.data());
 
 
-        glm::vec3 center = glm::vec3(cx,cy,cz);
-        glm::vec3 base = glm::vec3(bx,by,bz);
+        Eigen::Vector3f center(cx,cy,cz);
+        Eigen::Vector3f base(bx,by,bz);
 
         Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
         voxels.push_back(v);
