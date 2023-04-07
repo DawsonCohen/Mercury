@@ -1,6 +1,5 @@
 #include "Simulator.h"
-// #include "VoxelRobot.h"
-#include "robot.h"
+#include "VoxelRobot.h"
 
 #include <thread>
 #include <iostream>
@@ -14,7 +13,7 @@
 #define MAX_SPRINGS 1e11
 #define INIT_POP_SIZE 1
 
-void Benchmark(Robot& R);
+void Benchmark(VoxelRobot& R);
 Simulator sim;
 
 using namespace std::chrono_literals;
@@ -23,7 +22,7 @@ int main()
 {
 	printf("BENCHMARKING\n");
 	
-	Robot solution = Robot();
+	VoxelRobot solution = VoxelRobot();
 
 	// sim.Initialize(solution.masses.size(),solution.springs.size(), POP_SIZE);
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -36,7 +35,7 @@ int main()
 	return 0;
 }
 
-void Benchmark(Robot& R) {
+void Benchmark(VoxelRobot& R) {
 	uint pop_size = INIT_POP_SIZE;
 	sim.Initialize(R,pop_size);
 
