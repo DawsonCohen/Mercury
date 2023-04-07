@@ -64,16 +64,19 @@ protected:
 	// CPU data
 	ushort   *m_hPairs;
 	float  *m_hMats;
+	char   *m_hMatEncodings;
 	float  *m_hLbars;
 	float  *m_hPos;
 	float  *m_hVel;
 	ushort *m_hMaxStressCount, *m_hMinStressCount;
 	float  *m_hStresses;
 	uint   *m_hSpringIDs;
+	float  m_hMaterials[16];
 
 	// GPU data
 	float   *m_dPos[2], *m_dVel[2],
 			*m_dMats;
+	char    *m_dMatEncodings;
 	ushort	*m_dPairs;
 	float	*m_dLbars;
 	ushort  *m_dMaxStressCount, *m_dMinStressCount;
