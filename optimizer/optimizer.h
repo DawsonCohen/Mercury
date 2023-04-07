@@ -14,8 +14,8 @@
 template<typename T>
 struct subpopulation {
     float export_threshold = 0;
-    std::vector<T>::iterator mBegin{};
-    std::vector<T>::iterator mEnd{};
+    T* mBegin;
+    T* mEnd;
     size_t mSize = 0;
     std::mutex a_mutex;
     std::mutex p_mutex;
@@ -34,8 +34,8 @@ struct subpopulation {
     crossoverFamilyBuffer(src.crossoverFamilyBuffer)
     {}
 
-    subpopulation(std::vector<T>::iterator _begin,
-                    std::vector<T>::iterator _end,
+    subpopulation(T* _begin,
+                    T* _end,
                     int _et = 0) {
         export_threshold = _et;
 
@@ -44,11 +44,11 @@ struct subpopulation {
         mSize = (size_t) (_end-_begin);
     }
 
-    std::vector<T>::iterator begin() {
+    T* begin() {
         return mBegin;
     }
 
-    std::vector<T>::iterator end() {
+    T* end() {
         return mEnd;
     }
 
