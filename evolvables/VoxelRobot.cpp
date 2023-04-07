@@ -8,7 +8,7 @@ unsigned VoxelRobot::seed = std::chrono::system_clock::now().time_since_epoch().
 std::default_random_engine VoxelRobot::gen = std::default_random_engine(VoxelRobot::seed);
 std::uniform_real_distribution<> VoxelRobot::uniform = std::uniform_real_distribution<>(0.0,1.0);
 
-VoxelRobot::Encoding repr = VoxelRobot::ENCODE_RADIUS;
+VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b

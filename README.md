@@ -1,8 +1,13 @@
 # Simulation Instructions
 
-## Initial Build
+## Environment Setup
+- On local machines (for rendering capablities):
+  `export BUILD_LOCATION=local`
+- On remote servers:
+  - `export BUILD_LOCATION=remote`
+  - Update set( CMAKE_CUDA_COMPILER /usr/local/cuda-XX.X/bin/nvcc )
 
-sudo apt install libassimp-dev
+## Initial Build
 
 1. rm -r build
 1. mkdir build

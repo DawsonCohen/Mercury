@@ -124,7 +124,7 @@ private:
     uint zCount;
 
 public:
-    inline static Encoding repr;
+    static Encoding repr;
     
     uint getVoxelIdx(uint xIdx, uint yIdx, uint zIdx) {
         return xIdx + yIdx * xCount + zIdx * (xCount*yCount);
