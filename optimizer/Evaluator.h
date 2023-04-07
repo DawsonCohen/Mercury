@@ -34,7 +34,7 @@ public:
     static void BatchEvaluate(std::vector<T>&);
     static float Distance(const CandidatePair<T>& solutions);
 
-    static void pareto_sort(T* begin, T* end) {
+    static void pareto_sort(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end) {
         for(auto i = begin; i < end; i++) {
             i->mParetoLayer = 0;
         }
