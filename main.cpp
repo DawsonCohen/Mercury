@@ -1,13 +1,16 @@
 #include "Simulator.h"
 #include "optimizer.h"
-#include "plane_model.h"
-#include "robot_model.h"
 #include "util.h"
 
-#include "Renderer.h"
+#ifdef VIDEO
+#include "plane_model.h"
+#include "robot_model.h"
 
+#include "Renderer.h"
 #ifdef WRITE_VIDEO
 #include <opencv2/opencv.hpp>
+#endif
+
 #endif
 
 #include <thread>
@@ -65,12 +68,15 @@ struct OptimizationStrats {
 
 void handle_commandline_args(const int& argc, char** argv);
 void handle_file_io();
-GLFWwindow* GLFWsetup(bool visualize);
-void GLFWinitialize();
 
 std::vector<ROBOT_TYPE> Solve();
 void Render(ROBOT_TYPE& R);
+
+#ifdef VIDEO
+GLFWwindow* GLFWsetup(bool visualize);
+void GLFWinitialize();
 void Visualize(std::vector<ROBOT_TYPE>& R);
+#endif
 
 OptimizationStrats strats;
 IOLocations io;
@@ -121,6 +127,7 @@ int main(int argc, char** argv)
 	}
 	#endif
 
+	#ifdef VIDEO
 	#ifdef WRITE_VIDEO
 	for(ROBOT_TYPE& R : solutions) {
 		Render(R);
@@ -129,6 +136,7 @@ int main(int argc, char** argv)
 
 	#ifdef VISUALIZE
 	Visualize(solutions);
+	#endif
 	#endif
 
 	return 0;
@@ -191,6 +199,7 @@ std::vector<ROBOT_TYPE> Solve() {
 	return O.getSolutions();
 }
 
+#ifdef VIDEO
 void Render(ROBOT_TYPE& R) {
 	printf("RENDERING\n");
 
@@ -417,6 +426,7 @@ void Visualize(std::vector<ROBOT_TYPE>& robots) {
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 }
+#endif
 
 void handle_commandline_args(const int& argc, char** argv) {
     for(int i = 0; i < argc; i++) {
@@ -543,7 +553,7 @@ void handle_file_io() {
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
-
+#ifdef VIDEO
 GLFWwindow* GLFWsetup(bool visualize) {
 	// Initialize GLFW
 	glfwInit();
@@ -615,3 +625,4 @@ void GLFWinitialize()	        // We call this right after our OpenGL window is c
 
 	// glMatrixMode(GL_MODELVIEW);
 }
+#endif
