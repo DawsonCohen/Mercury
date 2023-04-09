@@ -11,9 +11,10 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 --ptxas-options=-v -ftz=true -prec
 
 if(DEFINED ENV{BUILD_LOCATION} AND "$ENV{BUILD_LOCATION}" STREQUAL "local")
 	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20012")
+	set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20236")
 endif()
 
-set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-12.0)
+# set(CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-12.0)
 find_package( CUDA REQUIRED )
 
 ## MAIN OPTIONS ##
@@ -58,13 +59,13 @@ set( RENDER
         models/plane_model.cpp
 )
 
-if(DEFINED ENV{BUILD_LOCATION} AND "$ENV{BUILD_LOCATION}" STREQUAL "remote")
-  add_executable( phys
-    ${PHYS}
-  )
-else()
+if(DEFINED ENV{BUILD_LOCATION} AND "$ENV{BUILD_LOCATION}" STREQUAL "local")
   add_executable( phys
     ${PHYS} ${RENDER}
+  )
+  else()
+  add_executable( phys
+    ${PHYS}
   )
 endif()
   

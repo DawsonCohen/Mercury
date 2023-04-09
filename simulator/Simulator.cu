@@ -309,8 +309,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort2*)  m_dPairs,
 			(float*) m_dLbars,
-			(float4*) m_dMats,
-			// (char*) m_dMatEncodings,
+			(char*) m_dMatEncodings,
 			(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 			#ifdef FULL_STRESS
 			(float*) m_dStresses, 

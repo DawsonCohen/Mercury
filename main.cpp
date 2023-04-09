@@ -70,11 +70,12 @@ void handle_commandline_args(const int& argc, char** argv);
 void handle_file_io();
 
 std::vector<ROBOT_TYPE> Solve();
-void Render(ROBOT_TYPE& R);
 
 #ifdef VIDEO
 GLFWwindow* GLFWsetup(bool visualize);
 void GLFWinitialize();
+
+void Render(ROBOT_TYPE& R);
 void Visualize(std::vector<ROBOT_TYPE>& R);
 #endif
 

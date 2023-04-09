@@ -151,8 +151,8 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
 				ushort2 *__restrict__ pairs,
 				float *__restrict__ Lbars,
-				float4 *__restrict__ mats,
-				// char *__restrict__ matEncodings,
+				// float4 *__restrict__ mats,
+				char *__restrict__ matEncodings,
 				ushort *__restrict__ maxStressCount,
 				ushort *__restrict__ minStressCount,
 				#ifdef FULL_STRESS
@@ -215,8 +215,7 @@ integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		bl = s_pos[left];
 		br = s_pos[right];
 		// mat = {10000.0f, 0.0f, 0.0f, 0.0f};
-		// mat = matDecode(__ldg(&matEncodings[i+springOffset]),d_materials,materialsCount);
-		mat = __ldg(&mats[i+springOffset]); // mat should be calculated
+		mat = matDecode(__ldg(&matEncodings[i+springOffset]),d_materials,materialsCount);
 		Lbar = __ldg(&Lbars[i+springOffset]); // lbar comes from tid
 		springForce(bl,br,mat,Lbar,time, force, magF);
 
