@@ -1,5 +1,9 @@
 #include "Simulator.h"
 #include "optimizer.h"
+#include "util.h"
+#include "NNRobot.h"
+
+#ifdef VIDEO
 #include "plane_model.h"
 #include "robot_model.h"
 #include "util.h"
@@ -9,11 +13,14 @@
 #ifdef WRITE_VIDEO
 #include <opencv2/opencv.hpp>
 #endif
+#endif
 
 #include <thread>
 #include <chrono>
 #include <iostream>
 #include <sys/stat.h>
+
+#define ROBOT_TYPE NNRobot
 
 #define WIDTH	1600
 #define HEIGHT	900
@@ -41,8 +48,6 @@
 uint runID = 0;
 uint solID = 0;
 
-#define ROBOT_TYPE VoxelRobot
-
 struct IOLocations {
     char in_file[MAX_FILE_PATH];
     char out_dir[MAX_FILE_PATH];
@@ -60,7 +65,7 @@ struct OptimizationStrats {
     Optimizer<ROBOT_TYPE>::MutationStrat mutator = Optimizer<ROBOT_TYPE>::MUTATE;
     Optimizer<ROBOT_TYPE>::CrossoverStrat crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
     Optimizer<ROBOT_TYPE>::NichingStrat niche = Optimizer<ROBOT_TYPE>::NICHE_NONE;
-    ROBOT_TYPE::Encoding encoding = ROBOT_TYPE::ENCODE_RADIUS;
+    // ROBOT_TYPE::Encoding encoding = ROBOT_TYPE::ENCODE_RADIUS;
 };
 
 void handle_commandline_args(const int& argc, char** argv);
@@ -110,7 +115,7 @@ int main(int argc, char** argv)
     srand(seed);
 	for(uint i = 0; i < POP_SIZE; i++) {
 		ROBOT_TYPE solution = ROBOT_TYPE();
-		solution.Randomize();
+		// solution.Randomize();
 		solutions.push_back(solution);
 	}
 	#endif
@@ -134,6 +139,7 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+#ifdef OPTIMIZE
 std::vector<ROBOT_TYPE> Solve() {
 	Optimizer<ROBOT_TYPE> O;
 	sim.setMaxTime(MAX_TIME);
@@ -190,7 +196,9 @@ std::vector<ROBOT_TYPE> Solve() {
 	}
 	return O.getSolutions();
 }
+#endif
 
+#ifdef VIDEO
 void Render(ROBOT_TYPE& R) {
 	printf("RENDERING\n");
 
@@ -463,15 +471,15 @@ void handle_commandline_args(const int& argc, char** argv) {
 			solID = atoi(argv[i+1]);
         }
 
-		if(strcmp(argv[i], "-encode") == 0) {
-            if(strcmp(argv[i+1], "rad") == 0) {
-				strats.encoding = ROBOT_TYPE::ENCODE_RADIUS;
-				ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_RADIUS;
-			} else if(strcmp(argv[i+1], "direct") == 0) {
-				strats.encoding = ROBOT_TYPE::ENCODE_DIRECT;
-				ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_DIRECT;
-			}
-        }
+		// if(strcmp(argv[i], "-encode") == 0) {
+        //     if(strcmp(argv[i+1], "rad") == 0) {
+		// 		strats.encoding = ROBOT_TYPE::ENCODE_RADIUS;
+		// 		ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_RADIUS;
+		// 	} else if(strcmp(argv[i+1], "direct") == 0) {
+		// 		strats.encoding = ROBOT_TYPE::ENCODE_DIRECT;
+		// 		ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_DIRECT;
+		// 	}
+        // }
     }
 }
 
@@ -529,16 +537,16 @@ void handle_file_io() {
 
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-    switch(strats.encoding)
-    {
-    case ROBOT_TYPE::ENCODE_DIRECT:
-        strcat(out_dir,"/Simple");
-        break;
-    case ROBOT_TYPE::ENCODE_RADIUS:
-	default:
-        strcat(out_dir,"/Radius");
-        break;
-    }
+    // switch(strats.encoding)
+    // {
+    // case ROBOT_TYPE::ENCODE_DIRECT:
+    //     strcat(out_dir,"/Simple");
+    //     break;
+    // case ROBOT_TYPE::ENCODE_RADIUS:
+	// default:
+    //     strcat(out_dir,"/Radius");
+    //     break;
+    // }
 
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
@@ -552,7 +560,6 @@ GLFWwindow* GLFWsetup(bool visualize) {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_VISIBLE, visualize ? GLFW_TRUE : GLFW_FALSE);
-	// glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT,GLFW_TRUE);
 
 	// Create a GLFWwindow object of WIDTH by HEIGHT pixels, naming it "Cubes!"
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Robots!", NULL, NULL);
@@ -576,42 +583,17 @@ GLFWwindow* GLFWsetup(bool visualize) {
 
 void GLFWinitialize()	        // We call this right after our OpenGL window is created.
 {
-	// Lighting properties
-	// GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-	// GLfloat mat_shininess[] = { 50.0 };
-	// GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
-
-	// // set the lighting properties
-	// glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-	// glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
-	// glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-	// glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE ) ;
-
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
 	glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
-	// glDepthFunc(GL_LESS);			        // The Type Of Depth Test To Do
-	// glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
-
 
 	glEnable(GL_DEPTH_TEST);		        // Enables Depth Testing
 	glEnable(GL_LINE_SMOOTH);
-	// glEnable (GL_LIGHTING);
-	// glEnable (GL_COLOR_MATERIAL);
-	// glEnable (GL_LIGHT0);
-
-	// Wireframe mode
-	// glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
 	// Rasterized line width
 	glLineWidth(3.0f);
 
-
-	// glMatrixMode(GL_PROJECTION);
-	// glLoadIdentity();				// Reset The Projection Matrix
-
 	// Specify the viewport of OpenGL in the Window
 	// In this case the viewport goes from x = 0, y = 0, to x = WIDTH, y = HEIGHT
 	glViewport(0, 0, WIDTH, HEIGHT);
-
-	// glMatrixMode(GL_MODELVIEW);
 }
+#endif

@@ -45,11 +45,11 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
         solutions[i].Update(results[i]);
     }
 
-    for(T& e : solutions) {
-        eval_count++;
-        e.mBaseCOM = T::calcMeanPos(e);
-        e.mLength = T::calcLength(e);
-    }
+    // for(T& e : solutions) {
+    //     eval_count++;
+    //     e.mBaseCOM = T::calcMeanPos(e);
+    //     e.mLength = T::calcLength(e);
+    // }
 
     Sim.setMaxTime(evaluationTime-baselineTime);
 

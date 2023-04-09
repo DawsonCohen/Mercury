@@ -4,6 +4,7 @@
 #include "element.h"
 #include "candidate.h"
 #include <Eigen/Geometry>
+#include <random>
 #include <memory>
 
 struct MaterialRadii {
@@ -22,9 +23,13 @@ struct RadiiSoftBodyEncoding {
 class SoftBody : public Element, public Candidate {
 	float	mVolume = 0;
 
+
 protected:
 	std::vector<Material> mDirectEncoding;
 	std::vector<MaterialRadii> mRadiiEncoding;
+	static unsigned seed;
+    static std::default_random_engine gen;
+    static std::uniform_real_distribution<> uniform;
 
 public:
 	SoftBody() { }
@@ -58,7 +63,6 @@ public:
     void SimReset();
 	void Reset();
 	void Clear();
-	void updateMesh();
 	void updateVolume(float v) { mVolume = v; }
 
 	void append(SoftBody src);
@@ -71,8 +75,6 @@ public:
 		if(s.material != materials::air) {
 			masses[s.m0].active = true;
 			masses[s.m1].active = true;
-			masses[s.m0].color = s.material.color;
-			masses[s.m1].color = s.material.color;
 		}
 		springs.push_back(s);
 	}
@@ -90,8 +92,6 @@ public:
 			if(s.material != materials::air) {
 				masses[s.m0].active = true;
 				masses[s.m1].active = true;
-				masses[s.m0].color = s.material.color;
-				masses[s.m1].color = s.material.color;
 			}
 			springs.push_back(s);
 		}

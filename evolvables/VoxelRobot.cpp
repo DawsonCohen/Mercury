@@ -1,18 +1,15 @@
-#include <chrono>
-#include <csignal>
-#include <algorithm>
-#include <glm/gtx/norm.hpp>
 #include <map>
+#include <chrono>
 #include "VoxelRobot.h"
 
-unsigned VoxelRobot::seed = std::chrono::system_clock::now().time_since_epoch().count();
-std::default_random_engine VoxelRobot::gen = std::default_random_engine(VoxelRobot::seed);
-std::uniform_real_distribution<> VoxelRobot::uniform = std::uniform_real_distribution<>(0.0,1.0);
-
-VoxelRobot::Encoding repr = VoxelRobot::ENCODE_RADIUS;
+VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
+
+void Voxel::setRandomMaterial() {
+    mat = materials::random();
+}
 
 float VoxelRobot::Distance() {
     Eigen::Vector3f mean_pos = Eigen::Vector3f::Zero();
@@ -299,7 +296,7 @@ void VoxelRobot::Build() {
     bool visited[voxels.size()];
     for(uint i = 0; i < voxels.size(); i++) {
         if(voxels[i].mat != materials::air) mVolume++;
-        Mass m = {i, voxels[i].base, voxels[i].base, voxels[i].mat.color};
+        Mass m(i, voxels[i].base, voxels[i].mat);
         addMass(m);
         visited[i] = false;
     }

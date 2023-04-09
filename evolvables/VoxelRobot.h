@@ -2,7 +2,6 @@
 #define __VOXEL_ROBOT_H__
 
 // Evolvable Soft Body
-#include <random>
 #include <string>
 #include "SoftBody.h"
 
@@ -47,9 +46,7 @@ struct Voxel {
     Eigen::Vector3f base;
     Material mat;
 
-    void setRandomMaterial() {
-        mat = materials::random();
-    }
+    void setRandomMaterial();
 
     std::string to_string() const {
         return std::to_string(ID) + "," +
@@ -72,7 +69,6 @@ struct Voxel {
 };
 
 class VoxelRobot : public SoftBody {
-
 public:
 enum Encoding {
     ENCODE_RADIUS = 0,
@@ -89,10 +85,6 @@ public:
     Eigen::Vector3f mBaseCOM;
     Eigen::Vector3f mSkew;
     float mLength = 1.0f;
-
-    static unsigned seed;
-    static std::default_random_engine gen;
-    static std::uniform_real_distribution<> uniform;
 
     float Distance();
 
@@ -124,7 +116,7 @@ private:
     uint zCount;
 
 public:
-    inline static Encoding repr;
+    static Encoding repr;
     
     uint getVoxelIdx(uint xIdx, uint yIdx, uint zIdx) {
         return xIdx + yIdx * xCount + zIdx * (xCount*yCount);

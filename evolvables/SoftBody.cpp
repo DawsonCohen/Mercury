@@ -1,8 +1,15 @@
-#include "SoftBody.h"
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <iostream>
 #include <map>
+#include <chrono>
+#include <csignal>
+#include <algorithm>
+#include "SoftBody.h"
+
+unsigned SoftBody::seed = std::chrono::system_clock::now().time_since_epoch().count();
+std::default_random_engine SoftBody::gen = std::default_random_engine(SoftBody::seed);
+std::uniform_real_distribution<> SoftBody::uniform = std::uniform_real_distribution<>(0.0,1.0);
 
 Eigen::Matrix3f rotation_matrix(double degrees, const Eigen::Vector3f& axis)
 {
