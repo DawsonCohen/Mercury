@@ -71,7 +71,6 @@ NNRobot::NNRobot(const uint num_masses, const std::vector<int>& hidden_sizes)
 
 std::vector<std::pair<uint, float>> get_k_nearest_neighbors(uint i, const std::vector<std::vector<float>>& dists, uint k) {
     std::vector<std::pair<uint, float>> neighbors(dists.size());
-    std::vector<uint> kNearest(dists.size());
     for (uint j = 0; j < dists.size(); j++) {
         if(dists[i][j] == 0.0f)
             neighbors[j] = {j, std::numeric_limits<double>::infinity()};
@@ -85,6 +84,32 @@ std::vector<std::pair<uint, float>> get_k_nearest_neighbors(uint i, const std::v
     neighbors.resize(k);
     return neighbors;
 }
+
+/*std::vector<std::pair<uint, float>> cuda_knn(uint i, const std::vector<Mass>& masses, uint k) {
+    float *points_list = (float*) malloc(masses.size()*3*sizeof(float))
+    float *neighbors_distances = (float*) malloc(masses.size()*(k+1)*sizeof(float))
+    int *neighbors_list = (int*) malloc(masses.size()*(k+1)*sizeof(int))  
+
+    for(uint i = 0; i < masses.size(); i++){
+        Eigen::Vector3f pos = masses[i].pos
+        points_list[i*3] = pos.x()
+        points_list[i*3+1] = pos.y()
+        points_list[i*3+2] = pos.z()
+    }
+
+    while(!knn_cuda_global(points_list, masses.size(), points_list, masses.size(), 3, k+1, neighbors_distances, neighbors_list)){}
+
+    std::vector<std::pair<uint, float>> neighbors(k);
+    for(uint i = 0; i < masses.size(); i++){
+        for(uint j = 0; j < k; j++){
+            neighbors[i*k + j] = {neighbors_list[i*(k+1)+j+1],neighbors_distances[i*(k+1)+j+1]}
+        }
+    }
+    free(points_list);
+    free(neighbors_distances);
+    free(neighbors_list);
+    return neighbors;
+}*/
 
 void NNRobot::Build() {
     springs.clear();
