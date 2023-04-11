@@ -3,6 +3,8 @@
 
 #include "element.h"
 #include "candidate.h"
+#include <Eigen/Geometry>
+#include <random>
 #include <memory>
 
 struct MaterialRadii {
@@ -21,9 +23,13 @@ struct RadiiSoftBodyEncoding {
 class SoftBody : public Element, public Candidate {
 	float	mVolume = 0;
 
+
 protected:
 	std::vector<Material> mDirectEncoding;
 	std::vector<MaterialRadii> mRadiiEncoding;
+	static unsigned seed;
+    static std::default_random_engine gen;
+    static std::uniform_real_distribution<> uniform;
 
 public:
 	SoftBody() { }
@@ -39,8 +45,8 @@ public:
 		swap(s1.mRadiiEncoding, s2.mRadiiEncoding);
 	}
 
-	void rotate(float deg, glm::vec3 axis);
-	void translate(glm::vec3 translation);
+	void rotate(float deg, Eigen::Vector3f& axis);
+	void translate(Eigen::Vector3f& translation);
 
 	const std::vector<Mass>& getMasses() const { return masses; };
 	const std::vector<Spring>& getSprings() const { return springs; }
@@ -57,7 +63,6 @@ public:
     void SimReset();
 	void Reset();
 	void Clear();
-	void updateMesh();
 	void updateVolume(float v) { mVolume = v; }
 
 	void append(SoftBody src);
@@ -68,11 +73,8 @@ public:
 
 	void addSpring(Spring& s) {
 		if(s.material != materials::air) {
-			s.active = true;
 			masses[s.m0].active = true;
 			masses[s.m1].active = true;
-			masses[s.m0].color = s.material.color;
-			masses[s.m1].color = s.material.color;
 		}
 		springs.push_back(s);
 	}
@@ -88,11 +90,8 @@ public:
 		springs.clear();
 		for(Spring& s : _springs) {
 			if(s.material != materials::air) {
-				s.active = true;
 				masses[s.m0].active = true;
 				masses[s.m1].active = true;
-				masses[s.m0].color = s.material.color;
-				masses[s.m1].color = s.material.color;
 			}
 			springs.push_back(s);
 		}

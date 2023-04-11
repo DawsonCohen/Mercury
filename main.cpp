@@ -1,6 +1,11 @@
 #include "Simulator.h"
 #include "optimizer.h"
-#include "plane.h"
+#include "util.h"
+#include "NNRobot.h"
+
+#ifdef VIDEO
+#include "plane_model.h"
+#include "robot_model.h"
 #include "util.h"
 
 #include "Renderer.h"
@@ -8,11 +13,14 @@
 #ifdef WRITE_VIDEO
 #include <opencv2/opencv.hpp>
 #endif
+#endif
 
 #include <thread>
 #include <chrono>
 #include <iostream>
 #include <sys/stat.h>
+
+#define ROBOT_TYPE NNRobot
 
 #define WIDTH	1600
 #define HEIGHT	900
@@ -26,7 +34,7 @@
 
 #define MAX_EVALS (ulong) 1e5
 
-#define POP_SIZE (uint) 256
+#define POP_SIZE (uint) 32
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
 #define NICHE_COUNT (uint) std::thread::hardware_concurrency()
 #define STEPS_TO_COMBINE (uint) 1e2
@@ -54,10 +62,10 @@ struct IOLocations {
 };
 
 struct OptimizationStrats {
-    Optimizer::MutationStrat mutator = Optimizer::MUTATE;
-    Optimizer::CrossoverStrat crossover = Optimizer::CROSS_SWAP;
-    Optimizer::NichingStrat niche = Optimizer::NICHE_NONE;
-    Robot::Encoding encoding = Robot::ENCODE_RADIUS;
+    Optimizer<ROBOT_TYPE>::MutationStrat mutator = Optimizer<ROBOT_TYPE>::MUTATE;
+    Optimizer<ROBOT_TYPE>::CrossoverStrat crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
+    Optimizer<ROBOT_TYPE>::NichingStrat niche = Optimizer<ROBOT_TYPE>::NICHE_NONE;
+    // ROBOT_TYPE::Encoding encoding = ROBOT_TYPE::ENCODE_RADIUS;
 };
 
 void handle_commandline_args(const int& argc, char** argv);
@@ -65,9 +73,9 @@ void handle_file_io();
 GLFWwindow* GLFWsetup(bool visualize);
 void GLFWinitialize();
 
-std::vector<Robot> Solve();
-void Render(Robot& R);
-void Visualize(std::vector<Robot>& R);
+std::vector<ROBOT_TYPE> Solve();
+void Render(ROBOT_TYPE& R);
+void Visualize(std::vector<ROBOT_TYPE>& R);
 
 OptimizationStrats strats;
 IOLocations io;
@@ -79,8 +87,8 @@ int main(int argc, char** argv)
 	handle_file_io();
 	printf("Output directory: %s\n",io.out_dir);
 
-	std::vector<Robot> solutions;
-	Evaluator::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
+	std::vector<ROBOT_TYPE> solutions;
+	Evaluator<ROBOT_TYPE>::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
 	
 	#ifdef OPTIMIZE
 	solutions = Solve();
@@ -96,65 +104,30 @@ int main(int argc, char** argv)
 		if (!std::filesystem::exists(filepath)) break;
 		
 		printf("Verifying file %s\n", filepath);
-		solutions.push_back(ReadRobot(filepath));
+		solutions.push_back(ReadVoxelRobot(filepath));
 
 		sol++;
 	}
 	#endif
 
-	// TODO
-	#ifdef ZOO
-	strcpy(io.out_dir, "../z_results/Zoo");
-
-	SoftBody zoo;
-
-	char best_files[9][MAX_FILE_PATH];
-	strcpy(best_files[0], "../z_results/MALPS/Mutate/DC/Simple/solution_0.csv");
-	strcpy(best_files[1], "../z_results/MALPS/Mutate/DC/Simple/solution_1.csv");
-	strcpy(best_files[2], "../z_results/MALPS/Mutate/DC/Simple/solution_2.csv");
-
-	strcpy(best_files[3], "../z_results/NoNiche/Random/Nonparallel/Simple/solution_0.csv");
-	strcpy(best_files[4], "../z_results/NoNiche/Random/Nonparallel/Simple/solution_1.csv");
-	strcpy(best_files[5], "../z_results/NoNiche/Random/Nonparallel/Simple/solution_2.csv");
-
-	strcpy(best_files[6], "../z_results/NoNiche/Mutate/Swap/Simple/solution_0.csv");
-	strcpy(best_files[7], "../z_results/NoNiche/Mutate/Swap/Simple/solution_1.csv");
-	strcpy(best_files[8], "../z_results/NoNiche/Mutate/Swap/Simple/solution_2.csv");
-	
-	for(uint i = 0; i < 9; i++) {
-		Robot sol = ReadRobot(best_files[i]);
-		float x = (i % 3) * 5.0f;
-		float z = (i/3) * 5.0f;
-		sol.translate(glm::vec3(x, 0.0f, -z));
-		zoo.append(sol);
-	}
-
-	zoo = Robot();
-
-	printf("Total Masses: %lu\n",zoo.getMasses().size());
-	printf("Total Springs: %lu\n",zoo.getSprings().size());
-
-	solution = zoo;
-	#endif
-
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
-	for(uint i = 0; i < 100; i++) {
-		Robot solution = Robot();
-		solution.Randomize();
+	for(uint i = 0; i < POP_SIZE; i++) {
+		ROBOT_TYPE solution = ROBOT_TYPE();
+		// solution.Randomize();
 		solutions.push_back(solution);
 	}
 	#endif
 
 	#ifdef BOUNCE
-	for(Robot& R : solutions) {
+	for(ROBOT_TYPE& R : solutions) {
 		R.translate(glm::vec3(0.0f,7.0f,0.0f));
 	}
 	#endif
 
 	#ifdef WRITE_VIDEO
-	for(Robot& R : solutions) {
+	for(ROBOT_TYPE& R : solutions) {
 		Render(R);
 	}
 	#endif
@@ -166,8 +139,9 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-std::vector<Robot> Solve() {
-	Optimizer O;
+#ifdef OPTIMIZE
+std::vector<ROBOT_TYPE> Solve() {
+	Optimizer<ROBOT_TYPE> O;
 	sim.setMaxTime(MAX_TIME);
 	
 	O.niche_count = NICHE_COUNT;
@@ -183,11 +157,11 @@ std::vector<Robot> Solve() {
     O.crossover = strats.crossover;
     O.niche = strats.niche;
     
-    RemoveOldFiles(io.out_dir);
+    util::RemoveOldFiles(io.out_dir);
 	
     for(unsigned N = 0; N < REPEATS; N++) {
         printf("Started Run %i\n",N);
-		std::vector<Robot> solutions = O.Solve();
+		std::vector<ROBOT_TYPE> solutions = O.Solve();
 
 		printf("SOLUTIONS: %lu\n", solutions.size());
 
@@ -197,12 +171,12 @@ std::vector<Robot> Solve() {
             
             printf("Writing History\n");
 			
-            std::string fitnessHistoryCSV = FitnessHistoryToCSV(O.getFitnessHistory());
-            std::string popFitHistoryCSV = PopulationFitnessHistoryToCSV(O.getPopulationHistory());
-            std::string popDivHistoryCSV = PopulationDiversityHistoryToCSV(O.getPopulationHistory());
-            WriteCSV(io.out_pop_fit_file,popFitHistoryCSV);
-            WriteCSV(io.out_pop_div_file,popDivHistoryCSV);
-            WriteCSV(io.out_sol_fit_file,fitnessHistoryCSV);
+            std::string fitnessHistoryCSV = util::FitnessHistoryToCSV(O.getFitnessHistory());
+            std::string popFitHistoryCSV = util::PopulationFitnessHistoryToCSV(O.getPopulationHistory());
+            std::string popDivHistoryCSV = util::PopulationDiversityHistoryToCSV(O.getPopulationHistory());
+            util::WriteCSV(io.out_pop_fit_file,popFitHistoryCSV);
+            util::WriteCSV(io.out_pop_div_file,popDivHistoryCSV);
+            util::WriteCSV(io.out_sol_fit_file,fitnessHistoryCSV);
         }   else {
             printf("Something Failed\n");
         }
@@ -210,8 +184,8 @@ std::vector<Robot> Solve() {
 
 		for(uint i = 0; i < solutions.size(); i++) {
 			if(snprintf(io.out_sol_file,sizeof(io.out_sol_file),"%s/solution_%i_%i.csv",io.out_dir,N,i) < (int) sizeof(io.out_sol_file)){
-				std::string solutionCSV = SolutionToCSV(solutions[i]);
-				WriteCSV(io.out_sol_file,solutionCSV);
+				std::string solutionCSV = util::SolutionToCSV<ROBOT_TYPE>(solutions[i]);
+				util::WriteCSV(io.out_sol_file,solutionCSV);
 			} else {
 				printf("Something went terribly wrong");
 			}
@@ -222,9 +196,13 @@ std::vector<Robot> Solve() {
 	}
 	return O.getSolutions();
 }
+#endif
 
-void Render(Robot& R) {
+#ifdef VIDEO
+void Render(ROBOT_TYPE& R) {
 	printf("RENDERING\n");
+
+	RobotModel<ROBOT_TYPE> model(R);
 
 	GLFWwindow* window = GLFWsetup(false);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
@@ -232,7 +210,7 @@ void Render(Robot& R) {
 	Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
 	// Camera camera(WIDTH, HEIGHT, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
 
-	R.Bind();
+	model.Bind();
 
 	shader.Unbind();
 	
@@ -262,7 +240,7 @@ void Render(Robot& R) {
 	else printf("Something Failed\n");
 	#endif
 
-	Plane p;
+	PlaneModel p;
 
 	float max_render_time = 15;
 	sim.setMaxTime(1 / FPS);
@@ -276,6 +254,7 @@ void Render(Robot& R) {
 		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
 		std::vector<Element> results = sim.Collect(trackers);
 		R.Update(results[0]);
+		model.Update(R);
 
 		printf("%f\n", sim.getTotalTime());
 
@@ -289,7 +268,7 @@ void Render(Robot& R) {
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		R.Draw(shader, camera);
+		model.Draw(shader, camera);
 
 		p.Draw(shader, camera);
 
@@ -326,7 +305,7 @@ void Render(Robot& R) {
 	glfwTerminate();
 }
 
-void Visualize(std::vector<Robot>& robots) {
+void Visualize(std::vector<ROBOT_TYPE>& robots) {
 	printf("VISUALIZING\n");
 
 	// R.printObjectPositions();
@@ -337,9 +316,10 @@ void Visualize(std::vector<Robot>& robots) {
 	Camera camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f, robots.size());
 	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
 
-	Robot R = robots[camera.tabIdx];
+	ROBOT_TYPE R = robots[camera.tabIdx];
+	RobotModel<ROBOT_TYPE> model(R);
 
-	R.Bind();
+	model.Bind();
 
 	shader.Unbind();
 	
@@ -355,7 +335,7 @@ void Visualize(std::vector<Robot>& robots) {
 	else printf("Something Failed\n");
 	#endif
 
-	Plane p;
+	PlaneModel p;
 
 	float prevTime = glfwGetTime();
 
@@ -373,9 +353,10 @@ void Visualize(std::vector<Robot>& robots) {
 	{
 		if(tabId != camera.tabIdx) {
 			tabId = camera.tabIdx;
-			R.Unbind();
+			model.Unbind();
 			R = robots[tabId];
-			R.Bind();
+			model.Update(R);
+			model.Bind();
 			sim.Reset();
 		}
 
@@ -385,17 +366,10 @@ void Visualize(std::vector<Robot>& robots) {
 		robot_elements[0] = {R.getMasses(),R.getSprings()};
 		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
 		std::vector<Element> results = sim.Collect(trackers);
-		
-		// for(uint i = 0; i < results[0].masses.size(); i++) {
-		// 	Mass m = results[0].masses[i];
-		// 	printf("Mass %u: (%f,%f,%f)\n", i, m.pos.x, m.pos.y, m.pos.z);
-		// }
 
 		R.Update(results[0]);
 
-		// R.printMesh();
-		
-		// R.printObjectPositions();
+		model.Update(R);
 
 		while ((crntTime - prevTime) < 1 / FPS) {
 			crntTime = glfwGetTime();
@@ -414,7 +388,7 @@ void Visualize(std::vector<Robot>& robots) {
 		// Updates and exports the camera matrix to the Vertex Shader
 		camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		R.Draw(shader, camera);
+		model.Draw(shader, camera);
 
 		p.Draw(shader, camera);
 
@@ -455,37 +429,37 @@ void Visualize(std::vector<Robot>& robots) {
 void handle_commandline_args(const int& argc, char** argv) {
     for(int i = 0; i < argc; i++) {
         if(strcmp(argv[i], "-mutate") == 0) {
-			strats.mutator = Optimizer::MUTATE;
+			strats.mutator = Optimizer<ROBOT_TYPE>::MUTATE;
 			if(i < argc) {
 				if(strcmp(argv[i+1], "full") == 0) {
-					strats.mutator = Optimizer::RANDOMIZE;
+					strats.mutator = Optimizer<ROBOT_TYPE>::RANDOMIZE;
 				} else if(strcmp(argv[i+1], "vox") == 0) {
-					strats.mutator = Optimizer::MUTATE;
+					strats.mutator = Optimizer<ROBOT_TYPE>::MUTATE;
 				}
 			}
         }
 
         if(strcmp(argv[i], "-cross") == 0) {
-			strats.crossover = Optimizer::CROSS_SWAP;
+			strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
 
             if(strcmp(argv[i+1], "none") == 0) {
-				strats.crossover = Optimizer::CROSS_NONE;
+				strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_NONE;
             } else if(strcmp(argv[i+1], "beam") == 0) {
-                strats.crossover = Optimizer::CROSS_BEAM;
+                strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_BEAM;
             } else if(strcmp(argv[i+1], "swap") == 0) {
-                strats.crossover = Optimizer::CROSS_SWAP;
+                strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_SWAP;
             } else if(strcmp(argv[i+1], "dc") == 0) {
-                strats.crossover = Optimizer::CROSS_DC;
+                strats.crossover = Optimizer<ROBOT_TYPE>::CROSS_DC;
             }
         }
 
         if(strcmp(argv[i], "-niche") == 0) {
             if(strcmp(argv[i+1], "none") == 0) {
-                strats.niche = Optimizer::NICHE_NONE;
+                strats.niche = Optimizer<ROBOT_TYPE>::NICHE_NONE;
             } else if(strcmp(argv[i+1], "hfc") == 0) {
-                strats.niche = Optimizer::NICHE_HFC;
+                strats.niche = Optimizer<ROBOT_TYPE>::NICHE_HFC;
             } else if(strcmp(argv[i+1], "malps") == 0) {
-                strats.niche = Optimizer::NICHE_MALPS;
+                strats.niche = Optimizer<ROBOT_TYPE>::NICHE_MALPS;
             }
         }
 		
@@ -497,15 +471,15 @@ void handle_commandline_args(const int& argc, char** argv) {
 			solID = atoi(argv[i+1]);
         }
 
-		if(strcmp(argv[i], "-encode") == 0) {
-            if(strcmp(argv[i+1], "rad") == 0) {
-				strats.encoding = Robot::ENCODE_RADIUS;
-				Robot::repr = Robot::ENCODE_RADIUS;
-			} else if(strcmp(argv[i+1], "direct") == 0) {
-				strats.encoding = Robot::ENCODE_DIRECT;
-				Robot::repr = Robot::ENCODE_DIRECT;
-			}
-        }
+		// if(strcmp(argv[i], "-encode") == 0) {
+        //     if(strcmp(argv[i+1], "rad") == 0) {
+		// 		strats.encoding = ROBOT_TYPE::ENCODE_RADIUS;
+		// 		ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_RADIUS;
+		// 	} else if(strcmp(argv[i+1], "direct") == 0) {
+		// 		strats.encoding = ROBOT_TYPE::ENCODE_DIRECT;
+		// 		ROBOT_TYPE::repr = ROBOT_TYPE::ENCODE_DIRECT;
+		// 	}
+        // }
     }
 }
 
@@ -516,13 +490,13 @@ void handle_file_io() {
 
     switch(strats.niche)
     {
-    case Optimizer::NICHE_NONE:
+    case Optimizer<ROBOT_TYPE>::NICHE_NONE:
         strcat(out_dir,"/NoNiche");
         break;
-    case Optimizer::NICHE_HFC:
+    case Optimizer<ROBOT_TYPE>::NICHE_HFC:
         strcat(out_dir,"/HFC");
         break;
-    case Optimizer::NICHE_MALPS:
+    case Optimizer<ROBOT_TYPE>::NICHE_MALPS:
         strcat(out_dir,"/MALPS");
         break;
     default:
@@ -533,10 +507,10 @@ void handle_file_io() {
 
     switch(strats.mutator)
     {
-    case Optimizer::RANDOMIZE:
+    case Optimizer<ROBOT_TYPE>::RANDOMIZE:
         strcat(out_dir,"/Random");
         break;
-    case Optimizer::MUTATE:
+    case Optimizer<ROBOT_TYPE>::MUTATE:
         strcat(out_dir,"/Mutate");
         break;
     default:
@@ -547,32 +521,32 @@ void handle_file_io() {
 
     switch(strats.crossover)
     {
-    case Optimizer::CROSS_NONE:
+    case Optimizer<ROBOT_TYPE>::CROSS_NONE:
         strcat(out_dir,"/Nonparallel");
         break;
-    case Optimizer::CROSS_BEAM:
+    case Optimizer<ROBOT_TYPE>::CROSS_BEAM:
         strcat(out_dir,"/Parallel");
         break;
-    case Optimizer::CROSS_SWAP:
+    case Optimizer<ROBOT_TYPE>::CROSS_SWAP:
         strcat(out_dir,"/Swap");
         break;
-    case Optimizer::CROSS_DC:
+    case Optimizer<ROBOT_TYPE>::CROSS_DC:
         strcat(out_dir,"/DC");
         break;
     }
 
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
-    switch(strats.encoding)
-    {
-    case Robot::ENCODE_DIRECT:
-        strcat(out_dir,"/Simple");
-        break;
-    case Robot::ENCODE_RADIUS:
-	default:
-        strcat(out_dir,"/Radius");
-        break;
-    }
+    // switch(strats.encoding)
+    // {
+    // case ROBOT_TYPE::ENCODE_DIRECT:
+    //     strcat(out_dir,"/Simple");
+    //     break;
+    // case ROBOT_TYPE::ENCODE_RADIUS:
+	// default:
+    //     strcat(out_dir,"/Radius");
+    //     break;
+    // }
 
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
@@ -586,7 +560,6 @@ GLFWwindow* GLFWsetup(bool visualize) {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_VISIBLE, visualize ? GLFW_TRUE : GLFW_FALSE);
-	// glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT,GLFW_TRUE);
 
 	// Create a GLFWwindow object of WIDTH by HEIGHT pixels, naming it "Cubes!"
 	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Robots!", NULL, NULL);
@@ -610,42 +583,17 @@ GLFWwindow* GLFWsetup(bool visualize) {
 
 void GLFWinitialize()	        // We call this right after our OpenGL window is created.
 {
-	// Lighting properties
-	// GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
-	// GLfloat mat_shininess[] = { 50.0 };
-	// GLfloat light_position[] = { 1.0, 1.0, 1.0, 0.0 };
-
-	// // set the lighting properties
-	// glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
-	// glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
-	// glLightfv(GL_LIGHT0, GL_POSITION, light_position);
-	// glColorMaterial ( GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE ) ;
-
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
 	glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
-	// glDepthFunc(GL_LESS);			        // The Type Of Depth Test To Do
-	// glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
-
 
 	glEnable(GL_DEPTH_TEST);		        // Enables Depth Testing
 	glEnable(GL_LINE_SMOOTH);
-	// glEnable (GL_LIGHTING);
-	// glEnable (GL_COLOR_MATERIAL);
-	// glEnable (GL_LIGHT0);
-
-	// Wireframe mode
-	// glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
 	// Rasterized line width
 	glLineWidth(3.0f);
 
-
-	// glMatrixMode(GL_PROJECTION);
-	// glLoadIdentity();				// Reset The Projection Matrix
-
 	// Specify the viewport of OpenGL in the Window
 	// In this case the viewport goes from x = 0, y = 0, to x = WIDTH, y = HEIGHT
 	glViewport(0, 0, WIDTH, HEIGHT);
-
-	// glMatrixMode(GL_MODELVIEW);
 }
+#endif

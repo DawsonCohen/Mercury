@@ -1,27 +1,24 @@
-#include <chrono>
-#include <csignal>
-#include <algorithm>
-#include <glm/gtx/norm.hpp>
 #include <map>
+#include <chrono>
 #include "VoxelRobot.h"
 
-unsigned VoxelRobot::seed = std::chrono::system_clock::now().time_since_epoch().count();
-std::default_random_engine VoxelRobot::gen = std::default_random_engine(VoxelRobot::seed);
-std::uniform_real_distribution<> VoxelRobot::uniform = std::uniform_real_distribution<>(0.0,1.0);
-
-VoxelRobot::Encoding repr = VoxelRobot::ENCODE_RADIUS;
+VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
 
+void Voxel::setRandomMaterial() {
+    mat = materials::random();
+}
+
 float VoxelRobot::Distance() {
-    glm::vec3 mean_pos = glm::vec3(0.0f);
+    Eigen::Vector3f mean_pos = Eigen::Vector3f::Zero();
     float i = 0;
     for(Mass& m : masses) {
         mean_pos = mean_pos + (m.pos - mean_pos) * 1.0f/(i+1);
         i++;
     }
-    return glm::l2Norm(mean_pos);
+    return mean_pos.norm();
 }
 
 void Circle::Randomize(float xlim, float ylim, float zlim) {
@@ -29,10 +26,10 @@ void Circle::Randomize(float xlim, float ylim, float zlim) {
     static std::default_random_engine gen = std::default_random_engine(seed);
     static std::uniform_real_distribution<> uniform = std::uniform_real_distribution<>(0.0,1.0);
     
-    glm::vec3 new_center;
-    new_center.x = xlim*uniform(gen);
-    new_center.y = ylim*uniform(gen);
-    new_center.z = zlim*uniform(gen);
+    Eigen::Vector3f new_center;
+    new_center.x() = xlim*uniform(gen);
+    new_center.y() = ylim*uniform(gen);
+    new_center.z() = zlim*uniform(gen);
     center = new_center;
     radius = max_radius * uniform(gen);
 }
@@ -42,13 +39,14 @@ void ShiftY(VoxelRobot& R) {
     float minY = -1;
     for(const Mass& m : R.getMasses()) {
         if(!m.active) continue;
-        if(!setFlag || m.protoPos.y < minY) {
+        if(!setFlag || m.protoPos.y() < minY) {
             setFlag = true;
-            minY = m.protoPos.y;
+            minY = m.protoPos.y();
         }
     }
 
-    R.translate(glm::vec3(0.0f,-minY,0.0f));
+    Eigen::Vector3f translation(0.0f,-minY,0.0f);
+    R.translate(translation);
 }
 
 void ShiftX(VoxelRobot& R) {
@@ -56,13 +54,14 @@ void ShiftX(VoxelRobot& R) {
     float maxX = 0;
     for(const Mass& m : R.getMasses()) {
         if(!m.active) continue;
-        if(!setFlag || m.protoPos.x > maxX) {
+        if(!setFlag || m.protoPos.x() > maxX) {
             setFlag = true;
-            maxX = m.protoPos.x;
+            maxX = m.protoPos.x();
         }
     }
 
-    R.translate(glm::vec3(-maxX,0.0f,0.0f));
+    Eigen::Vector3f translation(-maxX,0.0f,0.0f);
+    R.translate(translation);
 }
 
 // Note mMasses.size == voxels.size
@@ -77,7 +76,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
 
     if(srcIdx != vIdx) {
         // Spring mean length
-        float L = glm::l2Norm(v_src.base - v.base);
+        float L = (v_src.base - v.base).norm();
         
         //  Get material of all owning voxels
         BasisIdx path = indices - v_src.indices;
@@ -297,11 +296,10 @@ void VoxelRobot::Build() {
     bool visited[voxels.size()];
     for(uint i = 0; i < voxels.size(); i++) {
         if(voxels[i].mat != materials::air) mVolume++;
-        addMass(Mass{i,voxels[i].base,voxels[i].mat.color});
+        Mass m(i, voxels[i].base, voxels[i].mat);
+        addMass(m);
         visited[i] = false;
-        // printf("Voxel %u: {%i,%i,%i} %s\n",i,voxels[i].indices.x,voxels[i].indices.y,voxels[i].indices.z,voxels[i].mat.to_string().data());
     }
-    // printf("----------------\n");
     
     std::vector<Spring> _springs;
     BuildSpringsRecurse(_springs, {0,0,0}, visited);
@@ -323,7 +321,7 @@ void VoxelRobot::BuildFromCircles() {
         mats.push_back(materials::air);
         float dist;
         for(Circle& c : circles) {
-            dist = glm::l2Norm(v.center-c.center);
+            dist = (v.center-c.center).norm();
             if(dist < c.radius) mats.push_back(c.mat);
         }
         v.mat = Material::avg(mats);
@@ -348,13 +346,13 @@ void VoxelRobot::Initialize() {
     uint numVoxels = xCount*yCount*zCount;
     voxels = std::vector<Voxel>(numVoxels);
 
-    glm::vec3 center_correction = (1.0f/resolution)*glm::vec3(0.5f,0.5f,0.5f);
+    Eigen::Vector3f center_correction = (1.0f/resolution)*Eigen::Vector3f(0.5f,0.5f,0.5f);
     for(uint i = 0; i < voxels.size(); i++) {
         BasisIdx indices = getVoxelBasisIdx(i);
-        glm::vec3 base((1.0f/resolution)*(indices.x),
+        Eigen::Vector3f base((1.0f/resolution)*(indices.x),
                        (1.0f/resolution)*(indices.y),
                        (1.0f/resolution)*(indices.z));
-        glm::vec3 center = base + center_correction;
+        Eigen::Vector3f center = base + center_correction;
         if((uint) indices.x == xCount-1 || (uint) indices.y == yCount-1 || (uint) indices.z == zCount-1)
             voxels[i] = {i, indices, center, base, materials::air};
         else
@@ -407,8 +405,8 @@ void VoxelRobot::Randomize() {
     }
 }
 
-VoxelRobotPair VoxelRobot::TwoPointChildren(const VoxelRobotPair& parents) {
-    VoxelRobotPair children = {parents.first, parents.second};
+CandidatePair<VoxelRobot> VoxelRobot::TwoPointChildren(const CandidatePair<VoxelRobot>& parents) {
+    CandidatePair<VoxelRobot> children = {parents.first, parents.second};
 
     uint range = children.first.voxels.size();
     float uni = uniform(gen);
@@ -426,8 +424,8 @@ VoxelRobotPair VoxelRobot::TwoPointChildren(const VoxelRobotPair& parents) {
     return children;
 }
 
-VoxelRobotPair VoxelRobot::RadiusChildren(const VoxelRobotPair& parents) {
-    VoxelRobotPair children = {parents.first, parents.second};
+CandidatePair<VoxelRobot> VoxelRobot::RadiusChildren(const CandidatePair<VoxelRobot>& parents) {
+    CandidatePair<VoxelRobot> children = {parents.first, parents.second};
 
     uint num_swapped = rand() % children.first.circles.size();
 
@@ -446,8 +444,8 @@ VoxelRobotPair VoxelRobot::RadiusChildren(const VoxelRobotPair& parents) {
     return children;
 }
 
-VoxelRobotPair VoxelRobot::Crossover(const VoxelRobotPair& parents) {
-    VoxelRobotPair children;
+CandidatePair<VoxelRobot> VoxelRobot::Crossover(const CandidatePair<VoxelRobot>& parents) {
+    CandidatePair<VoxelRobot> children;
     switch(repr) {
         case ENCODE_DIRECT: 
             children = TwoPointChildren(parents);
@@ -473,8 +471,8 @@ void VoxelRobot::Duplicate(const VoxelRobot& R) {
     *this = R;
 }
 
-glm::vec3 VoxelRobot::calcMeanPos(VoxelRobot& R) {
-    glm::vec3 mean_pos = glm::vec3(0.0f);
+Eigen::Vector3f VoxelRobot::calcMeanPos(VoxelRobot& R) {
+    Eigen::Vector3f mean_pos = Eigen::Vector3f::Zero();
     float i = 0;
     for(Voxel& v : R.voxels) {
         if(v.mat == materials::air) continue;
@@ -485,11 +483,11 @@ glm::vec3 VoxelRobot::calcMeanPos(VoxelRobot& R) {
     return mean_pos;
 }
 
-glm::vec3 VoxelRobot::calcClosestPos(VoxelRobot& R) {
-    glm::vec3 closest_pos = glm::vec3(0.0f);
+Eigen::Vector3f VoxelRobot::calcClosestPos(VoxelRobot& R) {
+    Eigen::Vector3f closest_pos = Eigen::Vector3f::Zero();
     for(Voxel& v : R.voxels) {
         if(v.mat == materials::air) continue;
-        if(R.masses[v.ID].pos.x < closest_pos.x)
+        if(R.masses[v.ID].pos.x() < closest_pos.x())
             closest_pos = R.masses[v.ID].pos;
     }
 
@@ -497,50 +495,50 @@ glm::vec3 VoxelRobot::calcClosestPos(VoxelRobot& R) {
 }
 
 float VoxelRobot::calcLength(VoxelRobot& R) {
-    glm::vec3 closest_pos = glm::vec3(0.0f);
-    glm::vec3 furthest_pos = glm::vec3(0.0f);
+    Eigen::Vector3f closest_pos = Eigen::Vector3f::Zero();
+    Eigen::Vector3f furthest_pos = Eigen::Vector3f::Zero();
     for(Voxel& v : R.voxels) {
         if(v.mat == materials::air) continue;
-        if(R.masses[v.ID].pos.x < closest_pos.x)
+        if(R.masses[v.ID].pos.x() < closest_pos.x())
             closest_pos  = R.masses[v.ID].pos;
-        if(R.masses[v.ID].pos.x > furthest_pos.x)
+        if(R.masses[v.ID].pos.x() > furthest_pos.x())
             furthest_pos = R.masses[v.ID].pos;
     }
 
-    return max(abs(furthest_pos.x - closest_pos.x),1.0f);
+    return max(abs(furthest_pos.x() - closest_pos.x()),1.0f);
 }
 
 
 
-glm::vec3 VoxelRobot::calcSkew(VoxelRobot& R) {
-    glm::vec3 skew = glm::vec3(0.0f);
+Eigen::Vector3f VoxelRobot::calcSkew(VoxelRobot& R) {
+    Eigen::Vector3f skew = Eigen::Vector3f::Zero();
     float i = 0;
     for(Voxel& v : R.voxels) {
         if(v.mat == materials::air) continue;
-        glm::vec3 dist = v.center - R.mBaseCOM;
-        glm::vec3 loc_skew = glm::vec3(pow(dist.x,3), pow(dist.y,3), pow(dist.z,3));
+        Eigen::Vector3f dist = v.center - R.mBaseCOM;
+        Eigen::Vector3f loc_skew = Eigen::Vector3f(pow(dist.x(),3), pow(dist.y(),3), pow(dist.z(),3));
         skew = skew + (loc_skew-skew) * 1.0f/(i+1);
         i++;
     }
-    skew.y = 0;
+    skew.y() = 0;
 
     return skew;
 }
 
 void VoxelRobot::calcFitness(VoxelRobot& R) {
-    // glm::vec3 mean_pos = calcMeanPos(R);
-    glm::vec3 closest_pos = calcClosestPos(R);
+    // Eigen::Vector3f mean_pos = calcMeanPos(R);
+    Eigen::Vector3f closest_pos = calcClosestPos(R);
 
-    // R.mFitness = glm::l2Norm(mean_pos);
-    // R.mFitness = mean_pos.x - R.mCOM.x;
-    R.mFitness = (closest_pos.x - R.mBaseCOM.x) / R.mLength;
+    // R.mFitness = mean_pos.norm();
+    // R.mFitness = mean_pos.x() - R.mCOM.x();
+    R.mFitness = (closest_pos.x() - R.mBaseCOM.x()) / R.mLength;
 
     if(R.mFitness > 1000) {
         printf("Length: %f\n",R.mLength);
     }
 }
 
-float VoxelRobot::Distance(const VoxelRobotPair& robots) {
+float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
     float dist = 0;
     std::vector<Voxel> s1 = robots.first.voxels;
     std::vector<Voxel> s2 = robots.second.voxels;

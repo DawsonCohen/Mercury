@@ -2,13 +2,10 @@
 #define __VOXEL_ROBOT_H__
 
 // Evolvable Soft Body
-#include <random>
 #include <string>
 #include "SoftBody.h"
 
 #define MIN_FITNESS (float) 0
-
-struct VoxelRobotPair;
 
 struct BasisIdx {
     int x;
@@ -31,8 +28,8 @@ struct BasisIdx {
 struct Circle {
     Material mat = materials::bone;
     float radius = 0;
-    glm::vec3 center = glm::vec3(0.0f);
-    float max_radius = 2.5f;
+    Eigen::Vector3f center = Eigen::Vector3f::Zero();
+    float max_radius = 6.0f;
     void Randomize(float xlim, float ylim, float zlim);
 
     friend void swap(Circle& c1, Circle& c2) {
@@ -45,25 +42,23 @@ struct Circle {
 struct Voxel {
     uint ID;
     BasisIdx indices;
-    glm::vec3 center;
-    glm::vec3 base;
+    Eigen::Vector3f center;
+    Eigen::Vector3f base;
     Material mat;
 
-    void setRandomMaterial() {
-        mat = materials::random();
-    }
+    void setRandomMaterial();
 
     std::string to_string() const {
         return std::to_string(ID) + "," +
                 std::to_string(indices.x) + "," + 
                 std::to_string(indices.y) + "," + 
                 std::to_string(indices.z) + "," +
-                std::to_string(center.x) + "," + 
-                std::to_string(center.y) + "," + 
-                std::to_string(center.z) + "," +
-                std::to_string(base.x) + "," + 
-                std::to_string(base.y) + "," + 
-                std::to_string(base.z) + "," +
+                std::to_string(center.x()) + "," + 
+                std::to_string(center.y()) + "," + 
+                std::to_string(center.z()) + "," +
+                std::to_string(base.x()) + "," + 
+                std::to_string(base.y()) + "," + 
+                std::to_string(base.z()) + "," +
                 mat.to_string();
     }
 
@@ -74,8 +69,6 @@ struct Voxel {
 };
 
 class VoxelRobot : public SoftBody {
-friend class Evaluator;
-
 public:
 enum Encoding {
     ENCODE_RADIUS = 0,
@@ -89,18 +82,14 @@ private:
     uint    mVolume = 0;
 
 public:
-    glm::vec3 mBaseCOM;
-    glm::vec3 mSkew;
+    Eigen::Vector3f mBaseCOM;
+    Eigen::Vector3f mSkew;
     float mLength = 1.0f;
-
-    static unsigned seed;
-    static std::default_random_engine gen;
-    static std::uniform_real_distribution<> uniform;
 
     float Distance();
 
-    static VoxelRobotPair TwoPointChildren(const VoxelRobotPair& parents);
-    static VoxelRobotPair RadiusChildren(const VoxelRobotPair& parents);
+    static CandidatePair<VoxelRobot> TwoPointChildren(const CandidatePair<VoxelRobot>& parents);
+    static CandidatePair<VoxelRobot> RadiusChildren(const CandidatePair<VoxelRobot>& parents);
     void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, bool* visit_list, uint srcIdx = 0);
     void BuildFromCircles();
     void Build();
@@ -115,11 +104,11 @@ public:
     void Strip();
 
 private:
-    float xSize = 5.0f;
-    float ySize = 5.0f;
-    float zSize = 5.0f;
+    float xSize = 12.0f;
+    float ySize = 12.0f;
+    float zSize = 12.0f;
     float resolution = 1.0f; // Masses per meter
-    glm::vec3 center = glm::vec3(xSize/2, ySize/2, 0);
+    Eigen::Vector3f center = Eigen::Vector3f(xSize/2.0f, ySize/2.0f, 0.0f);
     std::vector<Voxel> voxels;
     std::vector<Circle> circles;
     uint xCount;
@@ -127,7 +116,7 @@ private:
     uint zCount;
 
 public:
-    inline static Encoding repr;
+    static Encoding repr;
     
     uint getVoxelIdx(uint xIdx, uint yIdx, uint zIdx) {
         return xIdx + yIdx * xCount + zIdx * (xCount*yCount);
@@ -190,11 +179,11 @@ public:
     VoxelRobot(const SoftBody& src) : SoftBody(src) { }
 
     // TODO: line method, don't assume rect.prism.
-    bool isInside(glm::vec3 point) {
+    bool isInside(Eigen::Vector3f point) {
         return 
-            point.x <= xSize && point.x >= 0 &&
-            point.y <= ySize && point.y >= 0 &&
-            point.z <= zSize && point.z >= 0;
+            point.x() <= xSize && point.x() >= 0 &&
+            point.y() <= ySize && point.y() >= 0 &&
+            point.z() <= zSize && point.z() >= 0;
     }
 
     bool isValidIdx(BasisIdx ind) {
@@ -207,21 +196,21 @@ public:
     std::vector<Voxel>& getVoxels() { return voxels; }
 
     uint volume() const { return mVolume; }
-    glm::vec3 COM() const { return mBaseCOM; }
-    glm::vec3 skew() const { return mSkew; }
+    Eigen::Vector3f COM() const { return mBaseCOM; }
+    Eigen::Vector3f skew() const { return mSkew; }
 
-    void Randomize();
     static void Random();
+    void Randomize();
     void Duplicate(const VoxelRobot&);
     
     void Mutate();
-    static VoxelRobotPair Crossover(const VoxelRobotPair& parents);
+    static CandidatePair<VoxelRobot> Crossover(const CandidatePair<VoxelRobot>& parents);
 
-    static glm::vec3 calcMeanPos(VoxelRobot&);
-    static glm::vec3 calcClosestPos(VoxelRobot&);
-    static glm::vec3 calcSkew(VoxelRobot&);
+    static Eigen::Vector3f calcMeanPos(VoxelRobot&);
+    static Eigen::Vector3f calcClosestPos(VoxelRobot&);
+    static Eigen::Vector3f calcSkew(VoxelRobot&);
     static void calcFitness(VoxelRobot&);
-    static float Distance(const VoxelRobotPair& robots);
+    static float Distance(const CandidatePair<VoxelRobot>& robots);
     static float calcLength(VoxelRobot&);
 
     std::string DirectEncode() const;
@@ -290,16 +279,6 @@ public:
     }
 
     static std::vector<float> findDiversity(std::vector<VoxelRobot> pop);
-};
-
-struct VoxelRobotPair {
-    VoxelRobot first;
-    VoxelRobot second;
-
-    VoxelRobotPair(const VoxelRobot _first, const VoxelRobot _second) : 
-        first(_first), second(_second) {}
-    
-    VoxelRobotPair() {}
 };
 
 #endif
