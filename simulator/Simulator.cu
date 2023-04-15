@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <random>
-#include "util.h"
+// #include "util.h"
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -319,8 +319,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	for(uint i = 0; i < maxSprings; i++) {
 		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hMaxStressCount[i], m_hMinStressCount[i]});
 	}
-	std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
-	util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
+	// std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
+	// util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
 	#endif
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);

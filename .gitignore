@@ -1,8 +1,10 @@
 # Build files
-build/
 build/*
+!build/Makefile
 
+# Videos and results
 *.avi
 z_results/
 
+# Environment
 .vscode
