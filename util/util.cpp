@@ -1,7 +1,9 @@
 #include <fstream>
 #include <iostream>
-#include <filesystem>
 #include <memory>
+#include <dirent.h>
+#include <unistd.h>
+#include <string>
 #include "util.h"
 
 namespace util {
@@ -138,8 +140,20 @@ int WriteCSV(const char* filename, std::string datastring) {
 }
 
 void RemoveOldFiles(const char* dir) {
-    for (const auto& entry : std::filesystem::directory_iterator(dir)) 
-        std::filesystem::remove_all(entry.path());
+    DIR* dirp = opendir(dir);
+    if (!dirp) {
+        return;
+    }
+
+    struct dirent* dp;
+    while ((dp = readdir(dirp)) != nullptr) {
+        if (dp->d_type == DT_REG) {
+            std::string filename = std::string(dir) + "/" + dp->d_name;
+            unlink(filename.c_str());
+        }
+    }
+
+    closedir(dirp);
 }
 
 }
