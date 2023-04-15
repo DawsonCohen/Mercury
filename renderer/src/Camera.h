@@ -42,6 +42,10 @@ public:
 	void updateMatrix(float FOVdeg, float nearPlane, float farPlane);
 	void Matrix(Shader& shader, const char* uniform);
 
+	void Tab() {
+		tabIdx = (tabIdx + 1) % num_tabs;
+	}
+
 	// Exports the camera matrix to a shader
 	void SetUniforms(Shader& shader) const;
 	// Handles camera inputs

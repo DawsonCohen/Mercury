@@ -70,12 +70,16 @@ struct OptimizationStrats {
 
 void handle_commandline_args(const int& argc, char** argv);
 void handle_file_io();
+
+#ifdef VIDEO
 GLFWwindow* GLFWsetup(bool visualize);
 void GLFWinitialize();
 
-std::vector<ROBOT_TYPE> Solve();
-void Render(ROBOT_TYPE& R);
+void Render(std::vector<ROBOT_TYPE>& robots);
 void Visualize(std::vector<ROBOT_TYPE>& R);
+#endif
+
+std::vector<ROBOT_TYPE> Solve();
 
 OptimizationStrats strats;
 IOLocations io;
@@ -127,9 +131,9 @@ int main(int argc, char** argv)
 	#endif
 
 	#ifdef WRITE_VIDEO
-	for(ROBOT_TYPE& R : solutions) {
-		Render(R);
-	}
+	// for(ROBOT_TYPE& R : solutions) {
+	Render(solutions);
+	// }
 	#endif
 
 	#ifdef VISUALIZE
@@ -199,26 +203,29 @@ std::vector<ROBOT_TYPE> Solve() {
 #endif
 
 #ifdef VIDEO
-void Render(ROBOT_TYPE& R) {
+
+#ifdef WRITE_VIDEO
+void Render(std::vector<ROBOT_TYPE>& robots) {
 	printf("RENDERING\n");
 
+	Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
+	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
+	// Camera camera(WIDTH, HEIGHT, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
+	// camera = Camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f);
+
+	ROBOT_TYPE R = robots[camera.tabIdx];
 	RobotModel<ROBOT_TYPE> model(R);
 
 	GLFWwindow* window = GLFWsetup(false);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
 	shader.Bind();
-	Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
-	// Camera camera(WIDTH, HEIGHT, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
 
 	model.Bind();
 
 	shader.Unbind();
 	
-	#ifdef WRITE_VIDEO
 	// opencv video writer
 	cv::VideoWriter video;
-
-	camera = Camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f);
 
 	#if defined(BOUNCE) && !defined(ENV_GRAVITY)
 	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/stationary_%u_%u.avi",io.out_dir, runID, solID))
@@ -226,6 +233,8 @@ void Render(ROBOT_TYPE& R) {
 	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/bounce_%u_%u.avi",io.out_dir, runID, solID))
 	#elif defined(ZOO)
 	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/zoo_0.avi",io.out_dir))
+	#elif !defined(OPTIMIZE)
+	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/random_0.avi",io.out_dir))
 	#else
 	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/solution_video_%u_%u.avi",io.out_dir, runID, solID))
 	#endif
@@ -238,63 +247,69 @@ void Render(ROBOT_TYPE& R) {
 		assert(video.isOpened());
 	}
 	else printf("Something Failed\n");
-	#endif
 
 	PlaneModel p;
 
-	float max_render_time = 15;
+	float max_render_time = 5;
+	sim.Initialize(robots[0], 1);
 	sim.setMaxTime(1 / FPS);
 
 	// Main while loop
-	while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
-	{
-		std::vector<Element> robot_elements(1);
-		robot_elements[0] = (Element) R;
+	uint tabId = camera.tabIdx;
+	std::vector<Element> robot_elements(1);
+	for(auto solution : robots) {
+		tabId = camera.tabIdx;
+		printf("rendering %u/%lu\n",tabId+1,robots.size());
 
-		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
-		std::vector<Element> results = sim.Collect(trackers);
-		R.Update(results[0]);
+		model.Unbind();
+		ROBOT_TYPE R = robots[tabId];
 		model.Update(R);
+		model.Bind();
+		sim.Reset();
+		while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
+		{
+			robot_elements[0] = {R.getMasses(),R.getSprings()};
+			std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
+			std::vector<Element> results = sim.Collect(trackers);
 
-		printf("%f\n", sim.getTotalTime());
+			R.Update(results[0]);
+			model.Update(R);
 
-		// Specify the color of the background
-		GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
-		// Clean the back buffer and depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			// Specify the color of the background
+			GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
+			// Clean the back buffer and depth buffer
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Handles camera inputs
-		camera.Inputs(window);
-		// Updates and exports the camera matrix to the Vertex Shader
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
+			// Handles camera inputs
+			camera.Inputs(window);
+			// Updates and exports the camera matrix to the Vertex Shader
+			camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-		model.Draw(shader, camera);
+			model.Draw(shader, camera);
 
-		p.Draw(shader, camera);
+			p.Draw(shader, camera);
 
-		#ifdef WRITE_VIDEO
-		cv::Mat frame(HEIGHT,WIDTH,CV_8UC3);
-		//use fast 4-byte alignment (default anyway) if possible
-		glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
+			cv::Mat frame(HEIGHT,WIDTH,CV_8UC3);
+			//use fast 4-byte alignment (default anyway) if possible
+			glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
 
-		//set length of one complete row in destination data (doesn't need to equal frame.cols)
-		glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
-		glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
+			//set length of one complete row in destination data (doesn't need to equal frame.cols)
+			glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
+			glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
 
-		cv::flip(frame, frame, 0);
+			cv::flip(frame, frame, 0);
 
-		video.write(frame);
-		#endif
+			video.write(frame);
 
-		// Swap the back buffer with the front buffer
-		glfwSwapBuffers(window);
-		// Take care of all GLFW events
-		glfwPollEvents();
+			// Swap the back buffer with the front buffer
+			glfwSwapBuffers(window);
+			// Take care of all GLFW events
+			glfwPollEvents();
+		}
+		camera.Tab();
 	}
 
-	#ifdef WRITE_VIDEO
 	video.release();
-	#endif
 	// Delete all the objects we've created
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LINE_SMOOTH);
@@ -304,6 +319,7 @@ void Render(ROBOT_TYPE& R) {
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 }
+#endif
 
 void Visualize(std::vector<ROBOT_TYPE>& robots) {
 	printf("VISUALIZING\n");
@@ -313,7 +329,7 @@ void Visualize(std::vector<ROBOT_TYPE>& robots) {
 	GLFWwindow* window = GLFWsetup(true);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
 	shader.Bind();
-	Camera camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f, robots.size());
+	Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
 
 	ROBOT_TYPE R = robots[camera.tabIdx];
@@ -379,7 +395,8 @@ void Visualize(std::vector<ROBOT_TYPE>& robots) {
 		prevTime = crntTime;
 		
 		// Specify the color of the background
-		GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
+		// GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
+		GLCall(glClearColor(0.1f, 0.1f, 0.1f, 1.0f));
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -425,6 +442,53 @@ void Visualize(std::vector<ROBOT_TYPE>& robots) {
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 }
+
+
+GLFWwindow* GLFWsetup(bool visualize) {
+	// Initialize GLFW
+	glfwInit();
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_VISIBLE, visualize ? GLFW_TRUE : GLFW_FALSE);
+
+	// Create a GLFWwindow object of WIDTH by HEIGHT pixels, naming it "Cubes!"
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Robots!", NULL, NULL);
+	// Error check if the window fails to create
+	if (window == NULL)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		exit(-1);
+	}
+
+	// Introduce the window into the current context
+	glfwMakeContextCurrent(window);
+
+	// Load GLAD so it configures OpenGL
+	gladLoadGL();
+
+	GLFWinitialize();
+	return window;
+}
+
+void GLFWinitialize()	        // We call this right after our OpenGL window is created.
+{
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
+	glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
+
+	glEnable(GL_DEPTH_TEST);		        // Enables Depth Testing
+	glEnable(GL_LINE_SMOOTH);
+
+	// Rasterized line width
+	glLineWidth(3.0f);
+
+	// Specify the viewport of OpenGL in the Window
+	// In this case the viewport goes from x = 0, y = 0, to x = WIDTH, y = HEIGHT
+	glViewport(0, 0, WIDTH, HEIGHT);
+}
+#endif
 
 void handle_commandline_args(const int& argc, char** argv) {
     for(int i = 0; i < argc; i++) {
@@ -488,6 +552,7 @@ void handle_file_io() {
 
 	strcpy(out_dir,"../z_results");
 
+	#ifdef OPTIMIZE
     switch(strats.niche)
     {
     case Optimizer<ROBOT_TYPE>::NICHE_NONE:
@@ -534,6 +599,10 @@ void handle_file_io() {
         strcat(out_dir,"/DC");
         break;
     }
+	#else
+	strcat(out_dir,"/z_tests");
+	#endif
+
 
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
@@ -550,50 +619,3 @@ void handle_file_io() {
 
     mkdir(out_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
-
-
-GLFWwindow* GLFWsetup(bool visualize) {
-	// Initialize GLFW
-	glfwInit();
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_VISIBLE, visualize ? GLFW_TRUE : GLFW_FALSE);
-
-	// Create a GLFWwindow object of WIDTH by HEIGHT pixels, naming it "Cubes!"
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Robots!", NULL, NULL);
-	// Error check if the window fails to create
-	if (window == NULL)
-	{
-		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		exit(-1);
-	}
-
-	// Introduce the window into the current context
-	glfwMakeContextCurrent(window);
-
-	// Load GLAD so it configures OpenGL
-	gladLoadGL();
-
-	GLFWinitialize();
-	return window;
-}
-
-void GLFWinitialize()	        // We call this right after our OpenGL window is created.
-{
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
-	glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
-
-	glEnable(GL_DEPTH_TEST);		        // Enables Depth Testing
-	glEnable(GL_LINE_SMOOTH);
-
-	// Rasterized line width
-	glLineWidth(3.0f);
-
-	// Specify the viewport of OpenGL in the Window
-	// In this case the viewport goes from x = 0, y = 0, to x = WIDTH, y = HEIGHT
-	glViewport(0, 0, WIDTH, HEIGHT);
-}
-#endif

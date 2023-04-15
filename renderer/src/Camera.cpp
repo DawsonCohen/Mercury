@@ -85,7 +85,8 @@ void Camera::Inputs(GLFWwindow* window)
 		glfwSetWindowShouldClose(window, true);
 	}
 	if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
-		tabIdx = (tabIdx + 1) % num_tabs;
+		Tab();
+		// tabIdx = (tabIdx + 1) % num_tabs;
 	}
 	
 	// Handles mouse inputs
