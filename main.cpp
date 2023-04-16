@@ -34,7 +34,7 @@
 
 #define MAX_EVALS (ulong) 1e5
 
-#define POP_SIZE (uint) 32
+#define POP_SIZE (uint) 4
 #define TRHEAD_COUNT (uint) std::thread::hardware_concurrency()
 #define NICHE_COUNT (uint) std::thread::hardware_concurrency()
 #define STEPS_TO_COMBINE (uint) 1e2
@@ -87,6 +87,10 @@ Simulator sim;
 
 int main(int argc, char** argv)
 {
+	#ifndef OPTIMIZE
+	printf("NOT OPTIMIZING\n");
+	#endif
+
 	handle_commandline_args(argc, argv);
 	handle_file_io();
 	printf("Output directory: %s\n",io.out_dir);
@@ -94,6 +98,7 @@ int main(int argc, char** argv)
 	std::vector<ROBOT_TYPE> solutions;
 	Evaluator<ROBOT_TYPE>::Initialize(POP_SIZE, BASE_TIME, MAX_TIME);
 	
+
 	#ifdef OPTIMIZE
 	solutions = Solve();
 	#endif
@@ -108,7 +113,9 @@ int main(int argc, char** argv)
 		if (!std::filesystem::exists(filepath)) break;
 		
 		printf("Verifying file %s\n", filepath);
-		solutions.push_back(ReadVoxelRobot(filepath));
+		ROBOT_TYPE solution;
+		solution.Decode(filepath);
+		solutions.push_back(solution);
 
 		sol++;
 	}
@@ -188,7 +195,7 @@ std::vector<ROBOT_TYPE> Solve() {
 
 		for(uint i = 0; i < solutions.size(); i++) {
 			if(snprintf(io.out_sol_file,sizeof(io.out_sol_file),"%s/solution_%i_%i.csv",io.out_dir,N,i) < (int) sizeof(io.out_sol_file)){
-				std::string solutionCSV = util::SolutionToCSV<ROBOT_TYPE>(solutions[i]);
+				std::string solutionCSV = solutions[i].Encode();
 				util::WriteCSV(io.out_sol_file,solutionCSV);
 			} else {
 				printf("Something went terribly wrong");

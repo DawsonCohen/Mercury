@@ -1,6 +1,7 @@
 # Build files
-build/*
-!build/Makefile
+obj/
+build/
+run_evo
 
 # Videos and results
 *.avi

@@ -2,16 +2,20 @@
 #define __UTIL_H__
 
 #include <string>
-#include "VoxelRobot.h"
+#include <fstream>
+#include <sstream>
+#include <vector>
 
 namespace util {
-    VoxelRobot ReadVoxelRobot(const char* filename);
+    // template<typename T>
+    // T ReadRobot()
+    // VoxelRobot ReadVoxelRobot(const char* filename);
 
-    template<typename T>
-    std::string SolutionToCSV(const T& h) {
-        std::string s = h.DirectEncode();
-        return s;
-    }
+    // template<typename T>
+    // std::string SolutionToCSV(const T& h) {
+    //     std::string s = h.Encode();
+    //     return s;
+    // }
 
     std::string FitnessHistoryToCSV(std::vector<std::tuple<ulong,float>>& h);
 

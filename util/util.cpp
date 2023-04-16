@@ -9,79 +9,79 @@
 
 namespace util {
     
-VoxelRobot ReadVoxelRobot(const char* filename) {
-    std::ifstream file(filename);
-    std::string line;
+// VoxelRobot ReadVoxelRobot(const char* filename) {
+//     std::ifstream file(filename);
+//     std::string line;
     
-    std::vector<Voxel> voxels;
+//     std::vector<Voxel> voxels;
 
-    uint ID;
-    int xIdx, yIdx, zIdx;
-    float   sizeX, sizeY, sizeZ, resolution,
-            cx,cy,cz,
-            bx, by, bz;
-    Material mat;
+//     uint ID;
+//     int xIdx, yIdx, zIdx;
+//     float   sizeX, sizeY, sizeZ, resolution,
+//             cx,cy,cz,
+//             bx, by, bz;
+//     Material mat;
 
-    std::getline(file, line, '\n');
-    sizeX = atof(line.data());
-    std::getline(file, line, '\n');
-    sizeY = atof(line.data());
-    std::getline(file, line, '\n');
-    sizeZ = atof(line.data());
-    std::getline(file, line, '\n');
-    resolution = atof(line.data());
+//     std::getline(file, line, '\n');
+//     sizeX = atof(line.data());
+//     std::getline(file, line, '\n');
+//     sizeY = atof(line.data());
+//     std::getline(file, line, '\n');
+//     sizeZ = atof(line.data());
+//     std::getline(file, line, '\n');
+//     resolution = atof(line.data());
     
-    while(file.peek() == 'v') {
-        std::getline(file, line, 'v');
-        std::getline(file, line, ',');
-        ID = atoi(line.data());
-        std::getline(file, line, ',');
-        xIdx = atoi(line.data());
-        std::getline(file, line, ',');
-        yIdx = atoi(line.data());
-        std::getline(file, line, ',');
-        zIdx = atoi(line.data());
-        std::getline(file, line, ',');
-        cx = atof(line.data());
-        std::getline(file, line, ',');
-        cy = atof(line.data());
-        std::getline(file, line, ',');
-        cz = atof(line.data());
-        std::getline(file, line, ',');
-        bx = atof(line.data());
-        std::getline(file, line, ',');
-        by = atof(line.data());
-        std::getline(file, line, ',');
-        bz = atof(line.data());
-        std::getline(file, line, ',');
-        mat.k = atof(line.data());
-        std::getline(file, line, ',');
-        mat.dL0 = atof(line.data());
-        std::getline(file, line, ',');
-        mat.omega = atof(line.data());
-        std::getline(file, line, ',');
-        mat.phi = atof(line.data());
-        std::getline(file, line, ',');
-        mat.color.r = atof(line.data());
-        std::getline(file, line, ',');
-        mat.color.g = atof(line.data());
-        std::getline(file, line, ',');
-        mat.color.b = atof(line.data());
-        std::getline(file, line, '\n');
-        mat.color.a = atof(line.data());
+//     while(file.peek() == 'v') {
+//         std::getline(file, line, 'v');
+//         std::getline(file, line, ',');
+//         ID = atoi(line.data());
+//         std::getline(file, line, ',');
+//         xIdx = atoi(line.data());
+//         std::getline(file, line, ',');
+//         yIdx = atoi(line.data());
+//         std::getline(file, line, ',');
+//         zIdx = atoi(line.data());
+//         std::getline(file, line, ',');
+//         cx = atof(line.data());
+//         std::getline(file, line, ',');
+//         cy = atof(line.data());
+//         std::getline(file, line, ',');
+//         cz = atof(line.data());
+//         std::getline(file, line, ',');
+//         bx = atof(line.data());
+//         std::getline(file, line, ',');
+//         by = atof(line.data());
+//         std::getline(file, line, ',');
+//         bz = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.k = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.dL0 = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.omega = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.phi = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.color.r = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.color.g = atof(line.data());
+//         std::getline(file, line, ',');
+//         mat.color.b = atof(line.data());
+//         std::getline(file, line, '\n');
+//         mat.color.a = atof(line.data());
 
 
-        Eigen::Vector3f center(cx,cy,cz);
-        Eigen::Vector3f base(bx,by,bz);
+//         Eigen::Vector3f center(cx,cy,cz);
+//         Eigen::Vector3f base(bx,by,bz);
 
-        Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
-        voxels.push_back(v);
-    }
+//         Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
+//         voxels.push_back(v);
+//     }
     
-    VoxelRobot R(sizeX, sizeY, sizeZ, resolution, voxels);
+//     VoxelRobot R(sizeX, sizeY, sizeZ, resolution, voxels);
 
-    return R;
-}
+//     return R;
+// }
 
 std::string FitnessHistoryToCSV(std::vector<std::tuple<ulong,float>>& h) {
     std::string s = "evaluation, solution_fitness\n";

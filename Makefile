@@ -1,11 +1,16 @@
 
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic
+CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic 
 
 CU := nvcc
 CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61
 
-SRCDIR := ..
+ifeq ($(OPTIMIZE),1)
+	CXXFLAGS += -DOPTIMIZE
+	CUFLAGS += -DOPTIMIZE
+endif
+
+SRCDIR := .
 OBJDIR := obj
 BINDIR := .
 
@@ -24,7 +29,7 @@ CXX_OBJS := $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(CXX_SRCS))
 CUDA_OBJS := $(patsubst $(SRCDIR)/%.cu,$(OBJDIR)/%.o,$(CUDA_SRCS))
 
 # Included libraries
-EIGEN_LIB_DIR := ../lib
+EIGEN_LIB_DIR := $(SRCDIR)/lib
 EIGEN_LIB_NAME := cudart
 
 INCLUDE_DIRS := -I$(EIGEN_LIB_DIR)
@@ -35,17 +40,18 @@ CXXFLAGS += $(INCLUDE_DIRS)
 CUFLAGS += $(INCLUDE_DIRS)
 
 # Define target executable
-EXECUTABLE = $(BINDIR)/evolve
+EXECUTABLE = $(BINDIR)/run_evo
 
 .PHONY: all clean vars
 
 all: $(EXECUTABLE)
 
 # Change this line to select a different main source file
-MAIN_SRC := benchmark.cpp
+MAIN_SRC := main.cpp
 
 $(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/$(MAIN_SRC)
 	$(CU) $(CUFLAGS) $(LIB_DIRS) $(INCLUDE_ALL) $^ -o $@ $(LIB_NAMES)
+	$(info OPTIMIZE is $(OPTIMIZE))
 
 # Simulator
 $(OBJDIR)/simulator/%.o: $(SRCDIR)/simulator/%.cpp | $(OBJDIR)/simulator
@@ -60,11 +66,11 @@ $(OBJDIR)/optimizer/%.o: $(SRCDIR)/optimizer/%.cpp | $(OBJDIR)/optimizer
 
 # Evolvables
 $(OBJDIR)/evolvables/%.o: $(SRCDIR)/evolvables/%.cpp | $(OBJDIR)/evolvables
-	$(CXX) $(CXXFLAGS) -I../simulator -I../optimizer -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
 
 # Util
 $(OBJDIR)/util/%.o: $(SRCDIR)/util/%.cpp | $(OBJDIR)/util
-	$(CXX) $(CXXFLAGS) -I../evolvables -I../simulator -I../optimizer -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/evolvables -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
 
 $(OBJDIR)/simulator:
 	mkdir -p $@
@@ -85,6 +91,10 @@ vars:
 	$(info CUDA_OBJS is $(CUDA_OBJS))
 
 	$(info INCLUDE_DIRS is $(INCLUDE_DIRS))
+	$(info OPTIMIZE is $(OPTIMIZE))
+
+	$(info CXXFLAGS is $(CXXFLAGS))
+	$(info CUFLAGS is $(CUFLAGS))
 
 clean:
-	rm -rf $(OBJDIR)/* $(BINDIR)/evolve
+	rm -rf $(OBJDIR)/* $(EXECUTABLE)

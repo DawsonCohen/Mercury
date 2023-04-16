@@ -10,17 +10,7 @@
 #define MIN_FITNESS (float) 0
 
 class NNRobot : public SoftBody {
-protected:
-    std::vector<Eigen::MatrixXf> weights;
-    int num_layers;
-    
-    const int input_size = 3;
-    const int output_size = 3 + MATERIAL_COUNT;
-    
-    float   mVolume = 0.0f;
-    float   mLength = 1.0f;
-    Eigen::Vector3f mBaseCOM;
-
+private:
     Eigen::MatrixXf relu(const Eigen::MatrixXf& x) {
         return x.array().max(0);
     }
@@ -50,25 +40,44 @@ protected:
     Eigen::MatrixXf forward(const Eigen::MatrixXf& input) {
         Eigen::MatrixXf x = input;
         
-        for (int i = 0; i < num_layers-2; i++) {
+        for (uint i = 0; i < num_layers-2; i++) {
+            // x = addBias(x);
             x = weights[i] * x;
             x = relu(x);
         }
 
+        // x = addBias(x);
         x = weights[num_layers-2] * x;
 
-        x.topRows(output_size - MATERIAL_COUNT) = tanh(x.topRows(output_size - MATERIAL_COUNT)); // tanh activation to position rows
-        assert(output_size - MATERIAL_COUNT == 3);
-        x.bottomRows(MATERIAL_COUNT) = softmax(x.bottomRows(MATERIAL_COUNT)); // apply softmax to material rows
+        // tanh activation to position rows
+        x.topRows(output_size - MATERIAL_COUNT) = tanh(x.topRows(output_size - MATERIAL_COUNT)); 
+        
+        // softmax activation to material rows
+        x.bottomRows(MATERIAL_COUNT) = softmax(x.bottomRows(MATERIAL_COUNT)); 
         
         return x;
     }
+
+protected:
+    std::vector<Eigen::MatrixXf> weights;
+    static std::vector<int> hidden_sizes;
+    static uint num_layers;
     
-    public:
+    constexpr static uint input_size = 3;
+    constexpr static uint output_size = 3 + MATERIAL_COUNT;
+    
+    
+    
+public:
     void Build();
 
+    // NNRobot class configuration functions
+    static void SetArchitecture(const std::vector<int>& hidden_sizes = std::vector<int>{25,25}) {
+        NNRobot::num_layers = hidden_sizes.size();
+    }
+
     // Initializers
-    NNRobot(const uint num_masses = 1728, const std::vector<int>& hidden_sizes = std::vector<int>{25,25});
+    NNRobot(const uint num_masses = 1728);
 
     NNRobot(std::vector<Eigen::MatrixXf> weights) :
     weights(weights)
@@ -77,29 +86,23 @@ protected:
     };
     
     NNRobot(const NNRobot& src) : SoftBody(src),
-        weights(src.weights), num_layers(src.num_layers),
-        mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
+        weights(src.weights)
     { }
-
+    
 
     // Getters
     uint volume() const { return mVolume; }
     Eigen::Vector3f COM() const { return mBaseCOM; }
 
     void Randomize();
-    
     void Mutate();
+
     static CandidatePair<NNRobot> Crossover(const CandidatePair<NNRobot>& parents);
 
-    static Eigen::Vector3f calcMeanPos(NNRobot&);
-    static Eigen::Vector3f calcClosestPos(NNRobot&);
-    static void calcFitness(NNRobot&);
     static float Distance(const CandidatePair<NNRobot>& robots);
-    static float calcLength(NNRobot&);
-
-    std::string DirectEncode() const;
 
     std::string Encode() const;
+	void Decode(const std::string& filename);
 
     friend void swap(NNRobot& r1, NNRobot& r2) {
         using std::swap;
