@@ -40,7 +40,7 @@ void Benchmark(VoxelRobot& R) {
 	sim.Initialize(R,pop_size);
 
 	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getStepPeriod());
-	FILE* pFile = fopen("../z_results/speed_test.csv","w");
+	FILE* pFile = fopen("./z_results/speed_test.csv","w");
 
 	float execute_time;
 
