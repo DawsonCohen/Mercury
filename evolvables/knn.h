@@ -5,6 +5,8 @@
 #include "NNRobot.h"
 
 namespace KNN {
+    template<typename T>
+    std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group, unsigned int K);
 
     /// @brief Computes the K Nearest neighbors for each mass of each mass_list
     /// @tparam T - requires variable masses

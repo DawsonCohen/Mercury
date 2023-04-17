@@ -48,16 +48,24 @@ void Benchmark() {
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<NNRobot> robots;
 		std::vector<Element> robot_elements;
+
+		auto start = std::chrono::high_resolution_clock::now();
 		for(uint i = 0; i < pop_size; i++) {
 			NNRobot R;
+			R.Build();
 			robots.push_back(R);
 		}
+		auto end = std::chrono::high_resolution_clock::now();
 
-		NNRobot::BatchBuild(robots);
+		execute_time = std::chrono::duration<float>(end - start).count();
+		printf("BUILT %u ROBOTS IN %f SECONDS\n", pop_size, execute_time);
+
+		// NNRobot::BatchBuild(robots);
 
 		for(auto& R : robots) {
 			robot_elements.push_back({R.getMasses(), R.getSprings()});
 		}
+
 		
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
@@ -65,10 +73,10 @@ void Benchmark() {
 		sim.setMaxTime(MAX_TIME);
 
 		printf("STARTED\n");
-		auto start = std::chrono::high_resolution_clock::now();
+		start = std::chrono::high_resolution_clock::now();
 		
 		sim.Simulate(robot_elements);
-		auto end = std::chrono::high_resolution_clock::now();
+		end = std::chrono::high_resolution_clock::now();
 		printf("FINISHED\n\n");
 
 		execute_time = std::chrono::duration<float>(end - start).count();

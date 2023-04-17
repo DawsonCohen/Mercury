@@ -18,7 +18,6 @@ inline void compute_k_nearest_neighbors(float3* points, uint* knn_indices, float
 
         for(uint j = 0; j < KNN; j++) {
             knn_distances[start + j] = 10000.0f;
-            knn_indices[start + j] = j;
         }
 
         for(uint j = 0; j < points_per_group; j++) {
@@ -51,6 +50,25 @@ inline void compute_k_nearest_neighbors(float3* points, uint* knn_indices, float
         //     knn_distances[(i + offset) * KNN + j ] = s_distances[tid * KNN + j];
         // }
     }
+}
+
+// CUDA kernel to compute the distance matrix
+__global__ 
+inline void compute_distance_matrix(float3* points, float* distances, uint num_points) {
+    uint i = threadIdx.x + blockIdx.x * blockDim.x;
+    uint j = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (i >= num_points || j >= num_points) {
+        return;
+    }
+
+    float3 pi = points[i];
+    float3 pj = points[j];
+
+    distances[j*num_points + i] = sqrtf(
+        (pi.x - pj.x) * (pi.x - pj.x) +
+        (pi.y - pj.y) * (pi.y - pj.y) +
+        (pi.z - pj.z) * (pi.z - pj.z));
 }
 
 #endif

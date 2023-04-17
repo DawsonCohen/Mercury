@@ -75,7 +75,6 @@ NNRobot::NNRobot(const uint num_masses) :
 
 std::vector<std::pair<uint, float>> get_k_nearest_neighbors(uint i, const std::vector<std::vector<float>>& dists, uint k) {
     std::vector<std::pair<uint, float>> neighbors(dists.size());
-    std::vector<uint> kNearest(dists.size());
     for (uint j = 0; j < dists.size(); j++) {
         if(dists[i][j] == 0.0f)
             neighbors[j] = {j, std::numeric_limits<double>::infinity()};
@@ -222,8 +221,11 @@ void NNRobot::Build() {
     }
 
     uint k = 25;
+    auto knns = KNN::KNN(*this, k);
+
     for (uint i = 0; i < masses.size(); i++) {
-        std::vector<std::pair<uint, float>> neighbors = get_k_nearest_neighbors(i, dists, k);
+        auto neighbors = knns[i];
+        // std::vector<std::pair<uint, float>> neighbors = get_k_nearest_neighbors(i, dists, k);
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
