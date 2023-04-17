@@ -6,6 +6,7 @@
 #include <sstream>
 #include <fstream>
 #include "NNRobot.h"
+#include "knn.h"
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
@@ -43,7 +44,8 @@ void ShiftX(NNRobot& R) {
     R.translate(translation);
 }
 
-NNRobot::NNRobot(const uint num_masses)
+NNRobot::NNRobot(const uint num_masses) :
+    maxMasses(num_masses), maxSprings(num_masses*25)
 {
     uint hidden_layers = hidden_sizes.size();
     num_layers = hidden_layers+2;
@@ -69,8 +71,6 @@ NNRobot::NNRobot(const uint num_masses)
         Mass m(i,x,y,z);
         addMass(m);
     }
-
-    Build();
 }
 
 std::vector<std::pair<uint, float>> get_k_nearest_neighbors(uint i, const std::vector<std::vector<float>>& dists, uint k) {
@@ -90,74 +90,10 @@ std::vector<std::pair<uint, float>> get_k_nearest_neighbors(uint i, const std::v
     return neighbors;
 }
 
-void NNRobot::Build() {
-    springs.clear();
-    
-    Eigen::MatrixXf input(input_size, masses.size());
-
-    for(uint i = 0; i < masses.size(); i++) {
-        Mass m = masses[i];
-        // printf("Original Pos: {%f,%f,%f}\n",m.protoPos.x(), m.protoPos.y(), m.protoPos.z());
-        input.col(i) << m.protoPos.x(), m.protoPos.y(), m.protoPos.z();
-    }
-
-    Eigen::MatrixXf output = forward(input);
-    Eigen::MatrixXf positions = output.topRows(3);
-    Eigen::MatrixXf material_probs = output.bottomRows(MATERIAL_COUNT);
-    
-    for(uint i = 0; i < masses.size(); i++) {
-        masses[i].pos = masses[i].protoPos = positions.col(i);
-        // printf("Pos: {%f,%f,%f}\n",masses[i].pos.x(), masses[i].pos.y(), masses[i].pos.z());
-        // printf("New Pos: {%f,%f,%f}\n",masses[i].pos.x(), masses[i].pos.y(), masses[i].pos.z());
-        // printf("New Pos: {%f,%f,%f}\n",positions.col(i)[0], positions.col(i)[1], positions.col(i)[2]);
-
-        Eigen::VectorXf mat_prob = material_probs.col(i);
-        int maxIdx;
-        mat_prob.maxCoeff(&maxIdx);
-        masses[i].material = materials::matLookup(maxIdx);
-    }
-
-    std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
-    for (uint i = 0; i < masses.size(); i++) {
-        for (uint j = i + 1; j < masses.size(); j++) {
-            dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
-        }
-    }
-
-    uint k = 25;
-    for (uint i = 0; i < masses.size(); i++) {
-        std::vector<std::pair<uint, float>> neighbors = get_k_nearest_neighbors(i, dists, k);
-        for (auto neighbor : neighbors) {
-            Material mat1 = masses[i].material;
-            Material mat2 = masses[neighbor.first].material;
-            std::vector<Material> mats = {mat1, mat2};
-            Material mat;
-            if(mat1 == materials::air || mat2 == materials::air)
-                mat = materials::air;
-            else
-                mat = Material::avg(mats);
-            Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
-            springs.push_back(s);
-        }
-    }
-
-    for(Spring& s : springs) {
-        if(s.material != materials::air) {
-            masses[s.m0].active = true;
-            masses[s.m1].active = true;
-        }
-    }
-
-    ShiftX(*this);
-    ShiftY(*this);
-}
-
 void NNRobot::Randomize() {
     for(uint i = 0; i < weights.size(); i++) {
         weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
     }
-
-    Build();
 }
 
 void NNRobot::Mutate() {
@@ -270,5 +206,87 @@ void NNRobot::Decode(const std::string& filename) {
         if (matrix.size() > 0)
             weights.push_back(matrix);
         file.close();
+    }
+}
+
+void NNRobot::Build() {
+    springs.clear();
+
+    forward();
+
+    std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
+    for (uint i = 0; i < masses.size(); i++) {
+        for (uint j = i + 1; j < masses.size(); j++) {
+            dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
+        }
+    }
+
+    uint k = 25;
+    for (uint i = 0; i < masses.size(); i++) {
+        std::vector<std::pair<uint, float>> neighbors = get_k_nearest_neighbors(i, dists, k);
+        Material mat1 = masses[i].material;
+
+        for (auto neighbor : neighbors) {
+            Material mat2 = masses[neighbor.first].material;
+            std::vector<Material> mats = {mat1, mat2};
+            Material mat;
+            if(mat1 == materials::air || mat2 == materials::air)
+                mat = materials::air;
+            else
+                mat = Material::avg(mats);
+            Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
+            springs.push_back(s);
+        }
+    }
+
+    for(Spring& s : springs) {
+        if(s.material != materials::air) {
+            masses[s.m0].active = true;
+            masses[s.m1].active = true;
+        }
+    }
+
+    ShiftX(*this);
+    ShiftY(*this);
+}
+
+void NNRobot::BatchBuild(std::vector<NNRobot>& robots) {
+    for(auto& R : robots) {
+        R.springs.clear();
+        R.forward();
+    }
+    
+    uint k = 25;
+    std::vector<std::vector<std::vector<std::pair<uint,float>>>> robots_KNNs = KNN::Batch<NNRobot>(robots,k);
+
+    for(uint i = 0; i < robots.size(); i++) {
+        std::vector<std::vector<std::pair<uint,float>>> KNNs = robots_KNNs[i]; 
+
+        for (uint j = 0; j < robots[i].masses.size(); j++) {
+            std::vector<std::pair<uint, float>> neighbors = KNNs[j];
+            Material mat1 = robots[i].masses[j].material;
+
+            for (auto neighbor : neighbors) {
+                Material mat2 = robots[i].masses[neighbor.first].material;
+                std::vector<Material> mats = {mat1, mat2};
+                Material mat;
+                if(mat1 == materials::air || mat2 == materials::air)
+                    mat = materials::air;
+                else
+                    mat = Material::avg(mats);
+                Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
+                robots[i].springs.push_back(s);
+            }
+        }
+
+        for(Spring& s : robots[i].springs) {
+            if(s.material != materials::air) {
+                robots[i].masses[s.m0].active = true;
+                robots[i].masses[s.m1].active = true;
+            }
+        }
+
+        ShiftX(robots[i]);
+        ShiftY(robots[i]);
     }
 }

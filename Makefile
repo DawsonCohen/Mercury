@@ -5,6 +5,13 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic
 CU := nvcc
 CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61
 
+ifeq ($(BUILD_LOCATION),local)
+	CUFLAGS += -Xcudafe --diag_suppress=20050
+	CUFLAGS += -Xcudafe --diag_suppress=20015
+	CUFLAGS += -Xcudafe --diag_suppress=20013
+	CUFLAGS += -Xcudafe --diag_suppress=20012
+endif
+
 ifeq ($(OPTIMIZE),1)
 	CXXFLAGS += -DOPTIMIZE
 	CUFLAGS += -DOPTIMIZE
@@ -16,7 +23,7 @@ BINDIR := .
 
 # Source directories
 CXX_SRCDIRS := simulator evolvables optimizer util
-CUDA_SRCDIRS := simulator
+CUDA_SRCDIRS := simulator evolvables
 
 INCLUDE_ALL := $(foreach dir,$(CXX_SRCDIRS),-I$(wildcard $(SRCDIR)/$(dir)))
 
@@ -47,11 +54,10 @@ EXECUTABLE = $(BINDIR)/run_evo
 all: $(EXECUTABLE)
 
 # Change this line to select a different main source file
-MAIN_SRC := main.cpp
+MAIN_SRC := benchmark.cpp
 
 $(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/$(MAIN_SRC)
 	$(CU) $(CUFLAGS) $(LIB_DIRS) $(INCLUDE_ALL) $^ -o $@ $(LIB_NAMES)
-	$(info OPTIMIZE is $(OPTIMIZE))
 
 # Simulator
 $(OBJDIR)/simulator/%.o: $(SRCDIR)/simulator/%.cpp | $(OBJDIR)/simulator
@@ -67,6 +73,10 @@ $(OBJDIR)/optimizer/%.o: $(SRCDIR)/optimizer/%.cpp | $(OBJDIR)/optimizer
 # Evolvables
 $(OBJDIR)/evolvables/%.o: $(SRCDIR)/evolvables/%.cpp | $(OBJDIR)/evolvables
 	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
+
+# Evolvables
+$(OBJDIR)/evolvables/%.o: $(SRCDIR)/evolvables/%.cu | $(OBJDIR)/evolvables
+	$(CU) $(CUFLAGS) -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
 
 # Util
 $(OBJDIR)/util/%.o: $(SRCDIR)/util/%.cpp | $(OBJDIR)/util
@@ -92,6 +102,7 @@ vars:
 
 	$(info INCLUDE_DIRS is $(INCLUDE_DIRS))
 	$(info OPTIMIZE is $(OPTIMIZE))
+	$(info BUILD_LOCATION is $(BUILD_LOCATION))
 
 	$(info CXXFLAGS is $(CXXFLAGS))
 	$(info CUFLAGS is $(CUFLAGS))

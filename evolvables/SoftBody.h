@@ -41,6 +41,8 @@ public:
 	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
 	{}
 
+	static void BatchBuild(std::vector<SoftBody>);
+
     std::string Encode() const;
 	void Decode(const std::string& filename);
 

@@ -37,9 +37,15 @@ private:
         return B;
     }
 
-    Eigen::MatrixXf forward(const Eigen::MatrixXf& input) {
+    void forward() {
+        Eigen::MatrixXf input(input_size, masses.size());
+
+        for(uint i = 0; i < masses.size(); i++) {
+            Mass m = masses[i];
+            input.col(i) << m.protoPos.x(), m.protoPos.y(), m.protoPos.z();
+        }
+
         Eigen::MatrixXf x = input;
-        
         for (uint i = 0; i < num_layers-2; i++) {
             // x = addBias(x);
             x = weights[i] * x;
@@ -54,8 +60,19 @@ private:
         
         // softmax activation to material rows
         x.bottomRows(MATERIAL_COUNT) = softmax(x.bottomRows(MATERIAL_COUNT)); 
+
+        Eigen::MatrixXf output = x;
+        Eigen::MatrixXf positions = output.topRows(3);
+        Eigen::MatrixXf material_probs = output.bottomRows(MATERIAL_COUNT);
         
-        return x;
+        for(uint i = 0; i < masses.size(); i++) {
+            masses[i].pos = masses[i].protoPos = positions.col(i);
+
+            Eigen::VectorXf mat_prob = material_probs.col(i);
+            int maxIdx;
+            mat_prob.maxCoeff(&maxIdx);
+            masses[i].material = materials::matLookup(maxIdx);
+        }
     }
 
 protected:
@@ -67,10 +84,11 @@ protected:
     constexpr static uint output_size = 3 + MATERIAL_COUNT;
     
     
-    
 public:
-    void Build();
-
+    // TODO: more elegant solution for simulator initialization
+    uint maxMasses;
+    uint maxSprings;
+    
     // NNRobot class configuration functions
     static void SetArchitecture(const std::vector<int>& hidden_sizes = std::vector<int>{25,25}) {
         NNRobot::num_layers = hidden_sizes.size();
@@ -79,16 +97,16 @@ public:
     // Initializers
     NNRobot(const uint num_masses = 1728);
 
-    NNRobot(std::vector<Eigen::MatrixXf> weights) :
-    weights(weights)
-    {
-        Build();
-    };
+    NNRobot(std::vector<Eigen::MatrixXf> weights, const uint num_masses=1728) :
+    weights(weights), maxMasses(num_masses), maxSprings(num_masses*25)
+    { };
     
     NNRobot(const NNRobot& src) : SoftBody(src),
-        weights(src.weights)
+        weights(src.weights), maxMasses(src.maxMasses), maxSprings(src.maxSprings)
     { }
     
+    void Build();
+	static void BatchBuild(std::vector<NNRobot>& robots);
 
     // Getters
     uint volume() const { return mVolume; }

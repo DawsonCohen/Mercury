@@ -68,7 +68,6 @@ Simulator::~Simulator() {
 }
 
 void Simulator::Initialize(Element prototype, uint maxElements) {
-	
 	massesPerElement = prototype.masses.size();
 	springsPerElement = prototype.springs.size();
 	this->maxElements = maxElements;
@@ -80,6 +79,20 @@ void Simulator::Initialize(Element prototype, uint maxElements) {
 
 	_initialize();
 }
+
+void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint maxElements) {
+	massesPerElement = massesPerElement;
+	springsPerElement = springsPerElement;
+	this->maxElements = maxElements;
+	maxMasses = massesPerElement*maxElements;
+	maxSprings = springsPerElement*maxElements;
+	maxEnvs = 1;
+	m_currentRead = 0;
+	m_currentWrite = 1;
+
+	_initialize();
+}
+
 
 void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	if(initialized) {

@@ -35,29 +35,31 @@ add_definitions("-DVIDEO -DVISUALIZE")
 # add_definitions("-DSTRESS_COUNT -DFULL_STRESS -DWRITE_STRESS")
 
 set(PHYS
-	# benchmark.cpp
-        main.cpp
+	#batch_benchmark.cpp
+	benchmark.cpp
+  # main.cpp
 
-        simulator/Simulator.cu
+  simulator/Simulator.cu
 
-        evolvables/SoftBody.cpp
-        evolvables/VoxelRobot.cpp
-        evolvables/NNRobot.cpp
+  evolvables/SoftBody.cpp
+  evolvables/VoxelRobot.cpp
+  evolvables/NNRobot.cpp
+  evolvables/knn.cu
 
-        util/util.cpp
+  util/util.cpp
 )
 
 set(RENDER
-        renderer/src/Camera.cpp
-        renderer/src/Shader.cpp
-        renderer/src/Mesh.cpp
-        renderer/src/Renderer.cpp
-        renderer/src/VAO.cpp
-        renderer/src/VBO.cpp
-        renderer/src/EBO.cpp
-        renderer/src/Model.cpp
+  renderer/src/Camera.cpp
+  renderer/src/Shader.cpp
+  renderer/src/Mesh.cpp
+  renderer/src/Renderer.cpp
+  renderer/src/VAO.cpp
+  renderer/src/VBO.cpp
+  renderer/src/EBO.cpp
+  renderer/src/Model.cpp
 
-        models/plane_model.cpp
+  models/plane_model.cpp
 )
 
 # Create executable
