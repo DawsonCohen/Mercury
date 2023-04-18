@@ -2,7 +2,7 @@
 #include "knn_kernel.cu"
 #include "mass.h"
 
-#define BLOCK_SIZE 512
+#define BLOCK_SIZE 16
 
 #define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
 inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
@@ -52,8 +52,8 @@ std::vector<std::vector<std::vector<std::pair<unsigned int,float>>>> Batch(const
     cudaMemcpy(d_points, h_points, num_masses * 3 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Shared memory size
-    unsigned int bytesPerThread = (sizeof(float) + sizeof(unsigned int)) * K;
-    unsigned int sharedMemSize = BLOCK_SIZE * bytesPerThread;
+    // unsigned int bytesPerThread = (sizeof(float) + sizeof(unsigned int)) * K;
+    // unsigned int sharedMemSize = BLOCK_SIZE * bytesPerThread;
     
     // Compute k-nearest neighbors
     int num_blocks = num_groups;
@@ -111,6 +111,8 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
         h_points[3*i]   = masses[i].pos[0];
         h_points[3*i+1] = masses[i].pos[1];
         h_points[3*i+2] = masses[i].pos[2];
+
+        // printf("%u: {%f,%f,%f}\n",i,h_points[3*i],h_points[3*i+1],h_points[3*2]);
     }
 
     // GPU data 
@@ -124,10 +126,11 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
     cudaMemcpy(d_points, h_points, num_masses * 3 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Compute k-nearest neighbors
-    dim3 num_blocks = (num_masses + BLOCK_SIZE - 1) / BLOCK_SIZE;;
+    uint block_count = (num_masses + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    dim3 num_blocks = {block_count, block_count};
 
     // Execute the kernel
-    compute_distance_matrix<<<num_blocks, BLOCK_SIZE>>>((float3*) d_points, d_distances, num_masses);
+    compute_distance_matrix<<<num_blocks, {BLOCK_SIZE, BLOCK_SIZE}>>>((float3*) d_points, d_distances, num_masses);
     gpuErrchk( cudaPeekAtLastError() );
     cudaDeviceSynchronize();
 

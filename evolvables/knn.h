@@ -15,6 +15,6 @@ namespace KNN {
     /// @return vector of KNNs for each mass in each group
     template<typename T>
     std::vector<std::vector<std::vector<std::pair<unsigned int,float>>>> Batch(const std::vector<T>& mass_groups, unsigned int K);
-};
+}
 
 #endif

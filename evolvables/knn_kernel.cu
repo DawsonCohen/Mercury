@@ -1,6 +1,8 @@
 #ifndef __KNN_KERNEL_H__
 #define __KNN_KERNEL_H__
 
+#include <stdio.h>
+
 // CUDA kernel to compute the k-nearest neighbors
 __global__ 
 inline void compute_k_nearest_neighbors(float3* points, uint* knn_indices, float* knn_distances, int points_per_group, int KNN) {
@@ -65,10 +67,12 @@ inline void compute_distance_matrix(float3* points, float* distances, uint num_p
     float3 pi = points[i];
     float3 pj = points[j];
 
-    distances[j*num_points + i] = sqrtf(
+    float distance = sqrtf(
         (pi.x - pj.x) * (pi.x - pj.x) +
         (pi.y - pj.y) * (pi.y - pj.y) +
         (pi.z - pj.z) * (pi.z - pj.z));
+
+    distances[j*num_points + i] = distance;
 }
 
 #endif
