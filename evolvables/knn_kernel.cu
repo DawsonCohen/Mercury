@@ -5,7 +5,7 @@
 
 // CUDA kernel to compute the k-nearest neighbors
 __global__ 
-inline void compute_k_nearest_neighbors(float3* points, uint* knn_indices, float* knn_distances, int points_per_group, int KNN) {
+inline void k_nearest_neighbors_kernel(float3* points, uint* knn_indices, float* knn_distances, int points_per_group, int KNN) {
     // extern __shared__ float s[];
 	// float  *s_distances = s;
 	// uint   *s_indices = (uint*) &s_distances[blockDim.x * KNN];
@@ -55,24 +55,55 @@ inline void compute_k_nearest_neighbors(float3* points, uint* knn_indices, float
 }
 
 // CUDA kernel to compute the distance matrix
+// TODO change points from float3
 __global__ 
-inline void compute_distance_matrix(float3* points, float* distances, uint num_points) {
+inline void distance_matrix_kernel(float3* points, uint* ids, float* distances, uint num_points) {
     uint i = threadIdx.x + blockIdx.x * blockDim.x;
     uint j = threadIdx.y + blockIdx.y * blockDim.y;
 
-    if (i >= num_points || j >= num_points) {
-        return;
+    if (i < num_points && j < num_points) {
+        ids[j * num_points + i] = i;
+
+        if(i == j) {
+            distances[j * num_points + i] = INFINITY;
+            return;
+        }
+
+        float3 pi = points[i];
+        float3 pj = points[j];
+
+        float distance = sqrtf(
+            (pi.x - pj.x) * (pi.x - pj.x) +
+            (pi.y - pj.y) * (pi.y - pj.y) +
+            (pi.z - pj.z) * (pi.z - pj.z));
+
+        distances[j * num_points + i] = distance;
     }
+}
 
-    float3 pi = points[i];
-    float3 pj = points[j];
+__global__
+inline void symetric_distance_matrix_kernel(float3* points, uint* ids, float* distances, int num_points) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
 
-    float distance = sqrtf(
-        (pi.x - pj.x) * (pi.x - pj.x) +
-        (pi.y - pj.y) * (pi.y - pj.y) +
-        (pi.z - pj.z) * (pi.z - pj.z));
+    if (i < num_points && j < num_points && i < j) {
+        ids[j * num_points + i] = i;
+        if(i == j) {
+            distances[j * num_points + i] = INFINITY;
+            return;
+        }
 
-    distances[j*num_points + i] = distance;
+        float3 pi = points[i];
+        float3 pj = points[j];
+
+        float distance = sqrtf(
+            (pi.x - pj.x) * (pi.x - pj.x) +
+            (pi.y - pj.y) * (pi.y - pj.y) +
+            (pi.z - pj.z) * (pi.z - pj.z));
+        
+        distances[i * num_points + j] = distance;
+        distances[j * num_points + i] = distance;
+    }
 }
 
 #endif

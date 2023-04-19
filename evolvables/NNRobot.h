@@ -95,18 +95,19 @@ public:
     }
 
     // Initializers
+    void Build();
+	static void BatchBuild(std::vector<NNRobot>& robots); // TODO
+
     NNRobot(const uint num_masses = 1728);
 
     NNRobot(std::vector<Eigen::MatrixXf> weights, const uint num_masses=1728) :
-    weights(weights), maxMasses(num_masses), maxSprings(num_masses*25)
-    { };
+        weights(weights), maxMasses(num_masses), maxSprings(num_masses*25)
+    { Build(); }
     
     NNRobot(const NNRobot& src) : SoftBody(src),
         weights(src.weights), maxMasses(src.maxMasses), maxSprings(src.maxSprings)
     { }
     
-    void Build();
-	static void BatchBuild(std::vector<NNRobot>& robots);
 
     // Getters
     uint volume() const { return mVolume; }
