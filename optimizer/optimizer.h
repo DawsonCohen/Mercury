@@ -17,7 +17,7 @@ struct subpopulation {
 
     typename std::vector<T>::iterator mBegin{};
     typename std::vector<T>::iterator mEnd{};
-    std::vector<int> parentFlag
+    std::vector<int> parentFlag;
 
     size_t mSize = 0;
     std::mutex a_mutex;
@@ -113,8 +113,8 @@ public:
 
     // TODO
     float mutation_crossover_threshold = 0.5;
-    float child_pop_size = .8
-    float injection_rate = 4;
+    float child_pop_size = .8;
+    uint injection_rate = 4;
     float elitism = 0.1;
     bool prune = false;
     bool snip = false;
@@ -125,7 +125,8 @@ public:
 
     unsigned seed;
     std::default_random_engine gen;
-    std::uniform_real_distribution<> uniform;
+    std::uniform_real_distribution<> uniform_real;
+    std::uniform_int_distribution<> uniform_int;
     std::gamma_distribution<> gamma;
 
     Optimizer();

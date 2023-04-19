@@ -287,6 +287,42 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	uint step = 0;
 	float hold_time = 0.0f;
 	float mat_time = 0.0f;
+
+	/*uint devo_cycle = 0;
+	uint step_count = 0;
+
+	while(devo_cycle < max_devo_cycles) {
+		while(step_time < devo_time*(devo_cycle+1)){
+			mat_time = max(total_time-hold_time,0.0f);
+
+			integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
+				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
+				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
+				(float*) m_dStresses, (uint*) m_dSpringIDs,
+				mat_time, step, opt);
+				
+			gpuErrchk( cudaPeekAtLastError() );
+			cudaDeviceSynchronize();
+			
+			std::swap(m_currentRead, m_currentWrite);
+			
+			step++;
+			total_time += step_period;
+			step_time += step_period;
+		}
+
+		deleteMinSprings();
+		addRandSprings();
+	}
+
+	step = 0;
+	step_time = 0
+	hold_time = 0.0f;
+	mat_time = 0.0f;
+	resetBodies();*/
+
 	while(step_time < max_time) {
 		mat_time = max(total_time-hold_time,0.0f);
 

@@ -22,7 +22,8 @@ Optimizer<T>::Optimizer() {
     seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
     gen = std::default_random_engine(seed);
-    uniform = std::uniform_real_distribution<>(0.0,1.0);
+    uniform_real = std::uniform_real_distribution<>(0.0,1.0);
+    uniform_int = std::uniform_int_distribution<>(0,1728);
     gamma = std::gamma_distribution<>(1,5);
 }
 
@@ -74,7 +75,7 @@ T Optimizer<T>::MutateSolution(T& working_sol) {
 }
 
 template<typename T>
-T& SelectRoulette(subpopulation<T>& subpop) {
+size_t SelectRoulette(subpopulation<T>& subpop) {
     std::vector<float> fitness(subpop.size());
     float tot_fitness = 0;
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
@@ -103,7 +104,7 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     uint num_children = subpop.size() * child_pop_size;
 
     for(int i = 0; i < num_children; i ++) {
-        if(uniform(gen) >= mutation_crossover_threshold) {
+        if(uniform_real(gen) >= mutation_crossover_threshold) {
             if(crossover == CROSS_NONE) continue;
 
             CandidatePair<T> children;
@@ -113,10 +114,10 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
             first = SelectRoulette(subpop);
             do {
                 second = SelectRoulette(subpop);
-            } while(first != second)
+            } while(first != second);
 
-            parents.first   = (subpop.begin()+first);
-            parents.second  = (subpop.begin()+second);
+            parents.first   = &*(subpop.begin()+first);
+            parents.second  = &*(subpop.begin()+second);
 
             subpop.parentFlag[first] = 1;
             subpop.parentFlag[second] = 1;
@@ -128,21 +129,21 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
             subpop.crossoverFamilyBuffer.push_back({parents, children});
         } else {
             T new_sol;
+            int working_index = uniform_int(gen);
+            T *working_sol = &*(subpop.begin()+working_index);
             switch(mutator){
                 case RANDOMIZE:
-                    i->IncrementAge();
-                    new_sol = RandomizeSolution(*i);
+                    subpop.parentFlag[working_index] = 1;
+                    new_sol = RandomizeSolution(*working_sol);
                     break;
                 case MUTATE:
                 default:
                 {
-                    float rand = uniform(gen);
-                    if(rand > mutation_rate) continue;
-                    subpop.parentFlag[it - vec.begin()] = 1
-                    new_sol = MutateSolution(*i);
+                    subpop.parentFlag[working_index] = 1;
+                    new_sol = MutateSolution(*working_sol);
                 }
             }
-            AsexualRobotFamily fam{i.base(), new_sol};
+            AsexualFamily<T> fam{working_sol, new_sol};
             subpop.mutationFamilyBuffer.push_back(fam);            
         }
     }
@@ -150,41 +151,41 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     //STEP 2: Evaluate Children
     std::vector<T> evalBuf;
 
-    for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
+    for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
         evalBuf.push_back(fam.child);
     }
 
-    for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
+    for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
         evalBuf.push_back(fam.children.first);
         evalBuf.push_back(fam.children.second);
     }
 
     Evaluator<T>::BatchEvaluate(evalBuf);
 
-    for(T& R : subpop.population) {
-        evalBuf.push_back(R);
+    for(auto i = subpop.begin(); i < subpop.end(); i++) {
+        evalBuf.push_back(*i);
     }
 
     Evaluator<T>::pareto_classify(evalBuf.begin(),evalBuf.end());
 
     uint count = 0;
-    for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
+    for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
         fam.child = evalBuf[count++];
     }
 
-    for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
+    for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
         fam.children.first = evalBuf[count++];
         fam.children.second = evalBuf[count++];
     }
 
-    for(T& R : subpop.population) {
-        R = evalBuf[count++];
+    for(auto i = subpop.begin(); i < subpop.end(); i++) {
+        *i = evalBuf[count++];
     }
 
     //STEP 3: Compare Children to Parents
     int max_elite = elitism * subpop.size();
 
-    for(AsexualRobotFamily& fam : subpop.mutationFamilyBuffer) {
+    for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
         uint r_idx = max_elite + (rand() % (subpop.size()-max_elite));
         T* random_robot  = &subpop[r_idx];
         // while(random_robot->paretoLayer() == 0) {
@@ -198,12 +199,12 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     }
     subpop.mutationFamilyBuffer.clear();
 
-    for(SexualRobotFamily& fam : subpop.crossoverFamilyBuffer) {
+    for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
         switch(crossover) {
             case CROSS_DC: 
             {
                 float D00, D11, D01, D10;
-                RobotPair P0 = {fam.children.first, *fam.parents.first},
+                CandidatePair<T> P0 = {fam.children.first, *fam.parents.first},
                               P1 = {fam.children.second, *fam.parents.second},
                               P2 = {fam.children.first,  *fam.parents.second},
                               P3 = {fam.children.second, *fam.parents.first };
@@ -226,7 +227,7 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
             case CROSS_SWAP:
             default:
             {
-                SolutionPair random;
+                SolutionPair<T> random;
                 uint r1 = max_elite + (rand() % (subpop.size()-max_elite));
                 uint r2 = max_elite + (rand() % (subpop.size()-max_elite));
                 
@@ -281,7 +282,7 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 
     while(Evaluator<T>::eval_count < max_evals) {
 
-        ChildStep(full_pop)
+        ChildStep(full_pop);
 
         for(uint i = 0; i < population.size(); i++) {
             if(full_pop.parentFlag[i] == 1){
@@ -292,7 +293,7 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         if(generation%injection_rate == 0){
-            population[population.size()-1] = RandomizeSolution(population[population.size()-1])
+            population[population.size()-1] = RandomizeSolution(population[population.size()-1]);
             Evaluator<T>::pareto_sort(population.begin(),population.end());
         }
 
