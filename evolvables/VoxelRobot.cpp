@@ -1,5 +1,7 @@
 #include <map>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 #include "VoxelRobot.h"
 
 VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
@@ -66,7 +68,7 @@ void ShiftX(VoxelRobot& R) {
 
 // Note mMasses.size == voxels.size
 // Builds spring from srcIdx to vIdx
-void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx indices, bool* visit_list, uint srcIdx) {
+void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx indices, std::vector<bool>& visit_list, uint srcIdx) {
     if(!isValidIdx(indices)) return;
 
     uint vIdx = getVoxelIdx(indices);
@@ -293,7 +295,7 @@ void VoxelRobot::Build() {
 
     mVolume = 0;
 
-    bool visited[voxels.size()];
+    std::vector<bool> visited(voxels.size());
     for(uint i = 0; i < voxels.size(); i++) {
         if(voxels[i].mat != materials::air) mVolume++;
         Mass m(i, voxels[i].base, voxels[i].mat);
@@ -548,7 +550,7 @@ float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
     return dist;
 }
 
-std::string VoxelRobot::DirectEncode() const {
+std::string VoxelRobot::Encode() const {
     std::string encoding;
     encoding += std::to_string(xSize) + "\n";
     encoding += std::to_string(ySize) + "\n";
@@ -584,4 +586,71 @@ std::vector<float> VoxelRobot::findDiversity(std::vector<VoxelRobot> pop) {
         }
     }
     return diversity;
+}
+
+void VoxelRobot::Decode(const std::string& filename) {
+    std::ifstream file(filename);
+    std::string line;
+    
+    uint ID;
+    int xIdx, yIdx, zIdx;
+    float   cx,cy,cz,
+            bx, by, bz;
+    Material mat;
+
+    std::getline(file, line, '\n');
+    xSize = atof(line.data());
+    std::getline(file, line, '\n');
+    ySize = atof(line.data());
+    std::getline(file, line, '\n');
+    zSize = atof(line.data());
+    std::getline(file, line, '\n');
+    resolution = atof(line.data());
+    
+    while(file.peek() == 'v') {
+        std::getline(file, line, 'v');
+        std::getline(file, line, ',');
+        ID = atoi(line.data());
+        std::getline(file, line, ',');
+        xIdx = atoi(line.data());
+        std::getline(file, line, ',');
+        yIdx = atoi(line.data());
+        std::getline(file, line, ',');
+        zIdx = atoi(line.data());
+        std::getline(file, line, ',');
+        cx = atof(line.data());
+        std::getline(file, line, ',');
+        cy = atof(line.data());
+        std::getline(file, line, ',');
+        cz = atof(line.data());
+        std::getline(file, line, ',');
+        bx = atof(line.data());
+        std::getline(file, line, ',');
+        by = atof(line.data());
+        std::getline(file, line, ',');
+        bz = atof(line.data());
+        std::getline(file, line, ',');
+        mat.k = atof(line.data());
+        std::getline(file, line, ',');
+        mat.dL0 = atof(line.data());
+        std::getline(file, line, ',');
+        mat.omega = atof(line.data());
+        std::getline(file, line, ',');
+        mat.phi = atof(line.data());
+        std::getline(file, line, ',');
+        mat.color.r = atof(line.data());
+        std::getline(file, line, ',');
+        mat.color.g = atof(line.data());
+        std::getline(file, line, ',');
+        mat.color.b = atof(line.data());
+        std::getline(file, line, '\n');
+        mat.color.a = atof(line.data());
+
+
+        Eigen::Vector3f center(cx,cy,cz);
+        Eigen::Vector3f base(bx,by,bz);
+
+        Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
+        voxels.push_back(v);
+    }
 }

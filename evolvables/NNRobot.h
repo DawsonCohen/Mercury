@@ -10,17 +10,7 @@
 #define MIN_FITNESS (float) 0
 
 class NNRobot : public SoftBody {
-protected:
-    std::vector<Eigen::MatrixXf> weights;
-    int num_layers;
-    
-    const int input_size = 3;
-    const int output_size = 3 + MATERIAL_COUNT;
-    
-    float   mVolume = 0.0f;
-    float   mLength = 1.0f;
-    Eigen::Vector3f mBaseCOM;
-
+private:
     Eigen::MatrixXf relu(const Eigen::MatrixXf& x) {
         return x.array().max(0);
     }
@@ -47,59 +37,90 @@ protected:
         return B;
     }
 
-    Eigen::MatrixXf forward(const Eigen::MatrixXf& input) {
+    void forward() {
+        Eigen::MatrixXf input(input_size, masses.size());
+
+        for(uint i = 0; i < masses.size(); i++) {
+            Mass m = masses[i];
+            input.col(i) << m.protoPos.x(), m.protoPos.y(), m.protoPos.z();
+        }
+
         Eigen::MatrixXf x = input;
-        
-        for (int i = 0; i < num_layers-2; i++) {
+        for (uint i = 0; i < num_layers-2; i++) {
+            // x = addBias(x);
             x = weights[i] * x;
             x = relu(x);
         }
 
+        // x = addBias(x);
         x = weights[num_layers-2] * x;
 
-        x.topRows(output_size - MATERIAL_COUNT) = tanh(x.topRows(output_size - MATERIAL_COUNT)); // tanh activation to position rows
-        assert(output_size - MATERIAL_COUNT == 3);
-        x.bottomRows(MATERIAL_COUNT) = softmax(x.bottomRows(MATERIAL_COUNT)); // apply softmax to material rows
+        // tanh activation to position rows
+        x.topRows(output_size - MATERIAL_COUNT) = tanh(x.topRows(output_size - MATERIAL_COUNT)); 
         
-        return x;
+        // softmax activation to material rows
+        x.bottomRows(MATERIAL_COUNT) = softmax(x.bottomRows(MATERIAL_COUNT)); 
+
+        Eigen::MatrixXf output = x;
+        Eigen::MatrixXf positions = output.topRows(3);
+        Eigen::MatrixXf material_probs = output.bottomRows(MATERIAL_COUNT);
+        
+        for(uint i = 0; i < masses.size(); i++) {
+            masses[i].pos = masses[i].protoPos = positions.col(i);
+
+            Eigen::VectorXf mat_prob = material_probs.col(i);
+            int maxIdx;
+            mat_prob.maxCoeff(&maxIdx);
+            masses[i].material = materials::matLookup(maxIdx);
+        }
     }
+
+protected:
+    std::vector<Eigen::MatrixXf> weights;
+    static std::vector<int> hidden_sizes;
+    static uint num_layers;
     
-    public:
-    void Build();
+    constexpr static uint input_size = 3;
+    constexpr static uint output_size = 3 + MATERIAL_COUNT;
+    
+    
+public:
+    // TODO: more elegant solution for simulator initialization
+    uint maxMasses;
+    uint maxSprings;
+    
+    // NNRobot class configuration functions
+    static void SetArchitecture(const std::vector<int>& hidden_sizes = std::vector<int>{25,25}) {
+        NNRobot::num_layers = hidden_sizes.size();
+    }
 
     // Initializers
-    NNRobot(const uint num_masses = 1728, const std::vector<int>& hidden_sizes = std::vector<int>{25,25});
+    NNRobot(const uint num_masses = 1728);
 
-    NNRobot(std::vector<Eigen::MatrixXf> weights) :
-    weights(weights)
-    {
-        Build();
-    };
+    NNRobot(std::vector<Eigen::MatrixXf> weights, const uint num_masses=1728) :
+    weights(weights), maxMasses(num_masses), maxSprings(num_masses*25)
+    { };
     
     NNRobot(const NNRobot& src) : SoftBody(src),
-        weights(src.weights), num_layers(src.num_layers),
-        mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
+        weights(src.weights), maxMasses(src.maxMasses), maxSprings(src.maxSprings)
     { }
-
+    
+    void Build();
+	static void BatchBuild(std::vector<NNRobot>& robots);
 
     // Getters
     uint volume() const { return mVolume; }
     Eigen::Vector3f COM() const { return mBaseCOM; }
 
     void Randomize();
-    
     void Mutate();
+
     static CandidatePair<NNRobot> Crossover(const CandidatePair<NNRobot>& parents);
 
-    static Eigen::Vector3f calcMeanPos(NNRobot&);
-    static Eigen::Vector3f calcClosestPos(NNRobot&);
-    static void calcFitness(NNRobot&);
     static float Distance(const CandidatePair<NNRobot>& robots);
-    static float calcLength(NNRobot&);
-
-    std::string DirectEncode() const;
 
     std::string Encode() const;
+	void Decode(const std::string& filename);
 
     friend void swap(NNRobot& r1, NNRobot& r2) {
         using std::swap;

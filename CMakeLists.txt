@@ -18,10 +18,7 @@ set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pg -W -Wall")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 --ptxas-options=-v -ftz=true -prec-div=false -prec-sqrt=false --expt-relaxed-constexpr")
 
-# Set CUDA flags for local build
-if(DEFINED ENV{BUILD_LOCATION} AND "$ENV{BUILD_LOCATION}" STREQUAL "local")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20012")
-endif()
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20012")
 
 
 ## MAIN OPTIONS ##
@@ -38,37 +35,35 @@ add_definitions("-DVIDEO -DVISUALIZE")
 # add_definitions("-DSTRESS_COUNT -DFULL_STRESS -DWRITE_STRESS")
 
 set(PHYS
-	# benchmark.cpp
-        main.cpp
+	#batch_benchmark.cpp
+	benchmark.cpp
+  # main.cpp
 
-        simulator/Simulator.cu
+  simulator/Simulator.cu
 
-        evolvables/SoftBody.cpp
-        evolvables/VoxelRobot.cpp
-        evolvables/NNRobot.cpp
+  evolvables/SoftBody.cpp
+  evolvables/VoxelRobot.cpp
+  evolvables/NNRobot.cpp
+  evolvables/knn.cu
 
-        util/util.cpp
+  util/util.cpp
 )
 
 set(RENDER
-        renderer/src/Camera.cpp
-        renderer/src/Shader.cpp
-        renderer/src/Mesh.cpp
-        renderer/src/Renderer.cpp
-        renderer/src/VAO.cpp
-        renderer/src/VBO.cpp
-        renderer/src/EBO.cpp
-        renderer/src/Model.cpp
+  renderer/src/Camera.cpp
+  renderer/src/Shader.cpp
+  renderer/src/Mesh.cpp
+  renderer/src/Renderer.cpp
+  renderer/src/VAO.cpp
+  renderer/src/VBO.cpp
+  renderer/src/EBO.cpp
+  renderer/src/Model.cpp
 
-        models/plane_model.cpp
+  models/plane_model.cpp
 )
 
 # Create executable
-if(DEFINED ENV{BUILD_LOCATION} AND "$ENV{BUILD_LOCATION}" STREQUAL "local")
-  add_executable(phys ${PHYS} ${RENDER})
-else()
-  add_executable(phys ${PHYS})
-endif()
+add_executable(phys ${PHYS} ${RENDER})
 
 # Set CUDA architectures
 set_target_properties(phys PROPERTIES CUDA_ARCHITECTURES "61;75")
@@ -83,24 +78,22 @@ target_include_directories(phys PUBLIC
 )
 
 # Set include directories for local build
-if(DEFINED ENV{BUILD_LOCATION} AND "$ENV{BUILD_LOCATION}" STREQUAL "local")
-  # Find OpenCV package
-  find_package(OpenCV REQUIRED)
+# Find OpenCV package
+find_package(OpenCV REQUIRED)
 
-  # Add subdirectory for renderer
-  add_subdirectory(renderer)
+# Add subdirectory for renderer
+add_subdirectory(renderer)
 
-  target_include_directories(phys PUBLIC
-    renderer/src
-    models
-  )
+target_include_directories(phys PUBLIC
+  renderer/src
+  models
+)
 
-  # Link libraries
-  target_link_libraries(phys PUBLIC
-    glad
-    glfw
-    glm
-    stb
-    ${OpenCV_LIBS}
-  )
-endif()
+# Link libraries
+target_link_libraries(phys PUBLIC
+  glad
+  glfw
+  glm
+  stb
+  ${OpenCV_LIBS}
+)

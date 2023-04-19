@@ -6,13 +6,12 @@
 
 // Explicity assumes each mass is of unit 1 mass
 __device__
-
-float3 gravityForce(float g) {
+inline float3 gravityForce(float g) {
 	return {0, -g, 0};
 }
 
 /*__device__
-float3 collisionForce(float3 pos, float4 vel, float3 force,
+inline float3 collisionForce(float3 pos, float4 vel, float3 force,
 					float4 env) {
 	if(pos.y > 0.0f) return force;
 	
@@ -71,7 +70,7 @@ float3 dragForce(float4 vel, float3 force,
 		w - g		acceleration due to gravity
 */
 __device__
-float3 environmentForce(float3 pos, float4 vel, float3 force,
+inline float3 environmentForce(float3 pos, float4 vel, float3 force,
 						float4 env) {
 	force = gravityForce(env.w);
 	//force = collisionForce(pos,vel,force,env);
@@ -87,7 +86,7 @@ float3 environmentForce(float3 pos, float4 vel, float3 force,
 		w - phi		phase
 */
 __device__
-float3 springForce(float3 bl, float3 br, float4 mat, 
+inline float3 springForce(float3 bl, float3 br, float4 mat, 
 					float mean_length, float time,
 					float3 &force, float &magF)
 {
@@ -142,7 +141,7 @@ struct SimOptions {
 
 // TODO: test with single spring
 __global__ void
-integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
+inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
 				ushort2 *__restrict__ pairs, float4 *__restrict__ mats, float *__restrict__ Lbars,
 				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,

@@ -25,6 +25,7 @@ public:
 	~Simulator();
 
 	void Initialize(Element prototype, uint maxElements);
+	void Initialize(uint massesPerElement, uint springsPerElement, uint maxElements);
 	
 	std::vector<ElementTracker> Allocate(const std::vector<Element>& element);
 	ElementTracker AllocateElement(const Element& e);

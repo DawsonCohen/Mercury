@@ -21,9 +21,6 @@ struct RadiiSoftBodyEncoding {
 };
 
 class SoftBody : public Element, public Candidate {
-	float	mVolume = 0;
-
-
 protected:
 	std::vector<Material> mDirectEncoding;
 	std::vector<MaterialRadii> mRadiiEncoding;
@@ -31,10 +28,23 @@ protected:
     static std::default_random_engine gen;
     static std::uniform_real_distribution<> uniform;
 
+	float   mVolume = 0.0f;
+    float   mLength = 1.0f;
+    Eigen::Vector3f mBaseCOM;
+
 public:
 	SoftBody() { }
 
-	SoftBody(const SoftBody&);
+	SoftBody(const SoftBody& src) :
+	Element{src.masses, src.springs}, Candidate(src),
+	mDirectEncoding(src.mDirectEncoding), mRadiiEncoding(src.mRadiiEncoding),
+	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
+	{}
+
+	static void BatchBuild(std::vector<SoftBody>);
+
+    std::string Encode() const;
+	void Decode(const std::string& filename);
 
 	friend void swap(SoftBody& s1, SoftBody& s2) {
 		using std::swap;
@@ -96,6 +106,11 @@ public:
 			springs.push_back(s);
 		}
 	}
+
+	static Eigen::Vector3f calcMeanPos(SoftBody&);
+    static Eigen::Vector3f calcClosestPos(SoftBody&);
+    static void calcFitness(SoftBody&);
+    static float calcLength(SoftBody&);
 
 	void printObjectPositions();
 	

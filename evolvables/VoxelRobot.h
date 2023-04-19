@@ -90,7 +90,7 @@ public:
 
     static CandidatePair<VoxelRobot> TwoPointChildren(const CandidatePair<VoxelRobot>& parents);
     static CandidatePair<VoxelRobot> RadiusChildren(const CandidatePair<VoxelRobot>& parents);
-    void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, bool* visit_list, uint srcIdx = 0);
+    void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, std::vector<bool>& visit_list, uint srcIdx = 0);
     void BuildFromCircles();
     void Build();
     void Initialize();
@@ -213,9 +213,8 @@ public:
     static float Distance(const CandidatePair<VoxelRobot>& robots);
     static float calcLength(VoxelRobot&);
 
-    std::string DirectEncode() const;
-
     std::string Encode() const;
+	void Decode(const std::string& filename);
 
     friend void swap(VoxelRobot& r1, VoxelRobot& r2) {
         using std::swap;

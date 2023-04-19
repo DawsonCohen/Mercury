@@ -1,8 +1,11 @@
 # Build files
+obj/
 build/
-build/*
+run_evo
 
+# Videos and results
 *.avi
 z_results/
 
+# Environment
 .vscode
