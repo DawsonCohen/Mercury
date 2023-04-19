@@ -248,6 +248,7 @@ void NNRobot::Build() {
 
     uint k = 25;
     auto knns = KNN::KNN(*this, k);
+    uint8_t spring_alloc[masses.size()][masses.size()] = {0};
 
     for (uint i = 0; i < masses.size(); i++) {
         auto neighbors = knns[i];
@@ -255,15 +256,21 @@ void NNRobot::Build() {
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
-            Material mat2 = masses[neighbor.first].material;
-            std::vector<Material> mats = {mat1, mat2};
-            Material mat;
-            if(mat1 == materials::air || mat2 == materials::air)
-                mat = materials::air;
-            else
-                mat = Material::avg(mats);
-            Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
-            springs.push_back(s);
+            if (spring_alloc[i][neighbor.first] == 0){
+
+                spring_alloc[i][neighbor.first] = 1;
+                spring_alloc[neighbor.first][i] = 1;
+                
+                Material mat2 = masses[neighbor.first].material;
+                std::vector<Material> mats = {mat1, mat2};
+                Material mat;
+                if(mat1 == materials::air || mat2 == materials::air)
+                    mat = materials::air;
+                else
+                    mat = Material::avg(mats);
+                Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
+                springs.push_back(s);
+            }
         }
     }
 
