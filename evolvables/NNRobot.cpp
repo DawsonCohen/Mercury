@@ -71,28 +71,16 @@ NNRobot::NNRobot(const uint num_masses) :
         Mass m(i,x,y,z);
         addMass(m);
     }
-}
 
-std::vector<std::pair<uint, float>> get_k_nearest_neighbors(uint i, const std::vector<std::vector<float>>& dists, uint k) {
-    std::vector<std::pair<uint, float>> neighbors(dists.size());
-    for (uint j = 0; j < dists.size(); j++) {
-        if(dists[i][j] == 0.0f)
-            neighbors[j] = {j, std::numeric_limits<double>::infinity()};
-        else
-            neighbors[j] = {j, dists[i][j]};
-    }
-    sort(neighbors.begin(), neighbors.end(), [](const std::pair<uint, float>& a, const std::pair<uint, float>& b) {
-        return a.second < b.second;
-    });
-    
-    neighbors.resize(k);
-    return neighbors;
+    Build();
 }
 
 void NNRobot::Randomize() {
     for(uint i = 0; i < weights.size(); i++) {
         weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
     }
+
+    Build();
 }
 
 void NNRobot::Mutate() {
@@ -101,6 +89,8 @@ void NNRobot::Mutate() {
     int j = rand() % weights[layer].cols();
 
     weights[layer](i,j) = uniform(gen)*2-1;
+
+    Build();
 }
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
@@ -115,6 +105,9 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
     auto row2 = children.second.weights[layer].row(nodeIdx);
 
     row1.swap(row2);
+
+    children.first.Build();
+    children.second.Build();
 
     return children;
 }
@@ -206,11 +199,13 @@ void NNRobot::Decode(const std::string& filename) {
             weights.push_back(matrix);
         file.close();
     }
+    Build();
 }
 
 void NNRobot::Build() {
     springs.clear();
 
+    // auto start = std::chrono::high_resolution_clock::now();
     forward();
 
     std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
@@ -219,13 +214,22 @@ void NNRobot::Build() {
             dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
         }
     }
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto execute_time = std::chrono::duration<float>(end - start).count();
+    // printf("INFERENCE IN %f SECONDS\n", execute_time);
 
+    // start = std::chrono::high_resolution_clock::now();
+    
     uint k = 25;
     auto knns = KNN::KNN(*this, k);
+    
+    // end = std::chrono::high_resolution_clock::now();
+    // execute_time = std::chrono::duration<float>(end - start).count();
+    // printf("KNN IN %f SECONDS\n", execute_time);
 
+    // start = std::chrono::high_resolution_clock::now();
     for (uint i = 0; i < masses.size(); i++) {
         auto neighbors = knns[i];
-        // std::vector<std::pair<uint, float>> neighbors = get_k_nearest_neighbors(i, dists, k);
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
@@ -248,47 +252,10 @@ void NNRobot::Build() {
         }
     }
 
+    // end = std::chrono::high_resolution_clock::now();
+    // execute_time = std::chrono::duration<float>(end - start).count();
+    // printf("SPRINGS CREATED IN %f SECONDS\n", execute_time);
+
     ShiftX(*this);
     ShiftY(*this);
-}
-
-void NNRobot::BatchBuild(std::vector<NNRobot>& robots) {
-    for(auto& R : robots) {
-        R.springs.clear();
-        R.forward();
-    }
-    
-    uint k = 25;
-    std::vector<std::vector<std::vector<std::pair<uint,float>>>> robots_KNNs = KNN::Batch<NNRobot>(robots,k);
-
-    for(uint i = 0; i < robots.size(); i++) {
-        std::vector<std::vector<std::pair<uint,float>>> KNNs = robots_KNNs[i]; 
-
-        for (uint j = 0; j < robots[i].masses.size(); j++) {
-            std::vector<std::pair<uint, float>> neighbors = KNNs[j];
-            Material mat1 = robots[i].masses[j].material;
-
-            for (auto neighbor : neighbors) {
-                Material mat2 = robots[i].masses[neighbor.first].material;
-                std::vector<Material> mats = {mat1, mat2};
-                Material mat;
-                if(mat1 == materials::air || mat2 == materials::air)
-                    mat = materials::air;
-                else
-                    mat = Material::avg(mats);
-                Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
-                robots[i].springs.push_back(s);
-            }
-        }
-
-        for(Spring& s : robots[i].springs) {
-            if(s.material != materials::air) {
-                robots[i].masses[s.m0].active = true;
-                robots[i].masses[s.m1].active = true;
-            }
-        }
-
-        ShiftX(robots[i]);
-        ShiftY(robots[i]);
-    }
 }
