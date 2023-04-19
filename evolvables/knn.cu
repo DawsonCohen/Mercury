@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <chrono>
 
-#include <cub/device/device_segmented_sort.cuh>
+#include <cub/device/device_segmented_radix_sort.cuh>
 #include <cub/device/device_run_length_encode.cuh>
 
 #define BLOCK_SIZE 16
@@ -120,7 +120,7 @@ void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float
     // Determine temporary storage size
     void* d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
-    cub::DeviceSegmentedSort::SortPairs(
+    cub::DeviceSegmentedRadixSort::SortPairs(
         d_temp_storage, temp_storage_bytes,
         d_values_in, d_values_out, d_keys_in, d_keys_out,
         count*count, num_segments, d_offsets, d_offsets+1);
@@ -129,7 +129,7 @@ void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float
     cudaMalloc(&d_temp_storage, temp_storage_bytes);
 
     // Run sorting operation
-    cub::DeviceSegmentedSort::SortPairs(
+    cub::DeviceSegmentedRadixSort::SortPairs(
         d_temp_storage, temp_storage_bytes,
         d_values_in, d_values_out, d_keys_in, d_keys_out,
         count*count, count, d_offsets, d_offsets+1);

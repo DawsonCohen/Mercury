@@ -1,9 +1,9 @@
 
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic 
+CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3
 
 CU := nvcc
-CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61
+CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3
 
 ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20050
@@ -54,7 +54,7 @@ EXECUTABLE = $(BINDIR)/run_evo
 all: $(EXECUTABLE)
 
 # Change this line to select a different main source file
-MAIN_SRC := benchmark.cpp
+MAIN_SRC := main.cpp
 
 $(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/$(MAIN_SRC)
 	$(CU) $(CUFLAGS) $(LIB_DIRS) $(INCLUDE_ALL) $^ -o $@ $(LIB_NAMES)

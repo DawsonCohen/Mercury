@@ -33,7 +33,6 @@ void Benchmark() {
 	printf("BENCHMARKING\n");
 
 	NNRobot protoRobot;
-	protoRobot.Build();
 
 	uint pop_size = INIT_POP_SIZE;
 	sim.Initialize(protoRobot.maxMasses, protoRobot.maxSprings, pop_size);
@@ -52,7 +51,6 @@ void Benchmark() {
 		auto start = std::chrono::high_resolution_clock::now();
 		for(uint i = 0; i < pop_size; i++) {
 			NNRobot R;
-			R.Build();
 			robots.push_back(R);
 		}
 		auto end = std::chrono::high_resolution_clock::now();
