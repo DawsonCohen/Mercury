@@ -140,6 +140,42 @@ public:
     }
 
     bool operator < (const NNRobot& R) const {
+        if(mParetoLayer > R.mParetoLayer)
+            return true;
+        else if(mParetoLayer == R.mParetoLayer)
+            return mFitness < R.mFitness;
+
+        return false;
+    }
+
+    bool operator > (const NNRobot& R) const {
+        if(mParetoLayer < R.mParetoLayer)
+            return true;
+        else if(mParetoLayer == R.mParetoLayer)
+            return mFitness > R.mFitness;
+        
+        return false;
+    }
+
+    bool operator <= (const NNRobot& R) const {
+        if(mParetoLayer < R.mParetoLayer)
+            return false;
+        else if(mParetoLayer == R.mParetoLayer)
+            return !(mFitness > R.mFitness);
+
+        return true;
+    }
+
+    bool operator >= (const NNRobot& R) const {
+        if(mParetoLayer > R.mParetoLayer)
+            return false;
+        else if(mParetoLayer == R.mParetoLayer)
+            return !(mFitness < R.mFitness);
+
+        return true;
+    }
+
+    /*bool operator < (const NNRobot& R) const {
         return mParetoLayer > R.mParetoLayer;
     }
 
@@ -158,7 +194,7 @@ public:
 
     bool operator >= (const NNRobot& R) const {
         return !(mFitness < R.mFitness);
-    }
+    }*/
     
     static std::vector<float> findDiversity(std::vector<NNRobot> pop);
 };

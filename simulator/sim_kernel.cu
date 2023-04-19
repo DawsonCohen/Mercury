@@ -49,7 +49,7 @@ inline float3 collisionForce(float3 pos, float4 vel, float3 force,
 }*/
 
 __device__
-float3 dragForce(float4 vel, float3 force,
+inline float3 dragForce(float4 vel, float3 force,
 					float rho) {	
 	float3 Fd = {0.0f, 0.0f, 0.0f}; //Force due to drag - 1/2 * rho * v^2 * A * Cd (Assume A and Cd are 1)
 	Fd.x = 1/2*vel.x*vel.x*rho;
@@ -74,7 +74,7 @@ inline float3 environmentForce(float3 pos, float4 vel, float3 force,
 						float4 env) {
 	force = gravityForce(env.w);
 	//force = collisionForce(pos,vel,force,env);
-	force = dragForce(vel,force,env.y)
+	force = dragForce(vel,force,env.y);
 	return force;
 }
 
