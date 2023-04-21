@@ -495,16 +495,20 @@ int handle_file_io() {
 
 	// Create config out_dir folder
 	if (mkdir(config.io.out_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-		std::cerr << "Error: Could not create output folder." << std::endl;
-		return 1;
+		if (errno != EEXIST && errno != EISDIR) {
+            std::cerr << "Error: Could not create output directory " << config.io.out_dir << std::endl;
+            return 1;
+        }
 	}
 
 	// Create folder with current time as name
 	config.io.out_dir = config.io.out_dir + "/" + std::string(time_str);
 
 	if (mkdir(config.io.out_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-		std::cerr << "Error: Could not create output folder." << std::endl;
-		return 1;
+		if (errno != EEXIST && errno != EISDIR) {
+            std::cerr << "Error: Could not create output directory " << config.io.out_dir << std::endl;
+            return 1;
+		}
 	}
 
 	std::ifstream src(config_file, std::ios::binary);
