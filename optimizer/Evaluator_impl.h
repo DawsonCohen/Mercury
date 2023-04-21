@@ -17,12 +17,12 @@ template<typename T>
 Simulator Evaluator<T>::Sim = Simulator();
 
 template<typename T>
-void Evaluator<T>::Initialize(uint pop_size, float base_time, float eval_time) {
+void Evaluator<T>::Initialize(Config config) {
     T prototype;
     
-    Sim.Initialize(prototype, pop_size*1.5);
-    baselineTime = base_time;
-    evaluationTime = eval_time;
+    Sim.Initialize(prototype, config.eval.pop_size*1.5);
+    baselineTime = config.eval.base_time;
+    evaluationTime = config.eval.eval_time;
 }
 
 template<typename T>

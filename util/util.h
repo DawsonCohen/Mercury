@@ -4,19 +4,11 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 #include <vector>
+#include "config.h"
 
 namespace util {
-    // template<typename T>
-    // T ReadRobot()
-    // VoxelRobot ReadVoxelRobot(const char* filename);
-
-    // template<typename T>
-    // std::string SolutionToCSV(const T& h) {
-    //     std::string s = h.Encode();
-    //     return s;
-    // }
-
     std::string FitnessHistoryToCSV(std::vector<std::tuple<ulong,float>>& h);
 
     std::string PopulationFitnessHistoryToCSV(std::vector<std::tuple<ulong, std::vector<float>, std::vector<float>>> h);
@@ -24,29 +16,15 @@ namespace util {
     std::string PopulationDiversityHistoryToCSV(std::vector<std::tuple<ulong, std::vector<float>, std::vector<float>>> h);
 
     template<typename... Ts>
-    std::string DataToCSV(std::string header, std::vector<std::tuple<Ts...>> const& data)
-    {
-        std::ostringstream os;
-        
-        // Write header
-        os << header << std::endl;
-        
-        // Write data
-        for (auto const& row : data)
-        {
-            // Write each field of the row separated by commas
-            bool first = true;
-            ((os << (first ? first = false, "" : ","), os << std::get<Ts>(row)), ...);
-            
-            os << std::endl;
-        }
-        
-        return os.str();
-    }
+    std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data);
 
-    int WriteCSV(const char* filename, std::string datastring);
+    int MakeDirectory(const std::string& directory);
 
-    void RemoveOldFiles(const char* dir);
+    int WriteCSV(const std::string& filename, const std::string& directory, const std::string& datastring);
+
+    void RemoveOldFiles(const std::string& dir);
+
+    Config ReadConfigFile(const std::string& filename);
 }
 
 #endif

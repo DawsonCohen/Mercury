@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include "Evaluator.h"
+#include "config.h"
 
 template<typename T>
 struct subpopulation {
@@ -69,31 +70,8 @@ struct subpopulation {
 
 template<typename T>
 class Optimizer {
-public:
-    enum MutationStrat {
-        RANDOMIZE = 0,
-        MUTATE = 1,
-    };
-
-    // TODO
-    enum MutationRate {
-        MUTATE_CONST = 0,
-        MUTATE_SIM_ANNEALING = 1
-    };
-
-    enum CrossoverStrat {
-        CROSS_NONE = -1,
-        CROSS_BEAM = 0,
-        CROSS_SWAP = 1,
-        CROSS_DC = 2
-    };
-
-    enum NichingStrat {
-        NICHE_NONE = 0,
-        NICHE_HFC = 1,
-        NICHE_MALPS = 2
-    };
     
+public:
     ulong max_evals = 1e4;
     
     uint pop_size = 100;
@@ -103,21 +81,13 @@ public:
     uint calibration_steps = (uint) 5;
     uint exchange_steps = 5e3;
 
-    uint max_heap = 1024;
-
-    uint hist_skip_factor = 10;
-    uint print_skip = 1;
-
-    // TODO
     float mutation_rate = 0.6;
     float crossover_rate = 0.7;
     float elitism = 0.1;
-    bool prune = false;
-    bool snip = false;
 
     MutationStrat mutator = MUTATE;
     CrossoverStrat crossover = CROSS_DC;
-    NichingStrat niche = NICHE_MALPS;
+    NichingStrat niche = NICHE_ALPS;
 
     unsigned seed;
     std::default_random_engine gen;
@@ -127,8 +97,11 @@ public:
     Optimizer();
     ~Optimizer(void);
 
+
 private:
     float P,p;
+
+    std::string working_directory;
 
     ulong eval_count = 0;
     ulong subpop_size;
@@ -141,6 +114,7 @@ private:
     std::vector<std::tuple<ulong,float>> diversity_history;
     std::vector<std::tuple<ulong,std::vector<float>,std::vector<float>>> population_history;
     std::vector<T> solutions;
+    std::vector<T> pareto_solutions;
     
     void RandomizePopulation(std::vector<T>& population);
     T RandomizeSolution(T&);
@@ -164,6 +138,8 @@ private:
     void MALPSCrossover(std::vector<T>&, uint);
     void MALPSStep(std::vector<T>&, uint);
 
+    void WriteSolutions(const std::vector<T>& solutions, const std::string& directory);
+
     std::vector<T> NoNicheSolve();
     std::vector<T> HFCSolve();
     std::vector<T> ALPSSolve();
@@ -176,7 +152,7 @@ public:
         fitness_history.clear();
         population_history.clear();
     }
-    std::vector<T> Solve();
+    std::vector<T> Solve(Config config = Config());
     
     std::vector<T>& getSolutions() {return solutions;}
     

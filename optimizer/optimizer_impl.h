@@ -15,7 +15,7 @@
 #include <memory>
 #include <cmath>
 #include <utility>
-//#include "util.h"
+#include "util.h"
 
 template<typename T>
 Optimizer<T>::Optimizer() {
@@ -29,6 +29,21 @@ Optimizer<T>::Optimizer() {
 template<typename T>
 Optimizer<T>::~Optimizer() {
     
+}
+
+template<typename T>
+void Optimizer<T>::WriteSolutions(const std::vector<T>& solutions, const std::string& directory) {
+    uint i = 0;
+
+    for(const T& R : solutions) {
+        std::string encoding = R.Encode();
+        float fitness = R.fitness();
+        std::string filename = std::string("solution_") + std::to_string(i);
+        filename = filename + "_fintess_" + std::to_string(fitness);
+        
+        util::WriteCSV(filename,directory,encoding);
+        i++;
+    }
 }
 
 template<typename T>
@@ -79,7 +94,7 @@ void Optimizer<T>::MutateStep(subpopulation<T>& subpop) {
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
         T new_sol;
         switch(mutator){
-            case RANDOMIZE:
+            case MUTATE_RANDOM:
                 new_sol = RandomizeSolution(*i);
                 break;
             case MUTATE:
@@ -261,7 +276,7 @@ void Optimizer<T>::AlpsMutateStep(subpopulation<T>& subpop) {
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
         T new_sol;
         switch(mutator){
-            case RANDOMIZE:
+            case MUTATE_RANDOM:
                 new_sol = RandomizeSolution(*i);
                 break;
             case MUTATE:
@@ -279,13 +294,11 @@ void Optimizer<T>::AlpsMutateStep(subpopulation<T>& subpop) {
 
 template<typename T>
 std::vector<T> Optimizer<T>::ALPSSolve() {    
-    thread_count = 7;
-    niche_count = thread_count;
     subpop_size = pop_size/niche_count;
 
     float export_thresh[] = {2,3,5,8,13,21,34,10000};
     
-    std::vector<std::thread*> threads(thread_count);
+    std::vector<std::thread*> threads(niche_count);
     subpop_list = std::vector<subpopulation<T>>(niche_count);
     population = std::vector<T>(pop_size);
 
@@ -313,7 +326,7 @@ std::vector<T> Optimizer<T>::ALPSSolve() {
     std::vector<float>generation_history(population.size());
     for(size_t i = 0; i < population.size(); i++)
         generation_history[i] = population[i].fitness();
-    std::vector<float> diversity = updateDiversity(population);
+    std::vector<float> diversity = T::findDiversity(population);
     population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
 
     while(Evaluator<T>::eval_count < max_evals) {
@@ -347,7 +360,7 @@ std::vector<T> Optimizer<T>::ALPSSolve() {
 
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
-        diversity = updateDiversity(population);
+        diversity = T::findDiversity(population);
 
         T archived_solution;
         archived_solution = population[0];
@@ -363,32 +376,35 @@ std::vector<T> Optimizer<T>::ALPSSolve() {
         fitness_history.push_back({Evaluator<T>::eval_count, archived_solution.fitness()});
         diversity_history.push_back({Evaluator<T>::eval_count, diversity[0]});
 
-        //generation_digits = floor(log10(generation));
-        if(generation % print_skip == 0) {
-        // if(generation/pow(hist_skip_factor,generation_digits) == 1) {
-            for(size_t i = 0; i < population.size(); i++)
-                generation_history[i] = population[i].fitness();
-            population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
-        }
+        for(i = 0; i < population.size(); i++)
+            generation_history[i] = population[i].fitness();
+        population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
 
-        if(generation % print_skip == 0) {
-            printf("Generation: %lu, Evlauation: %lu\t%s\n",
-                    generation,
-                    Evaluator<T>::eval_count,
-                    population[0].fitnessReadout().data());
-            printf("----PARETO SOLUTIONS----\n");
-            uint i = 0;
-            T sol;
-            while(i < pop_size) {
-                if(population[i] < population[0]) break;
-                sol = population[i];
-                printf("%u:\t%s\n",
-                    i,
-                    population[i].fitnessReadout().data());
-                i++;
-            }
-            printf("----------------------\n");
+        printf("Generation: %lu, Evlauation: %lu\t%s\n",
+            generation,
+            Evaluator<T>::eval_count,
+            population[0].fitnessReadout().data());
+        printf("----PARETO SOLUTIONS----\n");
+        
+        i = 0;
+        T sol;
+        pareto_solutions.clear();
+        float best_fitness = -1000.0f;
+        while(i < pop_size) {
+            if(population[i].paretoLayer() > 0) break;
+            sol = population[i];
+            pareto_solutions.push_back(sol);
+            if(sol.fitness() > best_fitness) best_fitness = sol.fitness();
+            printf("%u:\t%s\n",
+                i,
+                population[i].fitnessReadout().data());
+            i++;
         }
+        printf("----------------------\n");
+
+        std::string gen_directory = working_directory + "/generation_" + std::to_string(generation) + "_fitness_" + std::to_string(best_fitness);
+        WriteSolutions(pareto_solutions,gen_directory);
+        generation++;
     }
 
     Evaluator<T>::pareto_sort(population.begin(),population.end());
@@ -407,7 +423,6 @@ std::vector<T> Optimizer<T>::ALPSSolve() {
 
 template<typename T>
 std::vector<T> Optimizer<T>::NoNicheSolve() {
-    niche_count = thread_count;
     subpop_size = pop_size/niche_count;
     
     std::vector<std::thread*> threads(niche_count);
@@ -437,9 +452,9 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
     std::vector<float>generation_history(population.size());
     for(size_t i = 0; i < population.size(); i++)
         generation_history[i] = population[i].fitness();
-    std::vector<float> diversity = updateDiversity(population);
-    population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
+    std::vector<float> diversity = T::findDiversity(population);
 
+    population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
     while(Evaluator<T>::eval_count < max_evals) {
         printf("------MUTATE-----\n");
 
@@ -465,7 +480,7 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
-        diversity = updateDiversity(population);
+        diversity = T::findDiversity(population);
 
         T archived_solution;
         archived_solution = population[0];
@@ -481,32 +496,34 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         fitness_history.push_back({Evaluator<T>::eval_count, archived_solution.fitness()});
         diversity_history.push_back({Evaluator<T>::eval_count, diversity[0]});
 
-        //generation_digits = floor(log10(generation));
-        if(generation % print_skip == 0) {
-        // if(generation/pow(hist_skip_factor,generation_digits) == 1) {
-            for(size_t i = 0; i < population.size(); i++)
-                generation_history[i] = population[i].fitness();
-            population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
-        }
+        for(i = 0; i < population.size(); i++)
+            generation_history[i] = population[i].fitness();
+        population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
 
-        if(generation % print_skip == 0) {
-            printf("Generation: %lu, Evlauation: %lu\t%s\n",
-                generation,
-                Evaluator<T>::eval_count,
-                population[0].fitnessReadout().data());
-            printf("----PARETO SOLUTIONS----\n");
-            uint i = 0;
-            T sol;
-            while(i < pop_size) {
-                if(population[i].paretoLayer() > 0) break;
-                sol = population[i];
-                printf("%u:\t%s\n",
-                    i,
-                    population[i].fitnessReadout().data());
-                i++;
-            }
-            printf("----------------------\n");
+        printf("Generation: %lu, Evlauation: %lu\t%s\n",
+            generation,
+            Evaluator<T>::eval_count,
+            population[0].fitnessReadout().data());
+        printf("----PARETO SOLUTIONS----\n");
+        
+        i = 0;
+        T sol;
+        pareto_solutions.clear();
+        float best_fitness = -1000.0f;
+        while(i < pop_size) {
+            if(population[i].paretoLayer() > 0) break;
+            sol = population[i];
+            pareto_solutions.push_back(sol);
+            if(sol.fitness() > best_fitness) best_fitness = sol.fitness();
+            printf("%u:\t%s\n",
+                i,
+                population[i].fitnessReadout().data());
+            i++;
         }
+        printf("----------------------\n");
+
+        std::string gen_directory = working_directory + "/generation_" + std::to_string(generation) + "_fitness_" + std::to_string(best_fitness);
+        WriteSolutions(pareto_solutions,gen_directory);
         generation++;
     }
 
@@ -524,15 +541,55 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 }
 
 template<typename T>
-std::vector<T> Optimizer<T>::Solve() {
-    switch(niche){
-        case NICHE_NONE:
-            return NoNicheSolve();
-            break;
-        default:
-            return NoNicheSolve();
-            break;
-    }
+std::vector<T> Optimizer<T>::Solve(Config config) {
+    Config::Optimzer opt_config = config.optimizer;
+    niche_count = opt_config.niche_count;
+    steps_to_combine = opt_config.steps_to_combine;
+    exchange_steps = opt_config.steps_to_exchange;
+    max_evals = opt_config.max_evals;
+    pop_size = opt_config.pop_size;
+    mutator = opt_config.mutation;
+    crossover = opt_config.crossover;
+    niche = opt_config.niche;
+
+    mutation_rate = opt_config.mutation_rate;
+    crossover_rate = opt_config.crossover_rate;
+    elitism = opt_config.elitism;
+
+    for(unsigned N = 0; N < opt_config.repeats; N++) {
+        printf("Started Run %i\n",N);
+
+		working_directory = std::string(config.io.out_dir) + std::string("/run_") + std::to_string(N);
+        util::MakeDirectory(working_directory);
+
+        switch(niche){
+            case NICHE_NONE:
+                return NoNicheSolve();
+                break;
+            default:
+                return NoNicheSolve();
+                break;
+        }
+
+		printf("SOLUTIONS: %lu\n", solutions.size());
+
+		std::string solution_fitness_file("solution_history");
+		std::string population_fitness_file("fitness_history");
+		std::string population_diversity_file("diversity_history");
+
+		std::string fitnessHistoryCSV = util::FitnessHistoryToCSV(getFitnessHistory());
+		std::string popFitHistoryCSV = util::PopulationFitnessHistoryToCSV(getPopulationHistory());
+		std::string popDivHistoryCSV = util::PopulationDiversityHistoryToCSV(getPopulationHistory());
+
+		util::WriteCSV(solution_fitness_file, working_directory, fitnessHistoryCSV);
+		util::WriteCSV(population_fitness_file, working_directory, popFitHistoryCSV);
+		util::WriteCSV(population_diversity_file, working_directory, popDivHistoryCSV);
+        
+		printf("Run %i Success\n", N);
+		reset();
+	}
+
+    return solutions;
 }
 
 #endif

@@ -22,6 +22,8 @@ sudo apt install libassimp-dev
 1. rm -r build
 1. mkdir build
 1. cd build
+1. cp config.txt build
+1. update OUT_DIR in the config (i.e. "../z_results")
 1. cmake ..
 1. make [-j12]
 

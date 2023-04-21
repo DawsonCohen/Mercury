@@ -3,6 +3,7 @@
 
 #include "candidate.h"
 #include "Simulator.h"
+#include "config.h"
 #include <vector>
 #include <algorithm>
 
@@ -30,7 +31,7 @@ public:
     static float baselineTime;
     static float evaluationTime;
 
-    static void Initialize(uint pop_size, float base_time, float eval_time);
+    static void Initialize(Config config);
     static void BatchEvaluate(std::vector<T>&);
     static float Distance(const CandidatePair<T>& solutions);
 
