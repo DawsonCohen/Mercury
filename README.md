@@ -5,9 +5,7 @@
 ### Build
 
 1. edit Makefile's MAIN_SRC=main.cpp
-1. mkdir z_results
-1. export OPTIMIZE=1
-1. export LOCATION=1 for dialog sepretion for CUDA-12.0
+1. export BUILD_LOCATION=1 for dialog sepretion for CUDA-12.0
 1. make [-j12]
 
 ### Options

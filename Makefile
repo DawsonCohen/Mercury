@@ -12,10 +12,9 @@ ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20012
 endif
 
-ifeq ($(OPTIMIZE),1)
-	CXXFLAGS += -DOPTIMIZE
-	CUFLAGS += -DOPTIMIZE
-endif
+
+CXXFLAGS += -DOPTIMIZE
+CUFLAGS += -DOPTIMIZE
 
 SRCDIR := .
 OBJDIR := obj

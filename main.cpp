@@ -95,6 +95,7 @@ int main(int argc, char** argv)
 	}
 	#endif
 
+	// TODO: Update for new directories
 	#ifdef VERIFY
 	uint sol = 0;
 	while(true) {
@@ -105,9 +106,20 @@ int main(int argc, char** argv)
 		if (!std::filesystem::exists(filepath)) break;
 		
 		printf("Verifying file %s\n", filepath);
-		ROBOT_TYPE solution;
-		solution.Decode(filepath);
-		solutions.push_back(solution);
+		switch(config.robot_type) {
+			case ROBOT_VOXEL: {
+				VoxelRobot solution;
+				solution.Decode(filepath);
+				solutions.push_back(solution);
+				break;
+			}
+			case ROBOT_NN:
+			default: {
+				NNRobot solution;
+				solution.Decode(filepath);
+				solutions.push_back(solution);
+			}
+		}
 
 		sol++;
 	}
@@ -116,11 +128,12 @@ int main(int argc, char** argv)
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
-	for(uint i = 0; i < config.pop_size; i++) {
+	for(uint i = 0; i < config.optimizer.pop_size; i++) {
 		switch(config.robot_type) {
 			case ROBOT_VOXEL: {
 				VoxelRobot solution = VoxelRobot();
 				solutions.push_back(solution);
+				break;
 			}
 			case ROBOT_NN:
 			default: {
@@ -480,8 +493,15 @@ int handle_file_io() {
 	char time_str[20];
 	strftime(time_str, sizeof(time_str), "%Y-%m-%d-%H%M%S", localtime(&current_time));
 
+	// Create config out_dir folder
+	if (mkdir(config.io.out_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
+		std::cerr << "Error: Could not create output folder." << std::endl;
+		return 1;
+	}
+
 	// Create folder with current time as name
 	config.io.out_dir = config.io.out_dir + "/" + std::string(time_str);
+
 	if (mkdir(config.io.out_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
 		std::cerr << "Error: Could not create output folder." << std::endl;
 		return 1;
