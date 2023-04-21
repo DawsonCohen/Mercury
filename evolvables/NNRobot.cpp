@@ -12,7 +12,10 @@
 #define max(a,b) a > b ? a : b
 
 std::vector<int> NNRobot::hidden_sizes = std::vector<int>{25,25};
-uint NNRobot::num_layers = 4;
+unsigned int NNRobot::num_layers = 4;
+int NNRobot::crossover_neuron_count = 5;
+int NNRobot::mutation_weight_count = 10;
+int NNRobot::springs_per_mass = 25;
 
 void ShiftY(NNRobot& R) {
     bool setFlag = false;
@@ -44,22 +47,22 @@ void ShiftX(NNRobot& R) {
     R.translate(translation);
 }
 
-NNRobot::NNRobot(const uint num_masses) :
+NNRobot::NNRobot(const unsigned int num_masses) :
     maxMasses(num_masses), maxSprings(num_masses*25)
 {
-    uint hidden_layers = hidden_sizes.size();
+    unsigned int hidden_layers = hidden_sizes.size();
     num_layers = hidden_layers+2;
 
     weights.resize(num_layers - 1);
 
     weights[0] = Eigen::MatrixXf::Random(hidden_sizes[0], input_size);
-    for (uint i = 0; i < hidden_layers-1; i++) {
+    for (unsigned int i = 0; i < hidden_layers-1; i++) {
         weights[i+1] = Eigen::MatrixXf::Random(hidden_sizes[i+1], hidden_sizes[i]);
     }
     
     weights[num_layers-2] = Eigen::MatrixXf::Random(output_size, hidden_sizes[hidden_sizes.size() - 1]);
     
-    for(uint i = 0; i < num_masses; i++) {
+    for(unsigned int i = 0; i < num_masses; i++) {
         float el = (uniform(gen) * M_PI) - M_PI/2;
         float az = uniform(gen) * 2 * M_PI;
         float r = uniform(gen);
@@ -76,7 +79,7 @@ NNRobot::NNRobot(const uint num_masses) :
 }
 
 void NNRobot::Randomize() {
-    for(uint i = 0; i < weights.size(); i++) {
+    for(unsigned int i = 0; i < weights.size(); i++) {
         weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
     }
 
@@ -84,11 +87,13 @@ void NNRobot::Randomize() {
 }
 
 void NNRobot::Mutate() {
-    int layer = rand() % weights.size();
-    int i = rand() % weights[layer].rows();
-    int j = rand() % weights[layer].cols();
+    for(int i = 0; i < mutation_weight_count; i++) {
+        int layer = rand() % weights.size();
+        int row = rand() % weights[layer].rows();
+        int col = rand() % weights[layer].cols();
 
-    weights[layer](i,j) = uniform(gen)*2-1;
+        weights[layer](row,col) = uniform(gen)*2-1;
+    }
 
     Build();
 }
@@ -98,13 +103,15 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
     children.first = parents.first;
     children.second = parents.second;
     
-    int layer = rand() % parents.first.weights.size();
-    int nodeIdx = rand() % parents.first.weights[layer].rows();
+    for(int i = 0; i < crossover_neuron_count; i++) {
+        int layer = rand() % parents.first.weights.size();
+        int nodeIdx = rand() % parents.first.weights[layer].rows();
 
-    auto row1 = children.first.weights[layer].row(nodeIdx);
-    auto row2 = children.second.weights[layer].row(nodeIdx);
+        auto row1 = children.first.weights[layer].row(nodeIdx);
+        auto row2 = children.second.weights[layer].row(nodeIdx);
 
-    row1.swap(row2);
+        row1.swap(row2);
+    }
 
     children.first.Build();
     children.second.Build();
@@ -114,7 +121,7 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
 
 float NNRobot::Distance(const CandidatePair<NNRobot>& robots) {
     float distance = 0;
-    for(uint i = 0; i < NNRobot::num_layers - 1; i++) {
+    for(unsigned int i = 0; i < NNRobot::num_layers - 1; i++) {
         auto W1 = robots.first.weights[i];
         auto W2 = robots.second.weights[i];
         distance += (W1-W2).norm();
@@ -209,8 +216,8 @@ void NNRobot::Build() {
     forward();
 
     std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
-    for (uint i = 0; i < masses.size(); i++) {
-        for (uint j = i + 1; j < masses.size(); j++) {
+    for (unsigned int i = 0; i < masses.size(); i++) {
+        for (unsigned int j = i + 1; j < masses.size(); j++) {
             dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
         }
     }
@@ -220,15 +227,14 @@ void NNRobot::Build() {
 
     // start = std::chrono::high_resolution_clock::now();
     
-    uint k = 25;
-    auto knns = KNN::KNN(*this, k);
+    auto knns = KNN::KNN(*this, springs_per_mass);
     
     // end = std::chrono::high_resolution_clock::now();
     // execute_time = std::chrono::duration<float>(end - start).count();
     // printf("KNN IN %f SECONDS\n", execute_time);
 
     // start = std::chrono::high_resolution_clock::now();
-    for (uint i = 0; i < masses.size(); i++) {
+    for (unsigned int i = 0; i < masses.size(); i++) {
         auto neighbors = knns[i];
         Material mat1 = masses[i].material;
 

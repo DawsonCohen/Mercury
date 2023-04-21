@@ -258,6 +258,32 @@ Config ReadConfigFile(const std::string& filename) {
         config.io.out_dir = config_map["OUT_DIR"];
     }
 
+    if(config_map.find("CROSSOVER_NEURONS") != config_map.end()) {
+        config.nnrobot.crossover_neuron_count = stoi(config_map["CROSSOVER_NEURONS"]);
+    }
+
+    if(config_map.find("MUTATION_WEIGHTS") != config_map.end()) {
+        config.nnrobot.mutation_weight_count = stoi(config_map["MUTATION_WEIGHTS"]);
+    }
+
+    if(config_map.find("SPRINGS_PER_MASS") != config_map.end()) {
+        config.nnrobot.springs_per_mass = stoi(config_map["SPRINGS_PER_MASS"]);
+    }
+
+
+    if(config_map.find("HIDDEN_LAYER_SIZES") != config_map.end()) {
+        size_t pos = 0;
+        std::string sizes_str = config_map["HIDDEN_LAYER_SIZES"];
+        std::string delimiter = ",";
+        while ((pos = sizes_str.find(",")) != std::string::npos) {
+            std::string token = sizes_str.substr(0, pos);
+            int size_i = std::stoi(token);
+            config.nnrobot.hidden_layer_sizes.push_back(size_i);
+            sizes_str.erase(0, pos + delimiter.length());
+        }
+        config.nnrobot.hidden_layer_sizes.push_back(std::stoi(sizes_str));
+    }
+
     /* TODO: 
     
     width

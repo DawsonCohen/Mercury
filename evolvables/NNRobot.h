@@ -6,6 +6,7 @@
 #include <string>
 #include <Eigen/Dense>
 #include "SoftBody.h"
+#include "config.h"
 
 #define MIN_FITNESS (float) 0
 
@@ -40,13 +41,13 @@ private:
     void forward() {
         Eigen::MatrixXf input(input_size, masses.size());
 
-        for(uint i = 0; i < masses.size(); i++) {
+        for(size_t i = 0; i < masses.size(); i++) {
             Mass m = masses[i];
             input.col(i) << m.protoPos.x(), m.protoPos.y(), m.protoPos.z();
         }
 
         Eigen::MatrixXf x = input;
-        for (uint i = 0; i < num_layers-2; i++) {
+        for (unsigned int i = 0; i < num_layers-2; i++) {
             // x = addBias(x);
             x = weights[i] * x;
             x = relu(x);
@@ -78,29 +79,43 @@ private:
 protected:
     std::vector<Eigen::MatrixXf> weights;
     static std::vector<int> hidden_sizes;
-    static uint num_layers;
+    static unsigned int num_layers;
+
+    static int crossover_neuron_count;
+    static int mutation_weight_count;
+    static int springs_per_mass;
     
-    constexpr static uint input_size = 3;
-    constexpr static uint output_size = 3 + MATERIAL_COUNT;
+    constexpr static unsigned int input_size = 3;
+    constexpr static unsigned int output_size = 3 + MATERIAL_COUNT;
     
     
 public:
     // TODO: more elegant solution for simulator initialization
-    uint maxMasses;
-    uint maxSprings;
+    unsigned int maxMasses;
+    unsigned int maxSprings;
+
+    static void Configure(Config::NNRobot config) {
+        NNRobot::crossover_neuron_count = config.crossover_neuron_count;
+        NNRobot::mutation_weight_count = config.mutation_weight_count;
+        NNRobot::springs_per_mass = config.springs_per_mass;
+        
+        NNRobot::num_layers = config.hidden_layer_sizes.size()+2;
+        NNRobot::hidden_sizes = config.hidden_layer_sizes;
+    }
     
     // NNRobot class configuration functions
-    static void SetArchitecture(const std::vector<int>& hidden_sizes = std::vector<int>{25,25}) {
-        NNRobot::num_layers = hidden_sizes.size();
+    static void SetArchitecture(const std::vector<int>& hidden_layer_sizes = std::vector<int>{25,25}) {
+        NNRobot::num_layers = hidden_sizes.size()+2;
+        NNRobot::hidden_sizes = hidden_layer_sizes;
     }
 
     // Initializers
     void Build();
 	static void BatchBuild(std::vector<NNRobot>& robots); // TODO
 
-    NNRobot(const uint num_masses = 1728);
+    NNRobot(const unsigned int num_masses = 1728);
 
-    NNRobot(std::vector<Eigen::MatrixXf> weights, const uint num_masses=1728) :
+    NNRobot(std::vector<Eigen::MatrixXf> weights, const unsigned int num_masses=1728) :
         weights(weights), maxMasses(num_masses), maxSprings(num_masses*25)
     { Build(); }
     
@@ -110,7 +125,7 @@ public:
     
 
     // Getters
-    uint volume() const { return mVolume; }
+    unsigned int volume() const { return mVolume; }
     Eigen::Vector3f COM() const { return mBaseCOM; }
 
     void Randomize();

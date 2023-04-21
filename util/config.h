@@ -2,6 +2,7 @@
 #define __CONFIG_H__
 
 #include <string>
+#include <vector>
 
 enum RobotType {
 	ROBOT_NN,
@@ -51,6 +52,7 @@ struct Config {
 		float crossover_rate=0.7f;
 		float elitism=0.1f;
 	} optimizer;
+
 	struct Evaluator {
 		int pop_size = 512;
 		float base_time = 3.0;
@@ -64,8 +66,15 @@ struct Config {
 		int   height = 900;
 	} render;
 
+	struct NNRobot {
+		int crossover_neuron_count = 5;
+		int mutation_weight_count = 10;
+		int springs_per_mass = 25;
+		std::vector<int> hidden_layer_sizes = {25,25};
+	} nnrobot;
+
 	struct Hardware {
-		int* cuda_device_ids; // TODO
+		std::vector<int> cuda_device_ids; // TODO
 	} hardware;
 };
 

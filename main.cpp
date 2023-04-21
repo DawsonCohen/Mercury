@@ -72,6 +72,7 @@ int main(int argc, char** argv)
 		case ROBOT_NN:
 		default:
 			Evaluator<NNRobot>::Initialize(config);
+			NNRobot::Configure(config.nnrobot);
 	}
 	
 	#ifdef OPTIMIZE
