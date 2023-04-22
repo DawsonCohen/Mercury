@@ -91,7 +91,7 @@ public:
 
 	void setMasses(std::vector<Mass> _masses) {
 		masses.resize(_masses.size());
-		for(uint i = 0; i < masses.size(); i++) {
+		for(size_t i = 0; i < masses.size(); i++) {
 			masses[i] = _masses[i];
 		}
 	}

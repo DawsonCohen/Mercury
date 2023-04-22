@@ -12,10 +12,9 @@ ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20012
 endif
 
-ifeq ($(OPTIMIZE),1)
-	CXXFLAGS += -DOPTIMIZE
-	CUFLAGS += -DOPTIMIZE
-endif
+
+CXXFLAGS += -DOPTIMIZE
+CUFLAGS += -DOPTIMIZE
 
 SRCDIR := .
 OBJDIR := obj
@@ -39,7 +38,7 @@ CUDA_OBJS := $(patsubst $(SRCDIR)/%.cu,$(OBJDIR)/%.o,$(CUDA_SRCS))
 EIGEN_LIB_DIR := $(SRCDIR)/lib
 EIGEN_LIB_NAME := cudart
 
-INCLUDE_DIRS := -I$(EIGEN_LIB_DIR)
+INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/util
 LIB_DIRS := -L$(EIGEN_LIB_DIR)
 LIB_NAMES := -l$(EIGEN_LIB_NAME)
 

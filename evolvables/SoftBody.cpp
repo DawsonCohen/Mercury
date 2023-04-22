@@ -84,7 +84,7 @@ void SoftBody::Clear() {
 void SoftBody::append(SoftBody src) {
     std::map<unsigned int, unsigned int> idMap;
     for(Mass& m : src.masses) {
-        uint oldID = m.id;
+        unsigned int oldID = m.id;
         m.id = masses.size();
         idMap[oldID] = m.id;
         masses.push_back(m);

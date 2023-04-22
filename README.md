@@ -5,9 +5,7 @@
 ### Build
 
 1. edit Makefile's MAIN_SRC=main.cpp
-1. mkdir z_results
-1. export OPTIMIZE=1
-1. export LOCATION=1 for dialog sepretion for CUDA-12.0
+1. export BUILD_LOCATION=1 for dialog sepretion for CUDA-12.0
 1. make [-j12]
 
 ### Options
@@ -22,6 +20,8 @@ sudo apt install libassimp-dev
 1. rm -r build
 1. mkdir build
 1. cd build
+1. cp config.txt build
+1. update OUT_DIR in the config (i.e. "../z_results")
 1. cmake ..
 1. make [-j12]
 
