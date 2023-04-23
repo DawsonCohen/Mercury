@@ -17,12 +17,11 @@ template<typename T>
 Simulator Evaluator<T>::Sim = Simulator();
 
 template<typename T>
-T Evaluator<T>::protoRobot = T();
-
-template<typename T>
 void Evaluator<T>::Initialize(Config config) {
-	Sim.Initialize(protoRobot, config.evaluator.pop_size*1.5);
-    // Sim.Initialize(prototype, config.evaluator.pop_size*1.5);
+    T prototype;
+    
+	Sim.Initialize(prototype, config.evaluator.pop_size*1.5);
+    // // Sim.Initialize(prototype, config.evaluator.pop_size*1.5);
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;
 }
@@ -60,8 +59,6 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
 
     for(uint i = 0; i < solutions.size(); i++) {
         solutions[i].Update(results[i]);
-
-        Eigen::Vector3f COM = T::calcMeanPos(solutions[i]);
     }
 
     for(T& r : solutions) {

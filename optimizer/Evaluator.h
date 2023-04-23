@@ -31,8 +31,6 @@ public:
     static float baselineTime;
     static float evaluationTime;
 
-    static T protoRobot;
-
     static void Initialize(Config config);
     static void BatchEvaluate(std::vector<T>&);
     static float Distance(const CandidatePair<T>& solutions);
