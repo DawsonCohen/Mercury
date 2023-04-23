@@ -147,7 +147,7 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
             int working_index = uniform_int(gen);
             T *working_sol = &*(subpop.begin()+working_index);
             switch(mutator){
-                case RANDOMIZE:
+                case MUTATE_RANDOM:
                     subpop.parentFlag[working_index] = 1;
                     new_sol = RandomizeSolution(*working_sol);
                     break;
@@ -382,8 +382,6 @@ std::vector<T> Optimizer<T>::Solve(Config config) {
     crossover = opt_config.crossover;
     niche = opt_config.niche;
 
-    mutation_rate = opt_config.mutation_rate;
-    crossover_rate = opt_config.crossover_rate;
     elitism = opt_config.elitism;
 
     for(unsigned N = 0; N < opt_config.repeats; N++) {
