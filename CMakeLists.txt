@@ -1,30 +1,30 @@
 cmake_minimum_required(VERSION 3.1)
 
+set(CMAKE_CUDA_COMPILER "nvcc")
+set(CMAKE_CXX_COMPILER "g++")
+
 project(phys C CXX CUDA)
-
-# Set compilers
-# set(CMAKE_CXX_COMPILER "/usr/bin/g++")
-# set(CMAKE_CUDA_COMPILER "/usr/local/cuda-12.0/bin/nvcc")
-
-# Find CUDA package
-# set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.0")
-find_package(CUDA REQUIRED)
 
 # Set language standards
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 
+
 # Set compiler flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pg -W -Wall")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -O3 --ptxas-options=-v -ftz=true -prec-div=false -prec-sqrt=false --expt-relaxed-constexpr")
 
+if("$ENV{BUILD_LOCATION}" STREQUAL "local")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20012")
-
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20013")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20015")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
+endif()
 
 ## MAIN OPTIONS ##
-# add_definitions("-DOPTIMIZE")
+add_definitions("-DOPTIMIZE")
 # add_definitions("-DOPTIMIZE -DVISUALIZE")
-add_definitions("-DVIDEO -DVISUALIZE")
+# add_definitions("-DVIDEO -DVISUALIZE")
 
 # add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
 # add_definitions("-DVERIFY -DVISUALIZE")
@@ -35,9 +35,9 @@ add_definitions("-DVIDEO -DVISUALIZE")
 # add_definitions("-DSTRESS_COUNT -DFULL_STRESS -DWRITE_STRESS")
 
 set(PHYS
-	#batch_benchmark.cpp
-	benchmark.cpp
-  # main.cpp
+	# batch_benchmark.cpp
+	# benchmark.cpp
+	main.cpp
 
   simulator/Simulator.cu
 
@@ -63,7 +63,11 @@ set(RENDER
 )
 
 # Create executable
+if(DEFINED $ENV{VIDEO})
 add_executable(phys ${PHYS} ${RENDER})
+else()
+add_executable(phys ${PHYS})
+endif()
 
 # Set CUDA architectures
 set_target_properties(phys PROPERTIES CUDA_ARCHITECTURES "61;75")
@@ -79,9 +83,10 @@ target_include_directories(phys PUBLIC
 
 # Set include directories for local build
 # Find OpenCV package
-find_package(OpenCV REQUIRED)
+# find_package(OpenCV REQUIRED)
 
 # Add subdirectory for renderer
+if(DEFINED $ENV{VIDEO})
 add_subdirectory(renderer)
 
 target_include_directories(phys PUBLIC
@@ -97,3 +102,4 @@ target_link_libraries(phys PUBLIC
   stb
   ${OpenCV_LIBS}
 )
+endif()
