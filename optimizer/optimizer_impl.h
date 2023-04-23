@@ -381,7 +381,7 @@ std::vector<T> Optimizer<T>::Solve(Config config) {
     mutator = opt_config.mutation;
     crossover = opt_config.crossover;
     niche = opt_config.niche;
-    uniform_int = std::uniform_int_distribution<>(0,pop_size);
+    uniform_int = std::uniform_int_distribution<>(0,pop_size-1);
 
 
     elitism = opt_config.elitism;
