@@ -61,19 +61,6 @@ NNRobot::NNRobot(const unsigned int num_masses) :
     }
     
     weights[num_layers-2] = Eigen::MatrixXf::Random(output_size, hidden_sizes[hidden_sizes.size() - 1]);
-    
-    for(unsigned int i = 0; i < num_masses; i++) {
-        float el = (uniform(gen) * M_PI) - M_PI/2;
-        float az = uniform(gen) * 2 * M_PI;
-        float r = uniform(gen);
-
-        float x = r * sin(el) * cos(az);
-        float z = r * sin(el) * sin(az);
-        float y = r * cos(el);
-        
-        Mass m(i,x,y,z);
-        addMass(m);
-    }
 
     Build();
 }
@@ -264,4 +251,7 @@ void NNRobot::Build() {
 
     ShiftX(*this);
     ShiftY(*this);
+
+    mBaseCOM = calcMeanPos(*this);
+    mLength = calcLength(*this);
 }

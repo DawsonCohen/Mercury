@@ -124,9 +124,6 @@ private:
     void MutateStep(subpopulation<T>& subpop);
     void MutateCollect(std::vector<subpopulation<T>>& subpop_list);
     
-    void AlpsMutateStep(subpopulation<T>& subpop);
-    void AlpsCollectStep(std::vector<subpopulation<T>>& subpop_list);
-
     void CrossoverStep(subpopulation<T>&);
     void CrossoverCollect(std::vector<subpopulation<T>>& subpop_list);
     void CalibrateStep(void);

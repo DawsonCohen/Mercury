@@ -73,9 +73,6 @@ void Simulator::Initialize(Element prototype, uint maxElements) {
 	this->maxElements = maxElements;
 	maxMasses = prototype.masses.size()*maxElements;
 	maxSprings = prototype.springs.size()*maxElements;
-	maxEnvs = 1;
-	m_currentRead = 0;
-	m_currentWrite = 1;
 
 	_initialize();
 }
@@ -86,15 +83,17 @@ void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint m
 	this->maxElements = maxElements;
 	maxMasses = massesPerElement*maxElements;
 	maxSprings = springsPerElement*maxElements;
-	maxEnvs = 1;
-	m_currentRead = 0;
-	m_currentWrite = 1;
 
 	_initialize();
 }
 
 
 void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
+	maxEnvs = 1;
+	m_currentRead = 0;
+	m_currentWrite = 1;
+	total_time = 0.0f;
+	
 	if(initialized) {
 		// Free CPU
 		delete[] m_hPos;
@@ -196,7 +195,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	float stiffness = envBuf[0].floor_stiffness;
 	float mu = envBuf[0].friction;
 	float zeta = envBuf[0].damping;
-	float step_time = 0;
+	float step_time = 0.0f;
 	Eigen::Vector3f pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
 		float  mass = massBuf[i].mass;
@@ -284,23 +283,18 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	};
 	
 	uint step = 0;
-	float hold_time = 0.0f;
-	float mat_time = 0.0f;
 	while(step_time < max_time) {
-		mat_time = max(total_time-hold_time,0.0f);
-
 		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
 			(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 			(float*) m_dStresses, (uint*) m_dSpringIDs,
-			mat_time, step, opt);
+			total_time, step, opt);
 
-			
 		gpuErrchk( cudaPeekAtLastError() );
 		cudaDeviceSynchronize();
-		
+			
 		std::swap(m_currentRead, m_currentWrite);
 		
 		step++;
@@ -322,7 +316,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
 		massBuf[i].pos = Eigen::Vector3f(pos.x,pos.y,pos.z);
 
-		// printf("%u: {%f,%f,%f}\n",i,pos.x,pos.y,pos.z);
+		assert(!isnan(pos.x) && !isnan(pos.y) && !isnan(pos.z));
+
 		massBuf[i].vel = Eigen::Vector3f(vel.x,vel.y,vel.z);
 	}
 
@@ -356,7 +351,6 @@ std::vector<ElementTracker> Simulator::Allocate(const std::vector<Element>& elem
 ElementTracker Simulator::AllocateElement(const Element& e) {
 	ElementTracker tracker;
 
-	
 	tracker.mass_begin = massBuf + numMasses;
 	tracker.spring_begin = springBuf + numSprings;
 	tracker.offset_begin = offsetBuf + numSprings;

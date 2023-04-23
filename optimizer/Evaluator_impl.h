@@ -17,24 +17,27 @@ template<typename T>
 Simulator Evaluator<T>::Sim = Simulator();
 
 template<typename T>
+T Evaluator<T>::protoRobot = T();
+
+template<typename T>
 void Evaluator<T>::Initialize(Config config) {
-    T prototype;
-    
-    Sim.Initialize(prototype, config.eval.pop_size*1.5);
-    baselineTime = config.eval.base_time;
-    evaluationTime = config.eval.eval_time;
+	Sim.Initialize(protoRobot, config.evaluator.pop_size*1.5);
+    // Sim.Initialize(prototype, config.evaluator.pop_size*1.5);
+    baselineTime = config.evaluator.base_time;
+    evaluationTime = config.evaluator.eval_time;
 }
 
 template<typename T>
 void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
+    if(solutions.size() == 0) return;
     printf("EVALUATING %lu SOLUTIONS\n",solutions.size());
 
     std::vector<Element> elements;
-    for(uint i = 0; i < solutions.size(); i++) {
-        T sol = solutions[i];
-        elements.push_back({sol.getMasses(), sol.getSprings()});
-    }
 
+    for(auto& R : solutions) {
+        elements.push_back({R.getMasses(), R.getSprings()});
+    }
+    
     Sim.setMaxTime(baselineTime);
 
     std::vector<ElementTracker> trackers = Sim.Simulate(elements);
@@ -45,13 +48,11 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
         solutions[i].Update(results[i]);
     }
 
-    // for(T& e : solutions) {
-    //     eval_count++;
-    //     e.mBaseCOM = T::calcMeanPos(e);
-    //     e.mLength = T::calcLength(e);
-    // }
+    for(T& e : solutions) {
+        e.updateBaseline();
+    }
 
-    Sim.setMaxTime(evaluationTime-baselineTime);
+    Sim.setMaxTime(evaluationTime);
 
     // TODO: "continue" simulation without copying vector again
     trackers = Sim.Simulate(elements);
@@ -59,6 +60,8 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
 
     for(uint i = 0; i < solutions.size(); i++) {
         solutions[i].Update(results[i]);
+
+        Eigen::Vector3f COM = T::calcMeanPos(solutions[i]);
     }
 
     for(T& r : solutions) {
@@ -67,7 +70,6 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
         
         r.Reset();
     }
-
 
     Sim.Reset();
 }

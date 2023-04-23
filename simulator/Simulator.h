@@ -47,7 +47,7 @@ public:
 	float getMaxTime() const { return max_time; }
 	void setMaxTime(float tmax) { max_time = tmax; }
 
-	void Reset() { total_time = 0; }
+	void Reset() { total_time = 0.0f; }
 
 protected:
 	bool initialized = false;

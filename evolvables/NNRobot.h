@@ -39,6 +39,21 @@ private:
     }
 
     void forward() {
+        masses.clear();
+
+        for(unsigned int i = 0; i < maxMasses; i++) {
+            float el = (uniform(gen) * M_PI) - M_PI/2;
+            float az = uniform(gen) * 2 * M_PI;
+            float r = uniform(gen);
+
+            float x = r * sin(el) * cos(az);
+            float z = r * sin(el) * sin(az);
+            float y = r * cos(el);
+
+            Mass m(i,x,y,z);
+            masses.push_back(m);
+        }
+        
         Eigen::MatrixXf input(input_size, masses.size());
 
         for(size_t i = 0; i < masses.size(); i++) {
@@ -67,7 +82,10 @@ private:
         Eigen::MatrixXf material_probs = output.bottomRows(MATERIAL_COUNT);
         
         for(uint i = 0; i < masses.size(); i++) {
+            // Eigen::Vector3f = psoitions.col(i);
             masses[i].pos = masses[i].protoPos = positions.col(i);
+
+            // printf("{%f,%f,%f}\n",masses[i].pos());
 
             Eigen::VectorXf mat_prob = material_probs.col(i);
             int maxIdx;

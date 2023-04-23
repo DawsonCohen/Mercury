@@ -174,7 +174,7 @@ Config ReadConfigFile(const std::string& filename) {
     
     if(config_map.find("POP_SIZE") != config_map.end()) {
         config.optimizer.pop_size = stoi(config_map["POP_SIZE"]);
-        config.eval.pop_size = stoi(config_map["POP_SIZE"]);
+        config.evaluator.pop_size = stoi(config_map["POP_SIZE"]);
     }
 
     // OPTIMIZER CONFIGS
@@ -201,7 +201,7 @@ Config ReadConfigFile(const std::string& filename) {
     if(config_map.find("MUTATION") != config_map.end()) {
         if(config_map["MUTATION"] == "mutate") {
             config.optimizer.mutation = MUTATE;
-        } else if(config_map["MUTATION"] == "full") {
+        } else if(config_map["MUTATION"] == "random") {
             config.optimizer.mutation = MUTATE_RANDOM;
         } else {
             std::cerr << "Mutation type " << config_map["MUTATION"] << " not supported" << std::endl;
@@ -247,11 +247,11 @@ Config ReadConfigFile(const std::string& filename) {
     }
 
     if(config_map.find("BASE_TIME") != config_map.end()) {
-        config.eval.base_time = stof(config_map["BASE_TIME"]);
+        config.evaluator.base_time = stof(config_map["BASE_TIME"]);
     }
 
     if(config_map.find("EVAL_TIME") != config_map.end()) {
-        config.eval.eval_time = stof(config_map["EVAL_TIME"]);
+        config.evaluator.eval_time = stof(config_map["EVAL_TIME"]);
     }
 
     if(config_map.find("OUT_DIR") != config_map.end()) {
@@ -272,6 +272,8 @@ Config ReadConfigFile(const std::string& filename) {
 
 
     if(config_map.find("HIDDEN_LAYER_SIZES") != config_map.end()) {
+        config.nnrobot.hidden_layer_sizes.clear();
+        
         size_t pos = 0;
         std::string sizes_str = config_map["HIDDEN_LAYER_SIZES"];
         std::string delimiter = ",";

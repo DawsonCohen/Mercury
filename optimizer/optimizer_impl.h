@@ -58,9 +58,10 @@ void Optimizer<T>::RandomizePopulation(std::vector<T>& population) {
         population[i].Randomize();
     }
 
-    std::vector<T> evalBuf(population.size());
-    for(uint i = 0; i < population.size(); i++)
-        evalBuf[i] = population[i];
+    std::vector<T> evalBuf;
+    for(uint i = 0; i < population.size(); i++) {
+        evalBuf.push_back(population[i]);
+    }
     
     Evaluator<T>::BatchEvaluate(evalBuf);
 
@@ -268,27 +269,6 @@ void Optimizer<T>::CrossoverCollect(std::vector<subpopulation<T>>& subpop_list) 
             }
         }
         subpop.crossoverFamilyBuffer.clear();
-    }
-}
-
-template<typename T>
-void Optimizer<T>::AlpsMutateStep(subpopulation<T>& subpop) {
-    for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        T new_sol;
-        switch(mutator){
-            case MUTATE_RANDOM:
-                new_sol = RandomizeSolution(*i);
-                break;
-            case MUTATE:
-            default:
-            {
-                float rand = uniform(gen);
-                if(rand > mutation_rate) continue;
-                new_sol = MutateSolution(*i);
-            }
-        }
-        AsexualFamily<T> fam{i.base(), new_sol};
-        subpop.mutationFamilyBuffer.push_back(fam);
     }
 }
 
