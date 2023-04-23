@@ -22,9 +22,9 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
 endif()
 
 ## MAIN OPTIONS ##
-add_definitions("-DOPTIMIZE")
+# add_definitions("-DOPTIMIZE")
 # add_definitions("-DOPTIMIZE -DVISUALIZE")
-# add_definitions("-DVIDEO -DVISUALIZE")
+add_definitions("-DVIDEO -DVISUALIZE")
 
 # add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
 # add_definitions("-DVERIFY -DVISUALIZE")
@@ -63,7 +63,7 @@ set(RENDER
 )
 
 # Create executable
-if(DEFINED $ENV{VIDEO})
+if(DEFINED ENV{VIDEO})
 add_executable(phys ${PHYS} ${RENDER})
 else()
 add_executable(phys ${PHYS})
@@ -86,7 +86,7 @@ target_include_directories(phys PUBLIC
 # find_package(OpenCV REQUIRED)
 
 # Add subdirectory for renderer
-if(DEFINED $ENV{VIDEO})
+if(DEFINED ENV{VIDEO})
 add_subdirectory(renderer)
 
 target_include_directories(phys PUBLIC
