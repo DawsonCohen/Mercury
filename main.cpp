@@ -49,13 +49,11 @@ Simulator sim;
 // } strats;
 Config config;
 
-int main(int argc, char** argv)
+int main()
 {
 	#ifndef OPTIMIZE
 	printf("NOT OPTIMIZING\n");
 	#endif
-
-	handle_commandline_args(argc, argv);
 
 	printf("----CONFIG----\n");
 	config = util::ReadConfigFile("config.txt");
@@ -129,7 +127,7 @@ int main(int argc, char** argv)
 	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
-	for(uint i = 0; i < config.optimizer.pop_size; i++) {
+	for(int i = 0; i < config.optimizer.pop_size; i++) {
 		switch(config.robot_type) {
 			case ROBOT_VOXEL: {
 				VoxelRobot solution = VoxelRobot();
@@ -179,10 +177,10 @@ std::vector<T> Solve() {
 void Render(std::vector<SoftBody>& robots) {
 	printf("RENDERING\n");
 
-	Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
-	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
-	// Camera camera(WIDTH, HEIGHT, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
-	// camera = Camera(WIDTH, HEIGHT, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f);
+	Camera camera(config.renderer.width, config.renderer.height, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
+	// Camera camera(config.renderer.width, config.renderer.height, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
+	// Camera camera(config.renderer.width, config.renderer.height, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
+	// camera = Camera(config.renderer.width, config.renderer.height, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f);
 
 	SoftBody R = robots[camera.tabIdx];
 	RobotModel<SoftBody> model(R);
@@ -212,9 +210,9 @@ void Render(std::vector<SoftBody>& robots) {
 	{
 		printf("%s\n",io.out_sol_video_file);
 		video = cv::VideoWriter(cv::String(io.out_sol_video_file),
-			cv::VideoWriter::fourcc('M','J','P','G'), FPS, cv::Size(WIDTH,HEIGHT));
+			cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 
-		video.open(cv::String(io.out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), FPS, cv::Size(WIDTH,HEIGHT));
+		video.open(cv::String(io.out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 		assert(video.isOpened());
 	}
 	else printf("Something Failed\n");
@@ -223,7 +221,7 @@ void Render(std::vector<SoftBody>& robots) {
 
 	float max_render_time = 5;
 	sim.Initialize(robots[0], 1);
-	sim.setMaxTime(1 / FPS);
+	sim.setMaxTime(1 / config.renderer.fps);
 
 	// Main while loop
 	uint tabId = camera.tabIdx;
@@ -260,7 +258,7 @@ void Render(std::vector<SoftBody>& robots) {
 
 			p.Draw(shader, camera);
 
-			cv::Mat frame(HEIGHT,WIDTH,CV_8UC3);
+			cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
 			//use fast 4-byte alignment (default anyway) if possible
 			glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
 
@@ -300,8 +298,8 @@ void Visualize(std::vector<SoftBody>& robots) {
 	GLFWwindow* window = GLFWsetup(true);
 	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
 	shader.Bind();
-	Camera camera(WIDTH, HEIGHT, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
-	// Camera camera(WIDTH, HEIGHT, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
+	Camera camera(config.renderer.width, config.renderer.height, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
+	// Camera camera(config.renderer.width, config.renderer.height, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
 
 	SoftBody R = robots[camera.tabIdx];
 	RobotModel<SoftBody> model(R);
@@ -314,9 +312,9 @@ void Visualize(std::vector<SoftBody>& robots) {
 	// opencv video writer
 	cv::VideoWriter video;
 	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/solution_live_video.avi",io.out_dir)) {
-		video = cv::VideoWriter(io.out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), FPS, cv::Size(WIDTH,HEIGHT));
+		video = cv::VideoWriter(io.out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 
-		video.open(io.out_sol_file,cv::VideoWriter::fourcc('M','J','P','G'), FPS, cv::Size(WIDTH,HEIGHT));
+		video.open(io.out_sol_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 		assert(video.isOpened());
 	}
 	else printf("Something Failed\n");
@@ -327,7 +325,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 	float prevTime = glfwGetTime();
 
 	sim.Initialize(robots[0], 1);
-	sim.setMaxTime( 1 / FPS);
+	sim.setMaxTime( 1 / config.renderer.fps);
 
 	// Main while loop
 	uint i = 0;
@@ -358,7 +356,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		model.Update(R);
 
-		while ((crntTime - prevTime) < 1 / FPS) {
+		while ((crntTime - prevTime) < 1 / config.renderer.fps) {
 			crntTime = glfwGetTime();
 		}
 
@@ -381,7 +379,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 		p.Draw(shader, camera);
 
 		#ifdef WRITE_VIDEO
-		cv::Mat frame(HEIGHT,WIDTH,CV_8UC3);
+		cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
 		//use fast 4-byte alignment (default anyway) if possible
 		glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
 
@@ -424,8 +422,8 @@ GLFWwindow* GLFWsetup(bool visualize) {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_VISIBLE, visualize ? GLFW_TRUE : GLFW_FALSE);
 
-	// Create a GLFWwindow object of WIDTH by HEIGHT pixels, naming it "Cubes!"
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Robots!", NULL, NULL);
+	// Create a GLFWwindow object of config.renderer.width by config.renderer.height pixels, naming it "Cubes!"
+	GLFWwindow* window = glfwCreateWindow(config.renderer.width, config.renderer.height, "Robots!", NULL, NULL);
 	// Error check if the window fails to create
 	if (window == NULL)
 	{
@@ -452,38 +450,14 @@ void GLFWinitialize()	        // We call this right after our OpenGL window is c
 	glEnable(GL_DEPTH_TEST);		        // Enables Depth Testing
 	glEnable(GL_LINE_SMOOTH);
 
-	// Rasterized line width
+	// Rasterized line config.renderer.width
 	glLineWidth(3.0f);
 
 	// Specify the viewport of OpenGL in the Window
-	// In this case the viewport goes from x = 0, y = 0, to x = WIDTH, y = HEIGHT
-	glViewport(0, 0, WIDTH, HEIGHT);
+	// In this case the viewport goes from x = 0, y = 0, to x = config.renderer.width, y = config.renderer.height
+	glViewport(0, 0, config.renderer.width, config.renderer.height);
 }
 #endif
-
-void handle_commandline_args(const int& argc, char** argv) {
-    // for(int i = 0; i < argc; i++) {
-    //     if(strcmp(argv[i], "-mutate") == 0) {
-	// 		config.optimizer.crossover = argv[i+1];
-    //     }
-
-    //     if(strcmp(argv[i], "-cross") == 0) {
-	// 		config.optimizer.crossover = argv[i+1];
-    //     }
-
-    //     if(strcmp(argv[i], "-niche") == 0) {
-	// 		config.optimizer.niche = argv[i+1];
-    //     }
-		
-	// 	if(strcmp(argv[i], "-run") == 0) {
-	// 		runID = atoi(argv[i+1]);
-    //     }
-
-	// 	if(strcmp(argv[i], "-sol") == 0) {
-	// 		solID = atoi(argv[i+1]);
-    //     }
-    // }
-}
 
 int handle_file_io() {
 	// Get current date and time

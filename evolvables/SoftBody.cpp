@@ -98,11 +98,13 @@ void SoftBody::append(SoftBody src) {
 
 void SoftBody::calcFitness(SoftBody& R) {
     // Eigen::Vector3f mean_pos = calcMeanPos(R);
-    Eigen::Vector3f closest_pos = calcClosestPos(R);
+    Eigen::Vector3f COM = calcMeanPos(R);
 
     // R.mFitness = mean_pos.norm();
     // R.mFitness = mean_pos.x() - R.mCOM.x();
-    R.mFitness = (closest_pos.x() - R.mBaseCOM.x()) / R.mLength;
+    // printf("%f - %f / %f\n", COM.x(), R.mBaseCOM.x(), R.mLength);
+    
+    R.mFitness = (COM.x() - R.mBaseCOM.x()) / R.mLength;
 
     if(R.mFitness > 1000) {
         printf("Length: %f\n",R.mLength);

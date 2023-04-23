@@ -133,7 +133,6 @@ private:
     T MutateSolution(T&); // TODO Rename
     void SimulatedAnnealingStep(T&);
     // void MutateStep(std::vector<T>&);
-
     void ChildStep(subpopulation<T>& subpop);
 
     void CalibrateStep(void);

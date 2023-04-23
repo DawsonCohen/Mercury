@@ -70,6 +70,12 @@ public:
 		masses = e.masses; 
 		springs = e.springs; 
 	}
+
+	void updateBaseline() {
+		mBaseCOM = calcMeanPos(*this);
+		mLength = calcLength(*this);
+	}
+
     void SimReset();
 	void Reset();
 	void Clear();

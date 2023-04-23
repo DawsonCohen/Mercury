@@ -59,9 +59,10 @@ void Optimizer<T>::RandomizePopulation(std::vector<T>& population) {
         population[i].Randomize();
     }
 
-    std::vector<T> evalBuf(population.size());
-    for(uint i = 0; i < population.size(); i++)
-        evalBuf[i] = population[i];
+    std::vector<T> evalBuf;
+    for(uint i = 0; i < population.size(); i++) {
+        evalBuf.push_back(population[i]);
+    }
     
     Evaluator<T>::BatchEvaluate(evalBuf);
 

@@ -57,14 +57,14 @@ struct Config {
 		int pop_size = 512;
 		float base_time = 3.0;
 		float eval_time = 10.0;
-	} eval;
+	} evaluator;
 
 	struct Renderer {
 		float max_time = 10.0;
 		float fps = 30;
 		int	  width = 1600;
 		int   height = 900;
-	} render;
+	} renderer;
 
 	struct NNRobot {
 		int crossover_neuron_count = 5;
