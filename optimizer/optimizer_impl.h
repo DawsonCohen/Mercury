@@ -214,7 +214,7 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
         //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
         //     random_robot  = &subpop[r_idx];
         // }
-        assert(r_idx != 0);
+        //assert(r_idx != 0);
         if(*random_robot <= fam.child) {
             swap(*(fam.parent), fam.child);
         }
