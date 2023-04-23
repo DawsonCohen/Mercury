@@ -23,7 +23,6 @@ Optimizer<T>::Optimizer() {
     srand(seed);
     gen = std::default_random_engine(seed);
     uniform_real = std::uniform_real_distribution<>(0.0,1.0);
-    uniform_int = std::uniform_int_distribution<>(0,1728);
     gamma = std::gamma_distribution<>(1,5);
 }
 
@@ -382,6 +381,8 @@ std::vector<T> Optimizer<T>::Solve(Config config) {
     mutator = opt_config.mutation;
     crossover = opt_config.crossover;
     niche = opt_config.niche;
+    uniform_int = std::uniform_int_distribution<>(0,pop_size);
+
 
     elitism = opt_config.elitism;
 
