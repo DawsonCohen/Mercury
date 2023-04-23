@@ -94,10 +94,10 @@ size_t SelectRoulette(subpopulation<T>& subpop) {
     std::vector<float> fitness(subpop.size());
     float tot_fitness = 0;
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        tot_fitness += 1/(-i->fitness());
+        tot_fitness += i->fitness();
     }
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        fitness[i-subpop.begin()] = (1/(-i->fitness())) / tot_fitness;
+        fitness[i-subpop.begin()] = i->fitness() / tot_fitness;
     }
     
     float random = ((float) rand() / (float) RAND_MAX);
@@ -109,7 +109,7 @@ size_t SelectRoulette(subpopulation<T>& subpop) {
 
         i++;
     }
-    
+
     return i;
 }
 
@@ -176,6 +176,13 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     }
 
     Evaluator<T>::BatchEvaluate(evalBuf);
+
+    for(uint i = 0; i < subpop.size(); i++) {
+        if(subpop.parentFlag[i] == 1){
+            subpop[i].IncrementAge();
+            subpop.parentFlag[i] = 0;
+        }
+    }
 
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
         evalBuf.push_back(*i);
@@ -298,12 +305,6 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 
         ChildStep(full_pop);
 
-        for(uint i = 0; i < population.size(); i++) {
-            if(full_pop.parentFlag[i] == 1){
-                population[i].IncrementAge();
-                full_pop.parentFlag[i] == 0;
-            }
-        }
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         if(generation%injection_rate == 0){
