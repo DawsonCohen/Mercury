@@ -18,7 +18,7 @@ struct subpopulation {
 
     typename std::vector<T>::iterator mBegin{};
     typename std::vector<T>::iterator mEnd{};
-    std::vector<int> parentFlag;
+    std::vector<uint> parentFlag;
 
     size_t mSize = 0;
     std::mutex a_mutex;
@@ -46,6 +46,8 @@ struct subpopulation {
         mBegin = _begin;
         mEnd = _end;
         mSize = (size_t) (_end-_begin);
+        std::vector<uint> pFlags(mSize, 0);
+        parentFlag = pFlags;
     }
 
     typename std::vector<T>::iterator begin() {
