@@ -31,11 +31,13 @@ public:
     static float baselineTime;
     static float evaluationTime;
 
+    static T protoRobot;
+
     static void Initialize(Config config);
     static void BatchEvaluate(std::vector<T>&);
     static float Distance(const CandidatePair<T>& solutions);
 
-    static void pareto_sort(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end) {
+    static void pareto_classify(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end) {
         for(auto i = begin; i < end; i++) {
             i->mParetoLayer = 0;
         }
@@ -67,6 +69,10 @@ public:
             if(Delta == 0) break;
             run++;
         }
+    }
+
+    static void pareto_sort(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end) {
+        pareto_classify(begin, end);
         std::sort(begin,end,std::greater<T>());
     }
 };

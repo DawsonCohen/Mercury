@@ -15,8 +15,11 @@
 template<typename T>
 struct subpopulation {
     float export_threshold = 0;
+
     typename std::vector<T>::iterator mBegin{};
     typename std::vector<T>::iterator mEnd{};
+    std::vector<uint> parentFlag;
+
     size_t mSize = 0;
     std::mutex a_mutex;
     std::mutex p_mutex;
@@ -43,6 +46,8 @@ struct subpopulation {
         mBegin = _begin;
         mEnd = _end;
         mSize = (size_t) (_end-_begin);
+        std::vector<uint> pFlags(mSize, 0);
+        parentFlag = pFlags;
     }
 
     typename std::vector<T>::iterator begin() {
@@ -81,8 +86,16 @@ public:
     uint calibration_steps = (uint) 5;
     uint exchange_steps = 5e3;
 
-    float mutation_rate = 0.6;
-    float crossover_rate = 0.7;
+    uint max_heap = 1024;
+
+    uint hist_skip_factor = 10;
+    uint print_skip = 1;
+
+    // TODO
+    float mutation_crossover_threshold = 0.5;
+    float child_pop_size = .8;
+    uint injection_rate = 4;
+
     float elitism = 0.1;
 
     MutationStrat mutator = MUTATE;
@@ -91,7 +104,8 @@ public:
 
     unsigned seed;
     std::default_random_engine gen;
-    std::uniform_real_distribution<> uniform;
+    std::uniform_real_distribution<> uniform_real;
+    std::uniform_int_distribution<> uniform_int;
     std::gamma_distribution<> gamma;
 
     Optimizer();
@@ -121,26 +135,17 @@ private:
     T MutateSolution(T&); // TODO Rename
     void SimulatedAnnealingStep(T&);
     // void MutateStep(std::vector<T>&);
-    void MutateStep(subpopulation<T>& subpop);
-    void MutateCollect(std::vector<subpopulation<T>>& subpop_list);
-    
-    void CrossoverStep(subpopulation<T>&);
-    void CrossoverCollect(std::vector<subpopulation<T>>& subpop_list);
+    void ChildStep(subpopulation<T>& subpop);
+
     void CalibrateStep(void);
     void Calibrate(void);
-    void HFCStep(subpopulation<T>&, uint);
     void SteadyStateReplace(subpopulation<T>& subpop, CandidatePair<T>& parents, CandidatePair<T>& children, size_t P1, size_t P2);
     void SteadyStateMutate(T&);
     void SteadyStateStep(subpopulation<T>&);
-    void MALPSCrossover(std::vector<T>&, uint);
-    void MALPSStep(std::vector<T>&, uint);
 
     void WriteSolutions(const std::vector<T>& solutions, const std::string& directory);
 
     std::vector<T> NoNicheSolve();
-    std::vector<T> HFCSolve();
-    std::vector<T> ALPSSolve();
-    std::vector<T> MALPSSolve();
 
 public:
     void reset(void) {
