@@ -209,7 +209,6 @@ public:
     static Eigen::Vector3f calcMeanPos(VoxelRobot&);
     static Eigen::Vector3f calcClosestPos(VoxelRobot&);
     static Eigen::Vector3f calcSkew(VoxelRobot&);
-    static void calcFitness(VoxelRobot&);
     static float Distance(const CandidatePair<VoxelRobot>& robots);
     static float calcLength(VoxelRobot&);
 

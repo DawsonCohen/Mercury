@@ -30,7 +30,7 @@ void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float
     // Allocate memory on device for offsets
     int* h_offsets = new int[num_segments+1];
     for(uint i = 0; i < num_segments+1; i++) {
-        h_offsets[i] = count*i;
+        h_offsets[i] = (int) count*i;
     }
 
     int* d_offsets;
@@ -52,10 +52,11 @@ void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float
     cub::DeviceSegmentedRadixSort::SortPairs(
         d_temp_storage, temp_storage_bytes,
         d_values_in, d_values_out, d_keys_in, d_keys_out,
-        count*count, count, d_offsets, d_offsets+1);
+        count*count, num_segments, d_offsets, d_offsets+1);
 
     delete[] h_offsets;
     cudaFree(d_offsets);
+    cudaFree(d_temp_storage);
 }
 
 template<typename T>
@@ -112,7 +113,6 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
 
     for(uint i = 0; i < num_masses; i++) {
         for (uint j = 0; j < K; j++) {
-            assert(h_distances[i * num_masses + j] != 0.0f);
             KNN[i][j].first = h_ids[i*num_masses + j];
             KNN[i][j].second = h_distances[i*num_masses + j];
         }

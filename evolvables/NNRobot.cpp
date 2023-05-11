@@ -226,6 +226,8 @@ void NNRobot::Build() {
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
+            if(neighbor.second == 0.0f) valid = false;
+
             Material mat2 = masses[neighbor.first].material;
             std::vector<Material> mats = {mat1, mat2};
             Material mat;
@@ -254,4 +256,9 @@ void NNRobot::Build() {
 
     mBaseCOM = calcMeanPos(*this);
     mLength = calcLength(*this);
+}
+
+void NNRobot::calcFitness(NNRobot& R) {
+    if(!R.valid) R.mFitness = 0.0f;
+    else SoftBody::calcFitness(R);
 }

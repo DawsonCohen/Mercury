@@ -94,10 +94,10 @@ size_t SelectRoulette(subpopulation<T>& subpop) {
     std::vector<float> fitness(subpop.size());
     float tot_fitness = 0;
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        tot_fitness += 1/(-i->fitness());
+        tot_fitness += i->fitness();
     }
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        fitness[i-subpop.begin()] = (1/(-i->fitness())) / tot_fitness;
+        fitness[i-subpop.begin()] = i->fitness() / tot_fitness;
     }
     
     float random = ((float) rand() / (float) RAND_MAX);
@@ -118,24 +118,24 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     //STEP 1: Generate new population of children
     uint num_children = subpop.size() * child_pop_size;
 
-    for(int i = 0; i < num_children; i ++) {
+    for(uint i = 0; i < num_children; i ++) {
         if(uniform_real(gen) >= mutation_crossover_threshold) {
             if(crossover == CROSS_NONE) continue;
 
             CandidatePair<T> children;
             SolutionPair<T> parents;
             size_t first, second;
-
+            
             first = SelectRoulette(subpop);
             do {
                 second = SelectRoulette(subpop);
             } while(first != second);
 
-            parents.first   = &*(subpop.begin()+first);
-            parents.second  = &*(subpop.begin()+second);
+            parents.first   = subpop.begin().base()+first;
+            parents.second  = subpop.begin().base()+second;
 
-            subpop.parentFlag[first] = 1;
-            subpop.parentFlag[second] = 1;
+            subpop[first].parentFlag = 1;
+            subpop[second].parentFlag = 1;
 
             CandidatePair<T> p = {*parents.first, *parents.second};
 
@@ -145,16 +145,16 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
         } else {
             T new_sol;
             int working_index = uniform_int(gen);
-            T *working_sol = &*(subpop.begin()+working_index);
+            T* working_sol =subpop.begin().base()+working_index;
             switch(mutator){
                 case MUTATE_RANDOM:
-                    subpop.parentFlag[working_index] = 1;
+                    subpop[working_index].parentFlag = 1;
                     new_sol = RandomizeSolution(*working_sol);
                     break;
                 case MUTATE:
                 default:
                 {
-                    subpop.parentFlag[working_index] = 1;
+                    subpop[working_index].parentFlag = 1;
                     new_sol = MutateSolution(*working_sol);
                 }
             }
@@ -299,9 +299,9 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         ChildStep(full_pop);
 
         for(uint i = 0; i < population.size(); i++) {
-            if(full_pop.parentFlag[i] == 1){
+            if(full_pop[i].parentFlag == 1){
                 population[i].IncrementAge();
-                full_pop.parentFlag[i] == 0;
+                full_pop[i].parentFlag = 0;
             }
         }
         Evaluator<T>::pareto_sort(population.begin(),population.end());
@@ -381,12 +381,12 @@ std::vector<T> Optimizer<T>::Solve(Config config) {
     mutator = opt_config.mutation;
     crossover = opt_config.crossover;
     niche = opt_config.niche;
-    uniform_int = std::uniform_int_distribution<>(0,pop_size);
+    uniform_int = std::uniform_int_distribution<>(0,pop_size-1);
 
 
     elitism = opt_config.elitism;
 
-    for(unsigned N = 0; N < opt_config.repeats; N++) {
+    for(int N = 0; N < opt_config.repeats; N++) {
         printf("Started Run %i\n",N);
 
 		working_directory = std::string(config.io.out_dir) + std::string("/run_") + std::to_string(N);

@@ -19,6 +19,8 @@ protected:
 
 public:
     int     mAge;
+    bool    parentFlag = 0;
+    bool    valid = true;
 
     Candidate() : mAge(0) {}
 

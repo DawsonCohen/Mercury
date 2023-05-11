@@ -104,7 +104,7 @@ void SoftBody::calcFitness(SoftBody& R) {
     // R.mFitness = mean_pos.x() - R.mCOM.x();
     // printf("%f - %f / %f\n", COM.x(), R.mBaseCOM.x(), R.mLength);
     
-    R.mFitness = (COM.x() - R.mBaseCOM.x()) / R.mLength;
+    R.mFitness = max((COM.x() - R.mBaseCOM.x()) / R.mLength, 0.0f);
 
     if(R.mFitness > 1000) {
         printf("Length: %f\n",R.mLength);
