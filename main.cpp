@@ -24,7 +24,7 @@
 uint runID = 0;
 uint solID = 0;
 
-std::string config_file = "./config.default";
+std::string config_file = "configs/config.default";
 
 void handle_commandline_args(int argc, char** argv);
 int handle_file_io();
