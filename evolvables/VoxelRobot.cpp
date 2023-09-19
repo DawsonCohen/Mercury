@@ -527,19 +527,6 @@ Eigen::Vector3f VoxelRobot::calcSkew(VoxelRobot& R) {
     return skew;
 }
 
-void VoxelRobot::calcFitness(VoxelRobot& R) {
-    // Eigen::Vector3f mean_pos = calcMeanPos(R);
-    Eigen::Vector3f closest_pos = calcClosestPos(R);
-
-    // R.mFitness = mean_pos.norm();
-    // R.mFitness = mean_pos.x() - R.mCOM.x();
-    R.mFitness = (closest_pos.x() - R.mBaseCOM.x()) / R.mLength;
-
-    if(R.mFitness > 1000) {
-        printf("Length: %f\n",R.mLength);
-    }
-}
-
 float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
     float dist = 0;
     std::vector<Voxel> s1 = robots.first.voxels;

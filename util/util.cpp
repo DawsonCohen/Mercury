@@ -266,6 +266,10 @@ Config ReadConfigFile(const std::string& filename) {
         config.io.out_dir = config_map["OUT_DIR"];
     }
 
+    if(config_map.find("IN_DIR") != config_map.end()) {
+        config.io.in_dir = config_map["IN_DIR"];
+    }
+
     if(config_map.find("CROSSOVER_NEURONS") != config_map.end()) {
         config.nnrobot.crossover_neuron_count = stoi(config_map["CROSSOVER_NEURONS"]);
     }

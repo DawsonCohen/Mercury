@@ -36,7 +36,8 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     std::vector<Element> elements;
 
     for(auto& R : solutions) {
-        elements.push_back({R.getMasses(), R.getSprings()});
+        if(R.valid)
+            elements.push_back({R.getMasses(), R.getSprings()});
     }
 
     Sim.setDevoTime(devoPeriod);

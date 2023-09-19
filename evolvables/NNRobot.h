@@ -106,8 +106,7 @@ protected:
     
     constexpr static unsigned int input_size = 3;
     constexpr static unsigned int output_size = 3 + MATERIAL_COUNT;
-    
-    
+
 public:
     // TODO: more elegant solution for simulator initialization
     unsigned int maxMasses;
@@ -127,6 +126,8 @@ public:
         NNRobot::num_layers = hidden_sizes.size()+2;
         NNRobot::hidden_sizes = hidden_layer_sizes;
     }
+
+    static void calcFitness(NNRobot& R);
 
     // Initializers
     void Build();

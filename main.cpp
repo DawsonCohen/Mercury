@@ -7,9 +7,9 @@
 #ifdef VIDEO
 #include "plane_model.h"
 #include "robot_model.h"
-#include "util.h"
-
 #include "Renderer.h"
+#include <filesystem>
+#include <regex>
 
 #ifdef WRITE_VIDEO
 #include <opencv2/opencv.hpp>
@@ -40,6 +40,8 @@ void Visualize(std::vector<SoftBody>& R);
 
 template<typename T>
 std::vector<T> Solve();
+std::string out_sol_video_file;
+std::string in_sol_file;
 
 Simulator sim;
 // struct OptimizerStrategies {
@@ -60,6 +62,7 @@ int main()
 	handle_file_io();
 	printf("--------------\n");
 	std::cout << "Ouput directory: " << config.io.out_dir << std::endl;
+	std::cout << "Input directory: " << config.io.in_dir << std::endl;
 
 	std::vector<SoftBody> solutions;
 
@@ -96,31 +99,30 @@ int main()
 
 	// TODO: Update for new directories
 	#ifdef VERIFY
-	uint sol = 0;
-	while(true) {
-		char filepath[MAX_FILE_PATH];
-		if(snprintf(filepath, MAX_FILE_PATH, "%s/solution_%u_%u.csv", io.out_dir, runID, sol) >= MAX_FILE_PATH)
-			exit(-1);
+	std::string filename_template = "^solution_\\w+\\.\\w+$";
+	std::regex pattern(filename_template);
 
-		if (!std::filesystem::exists(filepath)) break;
-		
-		printf("Verifying file %s\n", filepath);
-		switch(config.robot_type) {
-			case ROBOT_VOXEL: {
-				VoxelRobot solution;
-				solution.Decode(filepath);
-				solutions.push_back(solution);
-				break;
-			}
-			case ROBOT_NN:
-			default: {
-				NNRobot solution;
-				solution.Decode(filepath);
-				solutions.push_back(solution);
+	for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
+	{
+		if (std::filesystem::is_regular_file(file.path()) &&
+			std::regex_match(file.path().filename().string(), pattern))
+		{
+			std::cout << file.path().filename() << std::endl;
+			switch(config.robot_type) {
+				case ROBOT_VOXEL: {
+					VoxelRobot solution;
+					solution.Decode(file.path().filename());
+					solutions.push_back(solution);
+					break;
+				}
+				case ROBOT_NN:
+				default: {
+					NNRobot solution;
+					solution.Decode(file.path().filename());
+					solutions.push_back(solution);
+				}
 			}
 		}
-
-		sol++;
 	}
 	#endif
 
@@ -197,25 +199,23 @@ void Render(std::vector<SoftBody>& robots) {
 	cv::VideoWriter video;
 
 	#if defined(BOUNCE) && !defined(ENV_GRAVITY)
-	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/stationary_%u_%u.avi",io.out_dir, runID, solID))
+	out_sol_video_file =  config.io.out_dir + "/stationary_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
 	#elif defined(BOUNCE)
-	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/bounce_%u_%u.avi",io.out_dir, runID, solID))
+	out_sol_video_file =  config.io.out_dir + "/bounce_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
 	#elif defined(ZOO)
-	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/zoo_0.avi",io.out_dir))
+	out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
+	#elif defined(VERIFY)
+	out_sol_video_file =  config.io.out_dir + "/solutions	_0.avi";
 	#elif !defined(OPTIMIZE)
-	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/random_0.avi",io.out_dir))
+	out_sol_video_file =  config.io.out_dir + "/random_0.avi";
 	#else
-	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/solution_video_%u_%u.avi",io.out_dir, runID, solID))
+	out_sol_video_file =  config.io.out_dir + "/solution_video_" + std::to_string(runID) + "_" + std::to_string(solID) +".avi";
 	#endif
-	{
-		printf("%s\n",io.out_sol_video_file);
-		video = cv::VideoWriter(cv::String(io.out_sol_video_file),
-			cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+	video = cv::VideoWriter(cv::String(out_sol_video_file),
+		cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 
-		video.open(cv::String(io.out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-		assert(video.isOpened());
-	}
-	else printf("Something Failed\n");
+	video.open(cv::String(out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+	assert(video.isOpened());
 
 	PlaneModel p;
 
@@ -245,7 +245,7 @@ void Render(std::vector<SoftBody>& robots) {
 			model.Update(R);
 
 			// Specify the color of the background
-			GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
+			GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
 			// Clean the back buffer and depth buffer
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -311,13 +311,11 @@ void Visualize(std::vector<SoftBody>& robots) {
 	#ifdef WRITE_VIDEO
 	// opencv video writer
 	cv::VideoWriter video;
-	if(snprintf(io.out_sol_video_file,sizeof(io.out_sol_video_file),"%s/solution_live_video.avi",io.out_dir)) {
-		video = cv::VideoWriter(io.out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+	out_sol_video_file =  config.io.out_dir + "/solution_live_video.avi";
+	video = cv::VideoWriter(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 
-		video.open(io.out_sol_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-		assert(video.isOpened());
-	}
-	else printf("Something Failed\n");
+	video.open(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+	assert(video.isOpened());
 	#endif
 
 	PlaneModel p;
@@ -365,7 +363,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 		
 		// Specify the color of the background
 		// GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
-		GLCall(glClearColor(0.1f, 0.1f, 0.1f, 1.0f));
+		GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
 		// Clean the back buffer and depth buffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

@@ -35,7 +35,7 @@ enum NichingStrat {
 struct Config {
 	RobotType robot_type = ROBOT_NN;
 	struct IO {
-		std::string in_file = "";
+		std::string in_dir = "";
 		std::string out_dir = "./z_results";
 	} io;
 	struct Optimzer {

@@ -253,21 +253,17 @@ void NNRobot::Build() {
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
-            if (spring_alloc[i][neighbor.first] == 0){
+            if(neighbor.second == 0.0f) valid = false;
 
-                spring_alloc[i][neighbor.first] = 1;
-                spring_alloc[neighbor.first][i] = 1;
-                
-                Material mat2 = masses[neighbor.first].material;
-                std::vector<Material> mats = {mat1, mat2};
-                Material mat;
-                if(mat1 == materials::air || mat2 == materials::air)
-                    mat = materials::air;
-                else
-                    mat = Material::avg(mats);
-                Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
-                springs.push_back(s);
-            }
+            Material mat2 = masses[neighbor.first].material;
+            std::vector<Material> mats = {mat1, mat2};
+            Material mat;
+            if(mat1 == materials::air || mat2 == materials::air)
+                mat = materials::air;
+            else
+                mat = Material::avg(mats);
+            Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
+            springs.push_back(s);
         }
     }
 
@@ -287,4 +283,9 @@ void NNRobot::Build() {
 
     mBaseCOM = calcMeanPos(*this);
     mLength = calcLength(*this);
+}
+
+void NNRobot::calcFitness(NNRobot& R) {
+    if(!R.valid) R.mFitness = 0.0f;
+    else SoftBody::calcFitness(R);
 }

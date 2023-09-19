@@ -33,6 +33,8 @@ public:
     static float devoPeriod;
     static float devoCycles;
 
+    static T protoRobot;
+
     static void Initialize(Config config);
     static void BatchEvaluate(std::vector<T>&);
     static float Distance(const CandidatePair<T>& solutions);

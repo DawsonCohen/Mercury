@@ -109,7 +109,7 @@ size_t SelectRoulette(subpopulation<T>& subpop) {
 
         i++;
     }
-
+    
     return i;
 }
 
@@ -118,24 +118,24 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     //STEP 1: Generate new population of children
     uint num_children = subpop.size() * child_pop_size;
 
-    for(int i = 0; i < num_children; i ++) {
+    for(uint i = 0; i < num_children; i ++) {
         if(uniform_real(gen) >= mutation_crossover_threshold) {
             if(crossover == CROSS_NONE) continue;
 
             CandidatePair<T> children;
             SolutionPair<T> parents;
             size_t first, second;
-
+            
             first = SelectRoulette(subpop);
             do {
                 second = SelectRoulette(subpop);
             } while(first != second);
 
-            parents.first   = &*(subpop.begin()+first);
-            parents.second  = &*(subpop.begin()+second);
+            parents.first   = subpop.begin().base()+first;
+            parents.second  = subpop.begin().base()+second;
 
-            subpop.parentFlag[first] = 1;
-            subpop.parentFlag[second] = 1;
+            subpop[first].parentFlag = 1;
+            subpop[second].parentFlag = 1;
 
             CandidatePair<T> p = {*parents.first, *parents.second};
 
@@ -145,16 +145,16 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
         } else {
             T new_sol;
             int working_index = uniform_int(gen);
-            T *working_sol = &*(subpop.begin()+working_index);
+            T* working_sol =subpop.begin().base()+working_index;
             switch(mutator){
                 case MUTATE_RANDOM:
-                    subpop.parentFlag[working_index] = 1;
+                    subpop[working_index].parentFlag = 1;
                     new_sol = RandomizeSolution(*working_sol);
                     break;
                 case MUTATE:
                 default:
                 {
-                    subpop.parentFlag[working_index] = 1;
+                    subpop[working_index].parentFlag = 1;
                     new_sol = MutateSolution(*working_sol);
                 }
             }
@@ -176,13 +176,6 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
     }
 
     Evaluator<T>::BatchEvaluate(evalBuf);
-
-    for(uint i = 0; i < subpop.size(); i++) {
-        if(subpop.parentFlag[i] == 1){
-            subpop[i].IncrementAge();
-            subpop.parentFlag[i] = 0;
-        }
-    }
 
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
         evalBuf.push_back(*i);
@@ -214,7 +207,7 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
         //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
         //     random_robot  = &subpop[r_idx];
         // }
-        //assert(r_idx != 0);
+        assert(r_idx != 0);
         if(*random_robot <= fam.child) {
             swap(*(fam.parent), fam.child);
         }
@@ -305,6 +298,12 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 
         ChildStep(full_pop);
 
+        for(uint i = 0; i < population.size(); i++) {
+            if(full_pop[i].parentFlag == 1){
+                population[i].IncrementAge();
+                full_pop[i].parentFlag = 0;
+            }
+        }
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         if(generation%injection_rate == 0){
@@ -387,7 +386,7 @@ std::vector<T> Optimizer<T>::Solve(Config config) {
 
     elitism = opt_config.elitism;
 
-    for(unsigned N = 0; N < opt_config.repeats; N++) {
+    for(int N = 0; N < opt_config.repeats; N++) {
         printf("Started Run %i\n",N);
 
 		working_directory = std::string(config.io.out_dir) + std::string("/run_") + std::to_string(N);

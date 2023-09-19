@@ -22,13 +22,14 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
 endif()
 
 ## MAIN OPTIONS ##
-# add_definitions("-DOPTIMIZE")
+add_definitions("-DOPTIMIZE")
 # add_definitions("-DOPTIMIZE -DVISUALIZE")
-add_definitions("-DVIDEO -DVISUALIZE")
+# add_definitions("-DVIDEO -DVISUALIZE")
+# add_definitions("-DVIDEO -DWRITE_VIDEO")
 
 # add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
 # add_definitions("-DVERIFY -DVISUALIZE")
-# add_definitions("-DVERIFY -DWRITE_VIDEO")
+# add_definitions("-DVERIFY -DVIDEO -DWRITE_VIDEO")
 
 #[[SIMULATOR OPTIONSSTRESS_COUNT - calculates each time a spring is the top/bottom stressed spring in a threadFULL_STRESS - calculates exact stress in each spring over the simulation lifetime]]#
 # add_definitions("-DSTRESS_COUNT")
@@ -81,12 +82,12 @@ target_include_directories(phys PUBLIC
   evolvables
 )
 
+if(DEFINED ENV{VIDEO})
 # Set include directories for local build
 # Find OpenCV package
-# find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED)
 
 # Add subdirectory for renderer
-if(DEFINED ENV{VIDEO})
 add_subdirectory(renderer)
 
 target_include_directories(phys PUBLIC
