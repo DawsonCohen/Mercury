@@ -67,22 +67,24 @@ Simulator::~Simulator() {
 	cudaFree((void**) m_dSpringIDs);
 }
 
-void Simulator::Initialize(Element prototype, uint maxElements) {
+void Simulator::Initialize(Element prototype, uint maxElements, Config::Simulator config) {
 	massesPerElement = prototype.masses.size();
 	springsPerElement = prototype.springs.size();
 	this->maxElements = maxElements;
 	maxMasses = prototype.masses.size()*maxElements;
 	maxSprings = prototype.springs.size()*maxElements;
+	track_stresses = config.track_stresses;
 
 	_initialize();
 }
 
-void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint maxElements) {
+void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint maxElements, Config::Simulator config) {
 	massesPerElement = massesPerElement;
 	springsPerElement = springsPerElement;
 	this->maxElements = maxElements;
 	maxMasses = massesPerElement*maxElements;
 	maxSprings = springsPerElement*maxElements;
+	track_stresses = config.track_stresses;
 
 	_initialize();
 }
@@ -195,7 +197,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	float stiffness = envBuf[0].floor_stiffness;
 	float mu = envBuf[0].friction;
 	float zeta = envBuf[0].damping;
-	float step_time = 0.0f;
+	float simTimeRemaining = max_time;
 	Eigen::Vector3f pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
 		float  mass = massBuf[i].mass;
@@ -275,7 +277,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	short shiftskip = 20;
 
 	SimOptions opt = {
-		step_period,
+		deltaT,
 		make_float4(stiffness,mu,zeta,gravity.y),
 		massesPerBlock, springsPerBlock,
 		numMasses, numSprings,
@@ -283,14 +285,24 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	};
 	
 	uint step = 0;
-	while(step_time < max_time) {
-		integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
-			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
-			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-			(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
-			(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
-			(float*) m_dStresses, (uint*) m_dSpringIDs,
-			total_time, step, opt);
+	while(simTimeRemaining > 0.0f) {
+		if(track_stresses) {
+			integrateBodiesStresses<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
+				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
+				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
+				(float*) m_dStresses, (uint*) m_dSpringIDs,
+				total_time, step, opt);
+		} else {
+			integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
+				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
+				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
+				(float*) m_dStresses, (uint*) m_dSpringIDs,
+				total_time, step, opt);
+		}
 
 		gpuErrchk( cudaPeekAtLastError() );
 		cudaDeviceSynchronize();
@@ -298,8 +310,8 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		std::swap(m_currentRead, m_currentWrite);
 		
 		step++;
-		total_time += step_period;
-		step_time += step_period;
+		total_time += deltaT;
+		simTimeRemaining -= deltaT;
 	}
 
 	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);

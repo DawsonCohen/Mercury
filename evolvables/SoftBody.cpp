@@ -61,11 +61,6 @@ void SoftBody::translate(Eigen::Vector3f& translation) {
 	}
 }
 
-void SoftBody::SimReset() {
-    sim_time = 0;
-    total_sim_time = 0;
-}
-
 void SoftBody::Reset() {
     for(Mass& m : masses) {
         m.pos = m.protoPos;
@@ -73,7 +68,8 @@ void SoftBody::Reset() {
         m.acc = {0.0f, 0.0f, 0.0f};
         m.force = {0.0f, 0.0f, 0.0f};
     }
-    SimReset();
+    sim_time = 0;
+    total_sim_time = 0;
 }
 
 void SoftBody::Clear() {
@@ -96,36 +92,21 @@ void SoftBody::append(SoftBody src) {
     }
 }
 
-void SoftBody::calcFitness(SoftBody& R) {
-    // Eigen::Vector3f mean_pos = calcMeanPos(R);
-    Eigen::Vector3f COM = calcMeanPos(R);
-
-    // R.mFitness = mean_pos.norm();
-    // R.mFitness = mean_pos.x() - R.mCOM.x();
-    // printf("%f - %f / %f\n", COM.x(), R.mBaseCOM.x(), R.mLength);
-    
-    R.mFitness = max((COM.x() - R.mBaseCOM.x()) / R.mLength, 0.0f);
-
-    if(R.mFitness > 1000) {
-        printf("Length: %f\n",R.mLength);
-    }
-}
-
-Eigen::Vector3f SoftBody::calcClosestPos(SoftBody& R) {
+void SoftBody::updateClosestPos() {
     Eigen::Vector3f closest_pos = Eigen::Vector3f::Zero();
-    for(Mass& m : R.masses) {
+    for(Mass& m : masses) {
         if(m.material == materials::air) continue;
         if(m.pos.x() < closest_pos.x())
             closest_pos = m.pos;
     }
 
-    return closest_pos;
+    mClosestPos = closest_pos;
 }
 
-float SoftBody::calcLength(SoftBody& R) {
+void SoftBody::updateLength() {
     Eigen::Vector3f closest_pos = Eigen::Vector3f::Zero();
     Eigen::Vector3f furthest_pos = Eigen::Vector3f::Zero();
-    for(Mass& m : R.masses) {
+    for(Mass& m : masses) {
         if(m.material == materials::air) continue;
         if(m.pos.x() < closest_pos.x())
             closest_pos  = m.pos;
@@ -133,19 +114,38 @@ float SoftBody::calcLength(SoftBody& R) {
             furthest_pos = m.pos;
     }
 
-    return max(abs(furthest_pos.x() - closest_pos.x()),1.0f);
+    mLength = max(abs(furthest_pos.x() - closest_pos.x()),1.0f);
 }
 
-Eigen::Vector3f SoftBody::calcMeanPos(SoftBody& R) {
+void SoftBody::updateCOM() {
     Eigen::Vector3f mean_pos = Eigen::Vector3f::Zero();
     float i = 0;
-    for(Mass& m : R.masses) {
+    for(Mass& m : masses) {
         if(m.material == materials::air) continue;
         mean_pos = mean_pos + (m.pos - mean_pos) * 1.0f/(i+1);
         i++;
     }
 
-    return mean_pos;
+    mCOM = mean_pos;
+}
+
+void SoftBody::updateFitness() {
+    updateCOM();
+
+    if(!valid) {
+        mFitness = 0.0f;
+        return;
+    }
+
+    // R.mFitness = mean_pos.norm();
+    // R.mFitness = mean_pos.x() - R.mCOM.x();
+    // printf("%f - %f / %f\n", mCOM.x(), mBaseCOM.x(), mLength);
+    
+    mFitness = max((mCOM.x() - mBaseCOM.x()) / mLength, 0.0f);
+
+    if(mFitness > 1000) {
+        printf("Length: %f\n",mLength);
+    }
 }
 
 void SoftBody::printObjectPositions() {

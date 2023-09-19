@@ -11,6 +11,8 @@
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
 
+#define EPS 0.0001
+
 std::vector<int> NNRobot::hidden_sizes = std::vector<int>{25,25};
 unsigned int NNRobot::num_layers = 4;
 int NNRobot::crossover_neuron_count = 5;
@@ -87,8 +89,6 @@ void NNRobot::Mutate() {
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
     CandidatePair<NNRobot> children;
-    children.first = parents.first;
-    children.second = parents.second;
     
     for(int i = 0; i < crossover_neuron_count; i++) {
         int layer = rand() % parents.first.weights.size();
@@ -103,14 +103,21 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
     children.first.Build();
     children.second.Build();
 
+    uint maxAge = parents.first.mAge;
+    if(parents.second.mAge > maxAge)
+        maxAge = parents.second.mAge;
+
+    children.first.mAge = maxAge+1;
+    children.second.mAge = maxAge+1;
+    
     return children;
 }
 
-float NNRobot::Distance(const CandidatePair<NNRobot>& robots) {
+float NNRobot::Distance(const CandidatePair<NNRobot>& candidates) {
     float distance = 0;
     for(unsigned int i = 0; i < NNRobot::num_layers - 1; i++) {
-        auto W1 = robots.first.weights[i];
-        auto W2 = robots.second.weights[i];
+        auto W1 = candidates.first.weights[i];
+        auto W2 = candidates.second.weights[i];
         distance += (W1-W2).norm();
     }
     return distance;
@@ -226,7 +233,7 @@ void NNRobot::Build() {
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
-            if(neighbor.second == 0.0f) valid = false;
+            if(neighbor.second < EPS) valid = false;
 
             Material mat2 = masses[neighbor.first].material;
             std::vector<Material> mats = {mat1, mat2};
@@ -254,11 +261,5 @@ void NNRobot::Build() {
     ShiftX(*this);
     ShiftY(*this);
 
-    mBaseCOM = calcMeanPos(*this);
-    mLength = calcLength(*this);
-}
-
-void NNRobot::calcFitness(NNRobot& R) {
-    if(!R.valid) R.mFitness = 0.0f;
-    else SoftBody::calcFitness(R);
+    updateBaseline();
 }

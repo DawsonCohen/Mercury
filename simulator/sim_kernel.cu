@@ -1,8 +1,12 @@
-#ifndef __SIM_KERNEL_H__
-#define __SIM_KERNEL_H__
+#ifndef __SIM_KERNEL_CUH__
+#define __SIM_KERNEL_CUH__
 
 #include "vec_math.cuh"
 #include <math.h>
+#include <assert.h>
+
+#define EPS 0.0000001
+#define MAX_FORCE 100000
 
 // Explicity assumes each mass is of unit 1 mass
 __device__
@@ -25,10 +29,9 @@ inline float3 collisionForce(float3 pos, float4 vel, float3 force,
 	magFf = env.y * Fc.y;
 
 	//Static Friction
-	if(vel.x == 0.0f && vel.z == 0.0f) {
+	if(fabsf(vel.x) < EPS && fabsf(vel.z) < EPS) {
 		//Check if object has acceleration
-		// TODO: check within epsilon
-		if(magFc != 0) {
+		if(fabsf(magFc) > EPS) {
 			if(magFc < magFf) {
 				Ff = {-force.x, 0.0f, -force.y};
 			} else {
@@ -106,8 +109,11 @@ inline float3 springForce(float3 bl, float3 br, float4 mat,
 		__fdiv_rn(diff.y,L),
 		__fdiv_rn(diff.z,L)
 	};
-
-	magF = mat.x*(rest_length-L);
+	if(L > EPS) {
+		magF = mat.x*(rest_length-L);
+	} else {
+		magF =  MAX_FORCE;
+	}
 
 	force = magF * dir;
 	
@@ -136,11 +142,91 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
 	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
+	
+	uint massOffset   = blockIdx.x * opt.massesPerBlock;
+	uint springOffset = blockIdx.x * opt.springsPerBlock;
 
-	#ifdef STRESS_COUNT
+	int tid    = threadIdx.x;
+	int stride = blockDim.x;
+	
+	// Initialize and compute environment forces
+	float4 pos4;
+	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+		pos4 = oldPos[i+massOffset];
+		s_pos[i] = {pos4.x,pos4.y,pos4.z};
+	}
+	
+	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+	}
+	__syncthreads();
+
+	float4	mat;
+	float3	bl, br;
+	float3	force;
+	ushort2	pair;
+	float	Lbar,
+			magF;
+	ushort	left, right;
+	
+	uint i;
+	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
+		pair = __ldg(&pairs[i+springOffset]);
+		left  = pair.x;
+		right = pair.y;
+		bl = s_pos[left];
+		br = s_pos[right];
+		mat = __ldg(&mats[i+springOffset]);
+		Lbar = __ldg(&Lbars[i+springOffset]);
+		springForce(bl,br,mat,Lbar,time, force, magF);
+
+		atomicAdd(&(s_force[left].x), force.x);
+		atomicAdd(&(s_force[left].y), force.y);
+		atomicAdd(&(s_force[left].z), force.z);
+
+		atomicAdd(&(s_force[right].x), -force.x);
+		atomicAdd(&(s_force[right].y), -force.y);
+		atomicAdd(&(s_force[right].z), -force.z);
+	}
+	__syncthreads();
+
+	// Calculate and store new mass states
+	float4 vel;
+	float3 pos3;
+	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+		vel = oldVel[i+massOffset];
+
+		vel.x += (s_force[i].x * opt.dt)*opt.env.z;
+		vel.y += (s_force[i].y * opt.dt)*opt.env.z;
+		vel.z += (s_force[i].z * opt.dt)*opt.env.z;
+
+		// new position = old position + velocity * deltaTime
+		s_pos[i].x += vel.x * opt.dt;
+		s_pos[i].y += vel.y * opt.dt;
+		s_pos[i].z += vel.z * opt.dt;
+
+		// store new position and velocity
+		pos3 = s_pos[i];
+		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
+		newVel[i+massOffset] = vel;
+	}
+}
+
+
+__global__ void
+inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
+				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
+				ushort2 *__restrict__ pairs, float4 *__restrict__ mats, float *__restrict__ Lbars,
+				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
+				float *__restrict__ stresses, uint *__restrict__ ids,
+				float time, uint step, SimOptions opt)
+{
+	extern __shared__ float3 s[];
+	float3  *s_pos = s;
+	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
+
 	__shared__ ushort maxStressedSprings[1024];
 	__shared__ ushort minStressedSprings[1024];
-	#endif
 	
 	uint massOffset   = blockIdx.x * opt.massesPerBlock;
 	uint springOffset = blockIdx.x * opt.springsPerBlock;
@@ -168,7 +254,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 			magF;
 	ushort	left, right;
 
-	#ifdef STRESS_COUNT
 	float	minStress = 0.0f,
 			maxStress  = 0.0f,
 			nextMinStress = 0.0f;
@@ -177,7 +262,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 			nextMinSpringIdx = tid+stride,
 			nextGroup_MaxSpringIdx,
 			nextGroup_MinSpringIdx;
-	#endif
 	
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
@@ -190,7 +274,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
 
-		// if(fabsf(magF) > 0.0f) {
 		atomicAdd(&(s_force[left].x), force.x);
 		atomicAdd(&(s_force[left].y), force.y);
 		atomicAdd(&(s_force[left].z), force.z);
@@ -198,9 +281,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		atomicAdd(&(s_force[right].x), -force.x);
 		atomicAdd(&(s_force[right].y), -force.y);
 		atomicAdd(&(s_force[right].z), -force.z);
-		// }
 
-		#ifdef STRESS_COUNT
 		if(step % (opt.shiftskip+1) == 0) {
 			if(fabsf(magF) > maxStress) {
 				maxStress = fabsf(magF);
@@ -217,14 +298,12 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				
 			}
 		}
-		#endif
 
 		#ifdef FULL_STRESS
 		stresses[i + springOffset] = stresses[i + springOffset] + fabsf(magF);
 		#endif
 	}
 
-	#ifdef STRESS_COUNT
 	ushort2 cMaxPair,
 			cMinPair;
 	ushort	cMax_MaxCount,
@@ -274,10 +353,8 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		cMinID = ids[minSpringIdx + springOffset];
 		#endif
 	}
-	#endif
 	__syncthreads();
 
-	#ifdef STRESS_COUNT
 	int tid_next = (tid+1) % blockDim.x;
 	if(step % (opt.shiftskip+1) == 0) {
 		// shift current index to next spring
@@ -304,7 +381,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		ids[nextGroup_MinSpringIdx + springOffset] = cMinID;
 		#endif
 	}
-	#endif
 
 	// Calculate and store new mass states
 	float4 vel;

@@ -3,19 +3,18 @@
 #include "util.h"
 #include "NNRobot.h"
 #include "VoxelRobot.h"
+#include <Eigen/Core>
 
 #ifdef VIDEO
 #include "plane_model.h"
 #include "robot_model.h"
 #include "Renderer.h"
-#include <filesystem>
-#include <regex>
 
-#ifdef WRITE_VIDEO
 #include <opencv2/opencv.hpp>
 #endif
-#endif
 
+#include <filesystem>
+#include <regex>
 #include <thread>
 #include <chrono>
 #include <iostream>
@@ -25,9 +24,9 @@
 uint runID = 0;
 uint solID = 0;
 
-std::string config_file = "./config.txt";
+std::string config_file = "./config.default";
 
-void handle_commandline_args(const int& argc, char** argv);
+void handle_commandline_args(int argc, char** argv);
 int handle_file_io();
 
 #ifdef VIDEO
@@ -51,14 +50,12 @@ Simulator sim;
 // } strats;
 Config config;
 
-int main()
+int main(int argc, char** argv)
 {
-	#ifndef OPTIMIZE
-	printf("NOT OPTIMIZING\n");
-	#endif
+	handle_commandline_args(argc, argv);
 
 	printf("----CONFIG----\n");
-	config = util::ReadConfigFile("config.txt");
+	config = util::ReadConfigFile(config_file);
 	handle_file_io();
 	printf("--------------\n");
 	std::cout << "Ouput directory: " << config.io.out_dir << std::endl;
@@ -75,107 +72,109 @@ int main()
 			Evaluator<NNRobot>::Initialize(config);
 			NNRobot::Configure(config.nnrobot);
 	}
-	
-	#ifdef OPTIMIZE
-	switch(config.robot_type) {
-		case ROBOT_VOXEL:
-		{
-			std::vector<VoxelRobot> v_solutions = Solve<VoxelRobot>();
-			for(VoxelRobot R : v_solutions) {
-				solutions.push_back(R);
+
+	if(config.objectives.optimize) {
+		switch(config.robot_type) {
+			case ROBOT_VOXEL:
+			{
+				std::vector<VoxelRobot> v_solutions = Solve<VoxelRobot>();
+				for(VoxelRobot R : v_solutions) {
+					solutions.push_back(R);
+				}
+				break;
 			}
-			break;
-		}
-		case ROBOT_NN:
-		default:
-		{
-			std::vector<NNRobot> n_solutions = Solve<NNRobot>();
-			for(NNRobot R : n_solutions) {
-				solutions.push_back(R);
+			case ROBOT_NN:
+			default:
+			{
+				std::vector<NNRobot> n_solutions = Solve<NNRobot>();
+				for(NNRobot R : n_solutions) {
+					solutions.push_back(R);
+				}
 			}
 		}
 	}
-	#endif
+	
 
 	// TODO: Update for new directories
-	#ifdef VERIFY
-	std::string filename_template = "^solution_\\w+\\.\\w+$";
-	std::regex pattern(filename_template);
+	if(config.objectives.verify) {
+		std::string filename_template = "^solution_\\w+\\.\\w+$";
+		std::regex pattern(filename_template);
 
-	for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
-	{
-		if (std::filesystem::is_regular_file(file.path()) &&
-			std::regex_match(file.path().filename().string(), pattern))
+		for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
 		{
-			std::cout << file.path().filename() << std::endl;
+			if (std::filesystem::is_regular_file(file.path()) &&
+				std::regex_match(file.path().filename().string(), pattern))
+			{
+				std::cout << file.path().filename() << std::endl;
+				switch(config.robot_type) {
+					case ROBOT_VOXEL: {
+						VoxelRobot solution;
+						solution.Decode(file.path().filename());
+						solutions.push_back(solution);
+						break;
+					}
+					case ROBOT_NN:
+					default: {
+						NNRobot solution;
+						solution.Decode(file.path().filename());
+						solutions.push_back(solution);
+					}
+				}
+			}
+		}
+	}
+	
+	if(!config.objectives.optimize && !config.objectives.verify && !config.objectives.zoo) {
+		uint seed = std::chrono::system_clock::now().time_since_epoch().count();
+		srand(seed);
+		for(int i = 0; i < config.optimizer.pop_size; i++) {
 			switch(config.robot_type) {
 				case ROBOT_VOXEL: {
-					VoxelRobot solution;
-					solution.Decode(file.path().filename());
+					VoxelRobot solution = VoxelRobot();
+					solution.Randomize();
 					solutions.push_back(solution);
 					break;
 				}
 				case ROBOT_NN:
 				default: {
-					NNRobot solution;
-					solution.Decode(file.path().filename());
+					NNRobot solution = NNRobot();
+					solution.Randomize();
 					solutions.push_back(solution);
 				}
 			}
 		}
 	}
-	#endif
 
-	#if !defined(OPTIMIZE) && !defined(VERIFY) && !defined(ZOO)
-	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
-    srand(seed);
-	for(int i = 0; i < config.optimizer.pop_size; i++) {
-		switch(config.robot_type) {
-			case ROBOT_VOXEL: {
-				VoxelRobot solution = VoxelRobot();
-				solutions.push_back(solution);
-				break;
-			}
-			case ROBOT_NN:
-			default: {
-				NNRobot solution = NNRobot();
-				solutions.push_back(solution);
+	if(config.objectives.bounce) {
+		if(config.objectives.verify) {
+			for(SoftBody& R : solutions) {
+				Eigen::Vector3f translation(0.0f,7.0f,0.0f);
+				R.translate(translation);
 			}
 		}
 	}
-	#endif
 
-	#ifdef BOUNCE
-	for(SoftBody& R : solutions) {
-		R.translate(glm::vec3(0.0f,7.0f,0.0f));
-	}
-	#endif
+	#ifdef VIDEO
+		if(config.objectives.movie) {
+			Render(solutions);
+		}
 
-	#ifdef WRITE_VIDEO
-	// for(ROBOT_TYPE& R : solutions) {
-	Render(solutions);
-	// }
-	#endif
-
-	#ifdef VISUALIZE
-	Visualize(solutions);
+		if(config.objectives.visualize) {
+			Visualize(solutions);
+		}
 	#endif
 
 	return 0;
 }
 
-#ifdef OPTIMIZE
 template<typename T>
 std::vector<T> Solve() {
 	Optimizer<T> O;
     O.Solve(config);
 	return O.getSolutions();
 }
-#endif
 
 #ifdef VIDEO
-
-#ifdef WRITE_VIDEO
 void Render(std::vector<SoftBody>& robots) {
 	printf("RENDERING\n");
 
@@ -198,19 +197,19 @@ void Render(std::vector<SoftBody>& robots) {
 	// opencv video writer
 	cv::VideoWriter video;
 
-	#if defined(BOUNCE) && !defined(ENV_GRAVITY)
-	out_sol_video_file =  config.io.out_dir + "/stationary_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
-	#elif defined(BOUNCE)
-	out_sol_video_file =  config.io.out_dir + "/bounce_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
-	#elif defined(ZOO)
-	out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
-	#elif defined(VERIFY)
-	out_sol_video_file =  config.io.out_dir + "/solutions	_0.avi";
-	#elif !defined(OPTIMIZE)
-	out_sol_video_file =  config.io.out_dir + "/random_0.avi";
-	#else
-	out_sol_video_file =  config.io.out_dir + "/solution_video_" + std::to_string(runID) + "_" + std::to_string(solID) +".avi";
-	#endif
+	if(config.objectives.stationary)
+		out_sol_video_file =  config.io.out_dir + "/stationary_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
+	else if(config.objectives.bounce)
+		out_sol_video_file =  config.io.out_dir + "/bounce_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
+	else if(config.objectives.zoo)
+		out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
+	else if(config.objectives.verify)
+		out_sol_video_file =  config.io.out_dir + "/solutions_0.avi";
+	else if(!config.objectives.optimize)
+		out_sol_video_file =  config.io.out_dir + "/random_0.avi";
+	else
+		out_sol_video_file =  config.io.out_dir + "/solution_video_" + std::to_string(runID) + "_" + std::to_string(solID) +".avi";
+	
 	video = cv::VideoWriter(cv::String(out_sol_video_file),
 		cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 
@@ -220,7 +219,7 @@ void Render(std::vector<SoftBody>& robots) {
 	PlaneModel p;
 
 	float max_render_time = 5;
-	sim.Initialize(robots[0], 1);
+	sim.Initialize(robots[0], 1, config.simulator);
 	sim.setMaxTime(1 / config.renderer.fps);
 
 	// Main while loop
@@ -288,7 +287,6 @@ void Render(std::vector<SoftBody>& robots) {
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 }
-#endif
 
 void Visualize(std::vector<SoftBody>& robots) {
 	printf("VISUALIZING\n");
@@ -308,21 +306,20 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 	shader.Unbind();
 	
-	#ifdef WRITE_VIDEO
 	// opencv video writer
 	cv::VideoWriter video;
-	out_sol_video_file =  config.io.out_dir + "/solution_live_video.avi";
-	video = cv::VideoWriter(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-
-	video.open(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-	assert(video.isOpened());
-	#endif
+	if(config.objectives.movie) {
+		out_sol_video_file =  config.io.out_dir + "/solution_live_video.avi";
+		video = cv::VideoWriter(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+		video.open(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+		assert(video.isOpened());
+	}
 
 	PlaneModel p;
 
 	float prevTime = glfwGetTime();
 
-	sim.Initialize(robots[0], 1);
+	sim.Initialize(robots[0], 1, config.simulator);
 	sim.setMaxTime( 1 / config.renderer.fps);
 
 	// Main while loop
@@ -376,19 +373,19 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		p.Draw(shader, camera);
 
-		#ifdef WRITE_VIDEO
-		cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
-		//use fast 4-byte alignment (default anyway) if possible
-		glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
+		if(config.objectives.movie) {
+			cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
+			//use fast 4-byte alignment (default anyway) if possible
+			glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
 
-		//set length of one complete row in destination data (doesn't need to equal frame.cols)
-		glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
-		glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
+			//set length of one complete row in destination data (doesn't need to equal frame.cols)
+			glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
+			glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
 
-		cv::flip(frame, frame, 0);
+			cv::flip(frame, frame, 0);
 
-		video.write(frame);
-		#endif
+			video.write(frame);
+		}
 
 		// Swap the back buffer with the front buffer
 		glfwSwapBuffers(window);
@@ -397,9 +394,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 		i++;
 	}
 
-	#ifdef WRITE_VIDEO
 	video.release();
-	#endif
 	// Delete all the objects we've created
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_LINE_SMOOTH);
@@ -467,23 +462,12 @@ int handle_file_io() {
 	strftime(time_str, sizeof(time_str), "%Y-%m-%d-%H%M%S", localtime(&current_time));
 
 	// Create config out_dir folder
-	if (mkdir(config.io.out_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-		if (errno != EEXIST && errno != EISDIR) {
-            std::cerr << "Error: Could not create output directory " << config.io.out_dir << std::endl;
-            return 1;
-        }
-	}
+	util::MakeDirectory(config.io.out_dir);
 
 	// Create folder with current time as name
 	config.io.out_dir = config.io.out_dir + "/" + std::string(time_str);
-
-	if (mkdir(config.io.out_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1) {
-		if (errno != EEXIST && errno != EISDIR) {
-            std::cerr << "Error: Could not create output directory " << config.io.out_dir << std::endl;
-            return 1;
-		}
-	}
-
+	util::MakeDirectory(config.io.out_dir);
+	
 	std::ifstream src(config_file, std::ios::binary);
 	if(!src) {
 		std::cerr << "Error opening config file: " << config_file << std::endl;
@@ -501,4 +485,9 @@ int handle_file_io() {
 	}
 
 	return 0;
+}
+
+void handle_commandline_args(int argc, char** argv) {
+	if(argc > 1)
+		config_file = std::string(argv[1]);
 }

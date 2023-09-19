@@ -13,6 +13,27 @@
 #include "config.h"
 
 template<typename T>
+using Solution = T*;
+
+template<typename T>
+struct SolutionPair {
+    Solution<T> first;
+    Solution<T> second;
+};
+
+template<typename T>
+struct SexualFamily {
+    SolutionPair<T> parents;
+    CandidatePair<T> children;
+};
+
+template<typename T>
+struct AsexualFamily {
+    Solution<T> parent;
+    T child;
+};
+
+template<typename T>
 struct subpopulation {
     float export_threshold = 0;
 
@@ -129,10 +150,9 @@ private:
     std::vector<T> pareto_solutions;
     
     void RandomizePopulation(std::vector<T>& population);
-    T RandomizeSolution(T&);
-    T MutateSolution(T&); // TODO Rename
+    void RandomizeSolution(Solution<T>);
+    void MutateSolution(Solution<T>);
     void SimulatedAnnealingStep(T&);
-    // void MutateStep(std::vector<T>&);
     void ChildStep(subpopulation<T>& subpop);
 
     void CalibrateStep(void);

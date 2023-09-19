@@ -7,7 +7,10 @@
 #define MIN_FITNESS (float) 0
 
 template<typename T>
-struct CandidatePair;
+struct CandidatePair {
+    T first;
+    T second;
+};
 
 class Candidate {
 template<typename U>
@@ -18,11 +21,12 @@ protected:
     uint    mParetoLayer = 0;
 
 public:
-    int     mAge;
+    uint     mAge;
     bool    parentFlag = 0;
     bool    valid = true;
 
     Candidate() : mAge(0) {}
+    virtual ~Candidate() {}
 
     Candidate(const Candidate& src): 
         mFitness(src.mFitness),
@@ -41,37 +45,25 @@ public:
     void IncrementAge() { mAge++; };
 
     float fitness() const { return mFitness; }
+    uint age() const { return mAge; }
     uint paretoLayer() const { return mParetoLayer; }
 
     void setFitness(float fit) { mFitness = fit; }
 
 
     // void Randomize();
-    static void Random();
-    void Mutate();
-    static CandidatePair<Candidate> Crossover(const CandidatePair<Candidate>& parents);
-
-    static std::vector<float> findDiversity(std::vector<Candidate> pop);
-    static float Distance(const CandidatePair<Candidate>& parents);
-
-    static void calcFitness(Candidate&);
-
-    virtual void Randomize() {};
-    virtual void Reset() {};
-    virtual void Clear() {};
-    
-    Candidate& operator=(Candidate src) {
-        swap(*this, src);
-
-        return *this;
-    }
+    virtual void updateFitness() = 0;
+    virtual void Randomize() = 0;
+    virtual void Mutate() = 0;
+    virtual void Reset() = 0;
+    virtual void Clear() = 0;
 
     bool operator < (const Candidate& R) const {
-        return mFitness < R.mFitness;
+        return mParetoLayer > R.mParetoLayer;
     }
 
     bool operator > (const Candidate& R) const {
-        return mFitness > R.mFitness;
+        return mParetoLayer < R.mParetoLayer;
     }
 
     bool operator <= (const Candidate& R) const {
@@ -82,15 +74,11 @@ public:
         return !(*this < R);
     }
 
+    virtual bool dominates(const Candidate&) const = 0;
+
     std::string fitnessReadout() {
         return "fitness: " + std::to_string(mFitness) + "\tage: " + std::to_string(mAge);
     }
-};
-
-template<typename T>
-struct CandidatePair {
-    T first;
-    T second;
 };
 
 #endif

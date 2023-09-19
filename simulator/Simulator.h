@@ -3,6 +3,7 @@
 
 #include "environment.h"
 #include "element.h"
+#include "config.h"
 #include <memory>
 
 struct ElementTracker {
@@ -20,12 +21,11 @@ class Simulator {
 
 public:
 	Simulator(Element prototype, uint maxElements);
-	// Simulator(float dt): step_period(dt) {}
 	Simulator() {}
 	~Simulator();
 
-	void Initialize(Element prototype, uint maxElements);
-	void Initialize(uint massesPerElement, uint springsPerElement, uint maxElements);
+	void Initialize(Element prototype, uint maxElements, Config::Simulator config = Config::Simulator());
+	void Initialize(uint massesPerElement, uint springsPerElement, uint maxElements, Config::Simulator);
 	
 	std::vector<ElementTracker> Allocate(const std::vector<Element>& element);
 	ElementTracker AllocateElement(const Element& e);
@@ -37,8 +37,8 @@ public:
 	// void Simulate(std::vector<Mass>& masses, const std::vector<Spring>& springs);
 
 	// Getter/setter time step in seconds
-	float getStepPeriod() const { return step_period; }
-	void setTimeStep(float dt) { step_period = dt; }
+	float getDeltaT() const { return deltaT; }
+	void setTimeStep(float dt) { deltaT = dt; }
 
 	// Get simulated time elapsed in seconds
 	float getTotalTime() const { return total_time; }
@@ -54,8 +54,9 @@ protected:
 
 	std::vector<Environment> mEnvironments;
     float total_time = 0;
-    float step_period = 0.0005f;
+    float deltaT = 0.0005f;
     float max_time = 10.0f;
+	bool track_stresses = false;
 
 	Mass*			massBuf;
 	Spring*			springBuf;

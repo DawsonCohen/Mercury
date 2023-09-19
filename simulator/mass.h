@@ -5,7 +5,7 @@
 #include <iostream>
 #include <Eigen/Core>
 
-#define OMEGA (float) 4.0f
+#define OMEGA (float) 2.0f
 #define AMPLITUDE .14f
 
 struct Color {
@@ -90,12 +90,12 @@ struct Material {
 };
 
 enum MaterialOption {
-	AGONIST_MUSCLE = 0,
-	ANTAGOINST_MUSCLE = 1,
+	ADDUCTOR_MUSCLE = 0,
+	ABDCUTOR_MUSCLE = 1,
 	TISSUE = 2,
 	BONE = 3,
 	AIR = 4,
-	MATERIAL_FIRST = AGONIST_MUSCLE,
+	MATERIAL_FIRST = ADDUCTOR_MUSCLE,
 	MATERIAL_LAST = AIR,
 	ACTIVE_MATERIAL_COUNT = MATERIAL_LAST,
 	MATERIAL_COUNT = MATERIAL_LAST+1
@@ -103,18 +103,18 @@ enum MaterialOption {
 
 class materials {
 	public:
-	static constexpr Material agonist_muscle    = {0, 5000 , AMPLITUDE, OMEGA, 0   , 0x01, Color(32.0f , 212.0f, 82.0f , 1.0f)*1.0f/255.0f};
-	static constexpr Material antagonist_muscle = {1, 5000 , AMPLITUDE, OMEGA, M_PI, 0x02, Color(250.0f, 112.0f, 66.0f , 1.0f)*1.0f/255.0f};
-	static constexpr Material tissue            = {2, 4000 , 0        , OMEGA, 0   , 0x04, Color(169.0f, 32.0f , 212.0f, 1.0f)*1.0f/255.0f};
-	static constexpr Material bone              = {3, 10000, 0        , OMEGA, 0   , 0x08, Color(245.0f, 231.0f, 54.0f , 1.0f)*1.0f/255.0f};
-	static constexpr Material air               = {4, 0    , 0        , 0    , 0   , 0x00, Color(0.0f  , 0.0f  , 0.0f  , 0.0f)*1.0f/255.0f};
+	static constexpr Material adductor_muscle   = {0, 5000 , AMPLITUDE, OMEGA, 0   , 0x01, Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.98f)};
+	static constexpr Material abductor_muscle   = {1, 5000 , AMPLITUDE, OMEGA, M_PI, 0x02, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.85f)};
+	static constexpr Material tissue            = {2, 4000 , 0        , OMEGA, 0   , 0x04, Color(217.0f/255.0f , 102.0f/255.0f ,  78.0f/255.0f , 0.85f)};
+	static constexpr Material bone              = {3, 10000, 0        , OMEGA, 0   , 0x08, Color(240.0f/255.0f , 209.0f/255.0f ,  98.0f/255.0f , 0.94f)};
+	static constexpr Material air               = {4, 0    , 0        , 0    , 0   , 0x00, Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f ,  0.0f)};
 
 	static Material matLookup(uint mat) {
 		switch(mat){
-		case AGONIST_MUSCLE:
-			return agonist_muscle;
-		case ANTAGOINST_MUSCLE:
-			return antagonist_muscle;
+		case ADDUCTOR_MUSCLE:
+			return adductor_muscle;
+		case ABDCUTOR_MUSCLE:
+			return abductor_muscle;
 		case TISSUE:
 			return tissue;
 		case BONE:

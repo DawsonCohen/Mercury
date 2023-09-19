@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1)
 set(CMAKE_CUDA_COMPILER "nvcc")
 set(CMAKE_CXX_COMPILER "g++")
 
-project(phys C CXX CUDA)
+project(evodevo C CXX CUDA)
 
 # Set language standards
 set(CMAKE_CXX_STANDARD 17)
@@ -22,24 +22,20 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
 endif()
 
 ## MAIN OPTIONS ##
-add_definitions("-DOPTIMIZE")
-# add_definitions("-DOPTIMIZE -DVISUALIZE")
-# add_definitions("-DVIDEO -DVISUALIZE")
-# add_definitions("-DVIDEO -DWRITE_VIDEO")
+if(DEFINED ENV{VIDEO})
+  add_definitions("-DVIDEO")
+endif()
 
-# add_definitions("-DOPTIMIZE -DWRITE_VIDEO")
-# add_definitions("-DVERIFY -DVISUALIZE")
-# add_definitions("-DVERIFY -DVIDEO -DWRITE_VIDEO")
+if(BENCHMARK)
+  message("Configuring for benchmarks")
+  set(EVODEVO benchmark.cpp)
+else()
+  message("Configuring for optimization")
+  set(EVODEVO main.cpp)
+endif()
 
-#[[SIMULATOR OPTIONSSTRESS_COUNT - calculates each time a spring is the top/bottom stressed spring in a threadFULL_STRESS - calculates exact stress in each spring over the simulation lifetime]]#
-# add_definitions("-DSTRESS_COUNT")
-# add_definitions("-DSTRESS_COUNT -DFULL_STRESS -DWRITE_STRESS")
-
-set(PHYS
-	# batch_benchmark.cpp
-	# benchmark.cpp
-	main.cpp
-
+set(EVODEVO
+  ${EVODEVO}
   simulator/Simulator.cu
 
   evolvables/SoftBody.cpp
@@ -64,17 +60,17 @@ set(RENDER
 )
 
 # Create executable
-if(DEFINED ENV{VIDEO})
-add_executable(phys ${PHYS} ${RENDER})
+if(DEFINED ENV{VIDEO} AND NOT BENCHMARK)
+add_executable(evodevo ${EVODEVO} ${RENDER})
 else()
-add_executable(phys ${PHYS})
+add_executable(evodevo ${EVODEVO})
 endif()
 
 # Set CUDA architectures
-set_target_properties(phys PROPERTIES CUDA_ARCHITECTURES "61;75")
+set_target_properties(evodevo PROPERTIES CUDA_ARCHITECTURES "61;75")
 
 # Set include directories
-target_include_directories(phys PUBLIC
+target_include_directories(evodevo PUBLIC
   lib
   simulator
   optimizer
@@ -82,7 +78,7 @@ target_include_directories(phys PUBLIC
   evolvables
 )
 
-if(DEFINED ENV{VIDEO})
+if(DEFINED ENV{VIDEO} AND NOT BENCHMARK)
 # Set include directories for local build
 # Find OpenCV package
 find_package(OpenCV REQUIRED)
@@ -90,13 +86,13 @@ find_package(OpenCV REQUIRED)
 # Add subdirectory for renderer
 add_subdirectory(renderer)
 
-target_include_directories(phys PUBLIC
+target_include_directories(evodevo PUBLIC
   renderer/src
   models
 )
 
 # Link libraries
-target_link_libraries(phys PUBLIC
+target_link_libraries(evodevo PUBLIC
   glad
   glfw
   glm

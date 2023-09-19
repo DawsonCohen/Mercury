@@ -30,10 +30,13 @@ protected:
 
 	float   mVolume = 0.0f;
     float   mLength = 1.0f;
+	Eigen::Vector3f mCOM;
     Eigen::Vector3f mBaseCOM;
+	Eigen::Vector3f mClosestPos;
 
 public:
 	SoftBody() { }
+	~SoftBody() override { }
 
 	SoftBody(const SoftBody& src) :
 	Element{src.masses, src.springs}, Candidate(src),
@@ -68,18 +71,32 @@ public:
 
 	void Update(Element e) { 
 		masses = e.masses; 
-		springs = e.springs; 
+		springs = e.springs;
+
+		updateCOM();
+		updateFitness();
 	}
 
 	void updateBaseline() {
-		mBaseCOM = calcMeanPos(*this);
-		mLength = calcLength(*this);
+		updateCOM();
+		mBaseCOM = mCOM;
+		updateLength();
 	}
 
-    void SimReset();
-	void Reset();
-	void Clear();
+	void Reset() override;
+	void Clear() override;
+
+	void Randomize() override {}
+	void Mutate() override {}
+
 	void updateVolume(float v) { mVolume = v; }
+
+	virtual bool dominates(const Candidate& C) const override {
+		return 	(mFitness >= C.fitness() &&
+				 mAge <= C.age()) &&
+				(mFitness > C.fitness() ||
+				 mAge < C.age());
+	}
 
 	void append(SoftBody src);
 
@@ -113,10 +130,11 @@ public:
 		}
 	}
 
-	static Eigen::Vector3f calcMeanPos(SoftBody&);
-    static Eigen::Vector3f calcClosestPos(SoftBody&);
-    static void calcFitness(SoftBody&);
-    static float calcLength(SoftBody&);
+	void updateCOM();
+    void updateClosestPos();
+    void updateLength();
+	
+    void updateFitness() override;
 
 	void printObjectPositions();
 	

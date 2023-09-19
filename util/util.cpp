@@ -254,6 +254,13 @@ Config ReadConfigFile(const std::string& filename) {
         config.evaluator.eval_time = stof(config_map["EVAL_TIME"]);
     }
 
+    if(config_map.find("TRACK_STRESSES") != config_map.end()) {
+        if(isdigit(config_map["OPTIMIZE"][0]) && stoi(config_map["OPTIMIZE"]))
+            config.simulator.track_stresses = true;
+        else
+            config.simulator.track_stresses = false;
+    }
+
     if(config_map.find("OUT_DIR") != config_map.end()) {
         config.io.out_dir = config_map["OUT_DIR"];
     }
@@ -274,6 +281,48 @@ Config ReadConfigFile(const std::string& filename) {
         config.nnrobot.springs_per_mass = stoi(config_map["SPRINGS_PER_MASS"]);
     }
 
+    if(config_map.find("OPTIMIZE") != config_map.end()) {
+        if(isdigit(config_map["OPTIMIZE"][0]) && stoi(config_map["OPTIMIZE"]))
+            config.objectives.optimize = true;
+        else
+            config.objectives.optimize = false;
+    }
+
+    if(config_map.find("VISUALIZE") != config_map.end()) {
+        if(isdigit(config_map["VISUALIZE"][0]) && stoi(config_map["VISUALIZE"]))
+            config.objectives.visualize = true;
+    }
+    
+    if(config_map.find("WRITE_VIDEO") != config_map.end()) {
+        if(isdigit(config_map["WRITE_VIDEO"][0]) && stoi(config_map["WRITE_VIDEO"]))
+            config.objectives.movie = true;
+    }
+    
+    if(config_map.find("WRITE_STRESS") != config_map.end()) {
+        if(isdigit(config_map["WRITE_STRESS"][0]) && stoi(config_map["WRITE_STRESS"])) {
+            // TODO
+        }
+    }
+    
+    if(config_map.find("VERIFY") != config_map.end()) {
+        if(isdigit(config_map["VERIFY"][0]) && stoi(config_map["VERIFY"]))
+            config.objectives.verify = true;
+    }
+    
+    if(config_map.find("ZOO") != config_map.end()) {
+        if(isdigit(config_map["ZOO"][0]) && stoi(config_map["ZOO"]))
+            config.objectives.zoo = true;
+    }
+    
+    if(config_map.find("BOUNCE") != config_map.end()) {
+        if(isdigit(config_map["BOUNCE"][0]) && stoi(config_map["BOUNCE"]))
+            config.objectives.bounce = true;
+    }
+    
+    if(config_map.find("STATIONARY") != config_map.end()) {
+        if(isdigit(config_map["STATIONARY"][0]) && stoi(config_map["STATIONARY"]))
+            config.objectives.stationary = true;
+    }
 
     if(config_map.find("HIDDEN_LAYER_SIZES") != config_map.end()) {
         config.nnrobot.hidden_layer_sizes.clear();
@@ -296,9 +345,6 @@ Config ReadConfigFile(const std::string& filename) {
     height
     fps
     max_time
-
-    in_file
-    in_dir
 
     cuda_device_ids
     */ 

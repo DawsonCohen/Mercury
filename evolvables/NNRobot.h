@@ -126,8 +126,6 @@ public:
         NNRobot::hidden_sizes = hidden_layer_sizes;
     }
 
-    static void calcFitness(NNRobot& R);
-
     // Initializers
     void Build();
 	static void BatchBuild(std::vector<NNRobot>& robots); // TODO
@@ -142,13 +140,8 @@ public:
         weights(src.weights), maxMasses(src.maxMasses), maxSprings(src.maxSprings)
     { }
     
-
-    // Getters
-    unsigned int volume() const { return mVolume; }
-    Eigen::Vector3f COM() const { return mBaseCOM; }
-
-    void Randomize();
-    void Mutate();
+    void Randomize() override;
+    void Mutate() override;
 
     static CandidatePair<NNRobot> Crossover(const CandidatePair<NNRobot>& parents);
 
@@ -172,27 +165,6 @@ public:
         swap(*this, src);
 
         return *this;
-    }
-
-    bool operator < (const NNRobot& R) const {
-        return mParetoLayer > R.mParetoLayer;
-    }
-
-    bool operator > (const NNRobot& R) const {
-        if(mParetoLayer < R.mParetoLayer)
-            return true;
-        else if(mParetoLayer == R.mParetoLayer)
-            return mFitness > R.mFitness;
-        
-        return false;
-    }
-
-    bool operator <= (const NNRobot& R) const {
-        return !(mFitness > R.mFitness);
-    }
-
-    bool operator >= (const NNRobot& R) const {
-        return !(mFitness < R.mFitness);
     }
     
     static std::vector<float> findDiversity(std::vector<NNRobot> pop);

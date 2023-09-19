@@ -71,22 +71,15 @@ void Optimizer<T>::RandomizePopulation(std::vector<T>& population) {
 }
 
 template<typename T>
-T Optimizer<T>::RandomizeSolution(T& working_sol) {
-    T new_sol = working_sol;
-
-    new_sol.Randomize();
-    new_sol.mAge = 1;
-
-    return new_sol;
+void Optimizer<T>::RandomizeSolution(Solution<T> sol) {
+    sol->Randomize();
+    sol->mAge = 1;
 }
 
 template<typename T>
-T Optimizer<T>::MutateSolution(T& working_sol) {
-    T new_sol = working_sol;
-    new_sol.Mutate();
-    new_sol.mAge += 1;
-
-    return new_sol;
+void Optimizer<T>::MutateSolution(Solution<T> sol) {
+    sol->Mutate();
+    sol->mAge += 1;
 }
 
 template<typename T>
@@ -131,31 +124,30 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
                 second = SelectRoulette(subpop);
             } while(first != second);
 
-            parents.first   = subpop.begin().base()+first;
-            parents.second  = subpop.begin().base()+second;
+            parents.first   = &subpop[first];
+            parents.second  = &subpop[second];
 
             subpop[first].parentFlag = 1;
             subpop[second].parentFlag = 1;
 
-            CandidatePair<T> p = {*parents.first, *parents.second};
-
-            children = T::Crossover(p);
+            children = T::Crossover({*parents.first, *parents.second});
             
             subpop.crossoverFamilyBuffer.push_back({parents, children});
         } else {
-            T new_sol;
             int working_index = uniform_int(gen);
-            T* working_sol =subpop.begin().base()+working_index;
+            Solution<T> working_sol = &subpop[working_index];
+            T new_sol(*working_sol);
+
             switch(mutator){
                 case MUTATE_RANDOM:
                     subpop[working_index].parentFlag = 1;
-                    new_sol = RandomizeSolution(*working_sol);
+                    RandomizeSolution(&new_sol);
                     break;
                 case MUTATE:
                 default:
                 {
                     subpop[working_index].parentFlag = 1;
-                    new_sol = MutateSolution(*working_sol);
+                    MutateSolution(&new_sol);
                 }
             }
             AsexualFamily<T> fam{working_sol, new_sol};
@@ -202,14 +194,15 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
 
     for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
         uint r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-        T* random_robot  = &subpop[r_idx];
-        // while(random_robot->paretoLayer() == 0) {
+        Solution<T> random_solution  = &subpop[r_idx];
+        // while(random_solution->paretoLayer() == 0) {
         //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-        //     random_robot  = &subpop[r_idx];
+        //     random_solution  = &subpop[r_idx];
         // }
-        assert(r_idx != 0);
-        if(*random_robot <= fam.child) {
-            swap(*(fam.parent), fam.child);
+        if(max_elite > 0) assert(r_idx != 0);
+        if(*random_solution < fam.child) {
+            // swap(*(fam.parent), fam.child);
+            swap(*(random_solution), fam.child);
         }
     }
     subpop.mutationFamilyBuffer.clear();
@@ -307,7 +300,7 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
         if(generation%injection_rate == 0){
-            population[population.size()-1] = RandomizeSolution(population[population.size()-1]);
+            RandomizeSolution(&population[population.size()-1]);
             Evaluator<T>::pareto_sort(population.begin(),population.end());
         }
         diversity = T::findDiversity(population);
@@ -372,7 +365,7 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 
 template<typename T>
 std::vector<T> Optimizer<T>::Solve(Config config) {
-    Config::Optimzer opt_config = config.optimizer;
+    Config::Optimizer opt_config = config.optimizer;
     niche_count = opt_config.niche_count;
     steps_to_combine = opt_config.steps_to_combine;
     exchange_steps = opt_config.steps_to_exchange;

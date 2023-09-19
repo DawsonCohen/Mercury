@@ -38,7 +38,16 @@ struct Config {
 		std::string in_dir = "";
 		std::string out_dir = "./z_results";
 	} io;
-	struct Optimzer {
+	struct Objectives {
+		bool optimize = true;
+		bool visualize = false;
+		bool verify = false;
+		bool zoo = false;
+		bool bounce = false;
+		bool stationary = false;
+		bool movie = false;
+	} objectives;
+	struct Optimizer {
 		int pop_size = 512;
 		int repeats = 1;
 		int max_evals = 1e4;
@@ -52,12 +61,14 @@ struct Config {
 		float crossover_rate=0.7f;
 		float elitism=0.1f;
 	} optimizer;
-
 	struct Evaluator {
 		int pop_size = 512;
 		float base_time = 3.0;
 		float eval_time = 10.0;
 	} evaluator;
+	struct Simulator {
+		bool track_stresses = false;
+	} simulator;
 
 	struct Renderer {
 		float max_time = 10.0;

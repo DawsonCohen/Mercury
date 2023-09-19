@@ -46,7 +46,7 @@ CXXFLAGS += $(INCLUDE_DIRS)
 CUFLAGS += $(INCLUDE_DIRS)
 
 # Define target executable
-EXECUTABLE = $(BINDIR)/run_evo
+EXECUTABLE = $(BINDIR)/evodevo
 
 .PHONY: all clean vars
 

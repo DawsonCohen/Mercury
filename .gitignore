@@ -1,7 +1,8 @@
 # Build files
 obj/
 build/
-run_evo
+build_benchmark/
+evodevo
 
 # Videos and results
 *.avi
@@ -9,3 +10,6 @@ z_results/
 
 # Environment
 .vscode
+
+# included files
+lib/Eigen

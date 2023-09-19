@@ -29,7 +29,7 @@ struct Circle {
     Material mat = materials::bone;
     float radius = 0;
     Eigen::Vector3f center = Eigen::Vector3f::Zero();
-    float max_radius = 6.0f;
+    float max_radius = 0.5f;
     void Randomize(float xlim, float ylim, float zlim);
 
     friend void swap(Circle& c1, Circle& c2) {
@@ -77,16 +77,9 @@ enum Encoding {
     ENCODE_SHAPE_ACT = 3
 };
 
-
-private:
-    uint    mVolume = 0;
-
-public:
-    Eigen::Vector3f mBaseCOM;
-    Eigen::Vector3f mSkew;
     float mLength = 1.0f;
 
-    float Distance();
+    static float Distance(const CandidatePair<VoxelRobot>& robots);
 
     static CandidatePair<VoxelRobot> TwoPointChildren(const CandidatePair<VoxelRobot>& parents);
     static CandidatePair<VoxelRobot> RadiusChildren(const CandidatePair<VoxelRobot>& parents);
@@ -104,10 +97,10 @@ public:
     void Strip();
 
 private:
-    float xSize = 12.0f;
-    float ySize = 12.0f;
-    float zSize = 12.0f;
-    float resolution = 1.0f; // Masses per meter
+    float xSize = 1.0f;
+    float ySize = 1.0f;
+    float zSize = 1.0f;
+    float resolution = 12.0f; // Masses per cm
     Eigen::Vector3f center = Eigen::Vector3f(xSize/2.0f, ySize/2.0f, 0.0f);
     std::vector<Voxel> voxels;
     std::vector<Circle> circles;
@@ -170,7 +163,6 @@ public:
     };
     
     VoxelRobot(const VoxelRobot& src) : SoftBody(src),
-        mVolume(src.mVolume), mBaseCOM(src.mBaseCOM), mSkew(src.mSkew), mLength(src.mLength),
         xSize(src.xSize), ySize(src.ySize), zSize(src.zSize),
         resolution(src.resolution), voxels(src.voxels), circles(src.circles),
         xCount(src.xCount), yCount(src.yCount), zCount(src.zCount)
@@ -195,31 +187,17 @@ public:
 
     std::vector<Voxel>& getVoxels() { return voxels; }
 
-    uint volume() const { return mVolume; }
-    Eigen::Vector3f COM() const { return mBaseCOM; }
-    Eigen::Vector3f skew() const { return mSkew; }
-
-    static void Random();
-    void Randomize();
+    void Randomize() override;
+    void Mutate() override;
     void Duplicate(const VoxelRobot&);
     
-    void Mutate();
     static CandidatePair<VoxelRobot> Crossover(const CandidatePair<VoxelRobot>& parents);
-
-    static Eigen::Vector3f calcMeanPos(VoxelRobot&);
-    static Eigen::Vector3f calcClosestPos(VoxelRobot&);
-    static Eigen::Vector3f calcSkew(VoxelRobot&);
-    static float Distance(const CandidatePair<VoxelRobot>& robots);
-    static float calcLength(VoxelRobot&);
 
     std::string Encode() const;
 	void Decode(const std::string& filename);
 
     friend void swap(VoxelRobot& r1, VoxelRobot& r2) {
         using std::swap;
-        swap(r1.mVolume, r2.mVolume);
-        swap(r1.mBaseCOM, r2.mBaseCOM);
-        swap(r1.mSkew, r2.mSkew);
         swap(r1.mLength, r2.mLength);
         swap(r1.voxels, r2.voxels);
         swap(r1.circles, r2.circles);
@@ -238,27 +216,6 @@ public:
         swap(*this, src);
 
         return *this;
-    }
-
-    bool operator < (const VoxelRobot& R) const {
-        return mParetoLayer > R.mParetoLayer;
-    }
-
-    bool operator > (const VoxelRobot& R) const {
-        if(mParetoLayer < R.mParetoLayer)
-            return true;
-        else if(mParetoLayer == R.mParetoLayer)
-            return mFitness > R.mFitness;
-        
-        return false;
-    }
-
-    bool operator <= (const VoxelRobot& R) const {
-        return !(mFitness > R.mFitness);
-    }
-
-    bool operator >= (const VoxelRobot& R) const {
-        return !(mFitness < R.mFitness);
     }
 
     static std::vector<float> findDiversity(std::vector<VoxelRobot> pop);

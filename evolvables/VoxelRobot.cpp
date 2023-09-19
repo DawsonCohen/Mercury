@@ -13,16 +13,6 @@ void Voxel::setRandomMaterial() {
     mat = materials::random();
 }
 
-float VoxelRobot::Distance() {
-    Eigen::Vector3f mean_pos = Eigen::Vector3f::Zero();
-    float i = 0;
-    for(Mass& m : masses) {
-        mean_pos = mean_pos + (m.pos - mean_pos) * 1.0f/(i+1);
-        i++;
-    }
-    return mean_pos.norm();
-}
-
 void Circle::Randomize(float xlim, float ylim, float zlim) {
     static unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     static std::default_random_engine gen = std::default_random_engine(seed);
@@ -309,10 +299,8 @@ void VoxelRobot::Build() {
     setSprings(_springs);
     ShiftX(*this);
     ShiftY(*this);
-
-    mBaseCOM = calcMeanPos(*this);
-    mSkew = calcSkew(*this);
-    mLength = calcLength(*this);
+    
+    updateBaseline();
 }
 
 void VoxelRobot::BuildFromCircles() {
@@ -337,10 +325,10 @@ void VoxelRobot::Initialize() {
     circles.push_back({materials::bone});
     circles.push_back({materials::tissue});
     circles.push_back({materials::tissue});
-    circles.push_back({materials::agonist_muscle});
-    circles.push_back({materials::agonist_muscle});
-    circles.push_back({materials::antagonist_muscle});
-    circles.push_back({materials::antagonist_muscle});
+    circles.push_back({materials::adductor_muscle});
+    circles.push_back({materials::adductor_muscle});
+    circles.push_back({materials::abductor_muscle});
+    circles.push_back({materials::abductor_muscle});
 
     xCount = resolution*xSize;
     yCount = resolution*ySize;
@@ -459,7 +447,7 @@ CandidatePair<VoxelRobot> VoxelRobot::Crossover(const CandidatePair<VoxelRobot>&
             children = TwoPointChildren(parents);
     }
 
-    int maxAge = parents.first.mAge;
+    uint maxAge = parents.first.mAge;
     if(parents.second.mAge > maxAge)
         maxAge = parents.second.mAge;
 
@@ -471,60 +459,6 @@ CandidatePair<VoxelRobot> VoxelRobot::Crossover(const CandidatePair<VoxelRobot>&
 
 void VoxelRobot::Duplicate(const VoxelRobot& R) {
     *this = R;
-}
-
-Eigen::Vector3f VoxelRobot::calcMeanPos(VoxelRobot& R) {
-    Eigen::Vector3f mean_pos = Eigen::Vector3f::Zero();
-    float i = 0;
-    for(Voxel& v : R.voxels) {
-        if(v.mat == materials::air) continue;
-        mean_pos = mean_pos + (R.masses[v.ID].pos - mean_pos) * 1.0f/(i+1);
-        i++;
-    }
-
-    return mean_pos;
-}
-
-Eigen::Vector3f VoxelRobot::calcClosestPos(VoxelRobot& R) {
-    Eigen::Vector3f closest_pos = Eigen::Vector3f::Zero();
-    for(Voxel& v : R.voxels) {
-        if(v.mat == materials::air) continue;
-        if(R.masses[v.ID].pos.x() < closest_pos.x())
-            closest_pos = R.masses[v.ID].pos;
-    }
-
-    return closest_pos;
-}
-
-float VoxelRobot::calcLength(VoxelRobot& R) {
-    Eigen::Vector3f closest_pos = Eigen::Vector3f::Zero();
-    Eigen::Vector3f furthest_pos = Eigen::Vector3f::Zero();
-    for(Voxel& v : R.voxels) {
-        if(v.mat == materials::air) continue;
-        if(R.masses[v.ID].pos.x() < closest_pos.x())
-            closest_pos  = R.masses[v.ID].pos;
-        if(R.masses[v.ID].pos.x() > furthest_pos.x())
-            furthest_pos = R.masses[v.ID].pos;
-    }
-
-    return max(abs(furthest_pos.x() - closest_pos.x()),1.0f);
-}
-
-
-
-Eigen::Vector3f VoxelRobot::calcSkew(VoxelRobot& R) {
-    Eigen::Vector3f skew = Eigen::Vector3f::Zero();
-    float i = 0;
-    for(Voxel& v : R.voxels) {
-        if(v.mat == materials::air) continue;
-        Eigen::Vector3f dist = v.center - R.mBaseCOM;
-        Eigen::Vector3f loc_skew = Eigen::Vector3f(pow(dist.x(),3), pow(dist.y(),3), pow(dist.z(),3));
-        skew = skew + (loc_skew-skew) * 1.0f/(i+1);
-        i++;
-    }
-    skew.y() = 0;
-
-    return skew;
 }
 
 float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
