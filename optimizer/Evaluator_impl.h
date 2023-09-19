@@ -24,6 +24,8 @@ void Evaluator<T>::Initialize(Config config) {
     // // Sim.Initialize(prototype, config.evaluator.pop_size*1.5);
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;
+    devoPeriod = config.evaluator.devo_time;
+    devoCycles = config.evaluator.devo_cycles;
 }
 
 template<typename T>
@@ -36,6 +38,9 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     for(auto& R : solutions) {
         elements.push_back({R.getMasses(), R.getSprings()});
     }
+
+    Sim.setDevoTime(devoPeriod);
+    Sim.setDevoCycles(devoCycles);
     
     Sim.setMaxTime(baselineTime);
 

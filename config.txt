@@ -26,6 +26,8 @@ HIDDEN_LAYER_SIZES=25,25
 # Evaluator Parameters
 BASE_TIME=3.0
 EVAL_TIME=10.0
+DEVO_TIME=1.0
+DEVO_CYCLES=100
 
 # Renderer Parameters
 WIDTH=1600

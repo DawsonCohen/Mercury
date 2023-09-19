@@ -254,6 +254,14 @@ Config ReadConfigFile(const std::string& filename) {
         config.evaluator.eval_time = stof(config_map["EVAL_TIME"]);
     }
 
+    if(config_map.find("DEVO_TIME") != config_map.end()) {
+        config.evaluator.devo_time = stof(config_map["DEVO_TIME"]);
+    }
+
+    if(config_map.find("DEVO_CYCLES") != config_map.end()) {
+        config.evaluator.devo_cycles = stoi(config_map["DEVO_CYCLES"]);
+    }
+
     if(config_map.find("OUT_DIR") != config_map.end()) {
         config.io.out_dir = config_map["OUT_DIR"];
     }

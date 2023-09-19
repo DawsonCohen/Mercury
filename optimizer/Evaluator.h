@@ -30,6 +30,8 @@ public:
     static Simulator Sim;
     static float baselineTime;
     static float evaluationTime;
+    static float devoPeriod;
+    static float devoCycles;
 
     static void Initialize(Config config);
     static void BatchEvaluate(std::vector<T>&);
