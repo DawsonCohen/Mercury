@@ -255,7 +255,7 @@ Config ReadConfigFile(const std::string& filename) {
     }
 
     if(config_map.find("TRACK_STRESSES") != config_map.end()) {
-        if(isdigit(config_map["OPTIMIZE"][0]) && stoi(config_map["OPTIMIZE"]))
+        if(isdigit(config_map["TRACK_STRESSES"][0]) && stoi(config_map["TRACK_STRESSES"]))
             config.simulator.track_stresses = true;
         else
             config.simulator.track_stresses = false;
