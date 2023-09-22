@@ -55,7 +55,7 @@ sudo apt install libassimp-dev
 1. cd visualize
 1. cmake .
 1. make [-j12]
-1. ./evodevo configs/config.default
+1. ./visualizer configs/config.verify
 
 ### Controls
 
