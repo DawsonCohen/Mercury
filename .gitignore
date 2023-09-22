@@ -1,8 +1,17 @@
 # Build files
+##folders
 obj/
-build/
-build_benchmark/
-evodevo
+CMakeFiles
+
+##files
+visualize/visualizer
+optimize/evodevo
+benchmark
+CMakeCache.txt
+cmake_install.cmake
+*.out
+Makefile
+!optimizer/Makefile
 
 # Videos and results
 *.avi

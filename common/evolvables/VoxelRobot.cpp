@@ -473,6 +473,7 @@ float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
 
 std::string VoxelRobot::Encode() const {
     std::string encoding;
+    encoding += "type=VoxelRobot\n";
     encoding += std::to_string(xSize) + "\n";
     encoding += std::to_string(ySize) + "\n";
     encoding += std::to_string(zSize) + "\n";
@@ -519,6 +520,7 @@ void VoxelRobot::Decode(const std::string& filename) {
             bx, by, bz;
     Material mat;
 
+    std::getline(file, line, '\n');
     std::getline(file, line, '\n');
     xSize = atof(line.data());
     std::getline(file, line, '\n');

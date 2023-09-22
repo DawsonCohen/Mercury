@@ -151,7 +151,7 @@ void NNBenchmark() {
 	R.Build();
 
 	uint pop_size = INIT_POP_SIZE;
-	sim.Initialize(R.maxMasses, R.maxSprings, pop_size);
+	sim.Initialize(R, pop_size);
 
 	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getDeltaT());
 	FILE* pFile = fopen((out_dir + "/nn_benchamrk.csv").c_str(),"w");

@@ -139,6 +139,13 @@ std::vector<float> NNRobot::findDiversity(std::vector<NNRobot> pop) {
 
 std::string NNRobot::Encode() const {
     std::stringstream ss;
+    ss << "type=NNRobot\n";
+    ss << "architecture=";
+    for (unsigned int i = 0; i < hidden_sizes.size(); i++) {
+        ss << hidden_sizes[i];
+        ss << (i < hidden_sizes.size()- 1 ? "," : "\n");
+    }
+    ss << "fitness=" << mFitness << std::endl;
     for (const auto& matrix : weights)
     {
         for (int i = 0; i < matrix.rows(); ++i)
@@ -158,48 +165,77 @@ std::string NNRobot::Encode() const {
 }
 
 void NNRobot::Decode(const std::string& filename) {
-    std::ifstream file(filename);
-    if (file)
+    std::ifstream infile(filename);
+    if (infile)
     {
         std::string line;
-        std::stringstream ss;
         Eigen::MatrixXf matrix;
-        int current_row = 0;
-        while (std::getline(file, line))
-        {
-            if (line.empty())
-            {
-                if (matrix.size() > 0)
-                    weights.push_back(matrix);
-                matrix = Eigen::MatrixXf();
-                current_row = 0;
-            }
-            else
-            {
-                ss.clear();
-                ss.str(line);
-                int current_col = 0;
-                float value;
-                while (ss >> value)
-                {
-                    if (current_row == 0 && current_col == 0)
-                    {
-                        int rows = std::count(line.begin(), line.end(), ',') + 1;
-                        int cols = std::count(ss.str().begin(), ss.str().end(), ',') + 1;
-                        matrix.resize(rows, cols);
-                    }
-                    matrix(current_row, current_col) = value;
-                    ++current_col;
-                    if (ss.peek() == ',')
-                        ss.ignore();
-                }
-                ++current_row;
+
+        std::vector<std::vector<float>> currentMatrixData;
+
+        weights.clear();
+        hidden_sizes.clear();
+        std::getline(infile, line);
+        std::getline(infile, line);
+
+        // Split line into key-value pair
+        std::size_t pos = line.find('=');
+        std::string key = line.substr(0, pos);
+        std::string value = line.substr(pos+1);
+        if(key == "architecture") {
+            std::istringstream lineStream(value);
+            std::string cell;
+
+            while (std::getline(lineStream, cell, ',')) {
+                hidden_sizes.push_back(std::stoi(cell));
             }
         }
-        if (matrix.size() > 0)
-            weights.push_back(matrix);
-        file.close();
+        num_layers = hidden_sizes.size() + 2;
+
+        std::getline(infile, line);
+
+        // Split line into key-value pair
+        pos = line.find('=');
+        key = line.substr(0, pos);
+        value = line.substr(pos+1);
+        if(key == "fitness") {
+            mFitness = stof(value);
+        }
+
+        while (std::getline(infile, line)) {
+            if (line.empty()) {
+                // Blank line indicates the end of the current matrix.
+                if (!currentMatrixData.empty()) {
+                    int numRows = currentMatrixData.size();
+                    int numCols = (numRows > 0) ? currentMatrixData[0].size() : 0;
+                    Eigen::MatrixXf eigenMatrix(numRows, numCols);
+
+                    // Populate the Eigen matrix with the current matrix data.
+                    for (int i = 0; i < numRows; ++i) {
+                        for (int j = 0; j < numCols; ++j) {
+                            eigenMatrix(i, j) = currentMatrixData[i][j];
+                        }
+                    }
+
+                    weights.push_back(eigenMatrix);
+                    currentMatrixData.clear();
+                }
+            } else {
+                // Split the line into values and add to the current matrix data.
+                std::vector<float> row;
+                std::istringstream lineStream(line);
+                std::string cell;
+
+                while (std::getline(lineStream, cell, ',')) {
+                    row.push_back(std::stod(cell));
+                }
+
+                currentMatrixData.push_back(row);
+            }
+        }
+        infile.close();
     }
+
     Build();
 }
 

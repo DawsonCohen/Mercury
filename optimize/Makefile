@@ -12,17 +12,13 @@ ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20012
 endif
 
-
-CXXFLAGS += -DOPTIMIZE
-CUFLAGS += -DOPTIMIZE
-
-SRCDIR := .
+SRCDIR := ..
 OBJDIR := obj
 BINDIR := .
 
 # Source directories
-CXX_SRCDIRS := simulator evolvables optimizer util
-CUDA_SRCDIRS := simulator evolvables
+CXX_SRCDIRS := common/simulator common/evolvables optimize/optimizer common/util
+CUDA_SRCDIRS := common/simulator common/evolvables
 
 INCLUDE_ALL := $(foreach dir,$(CXX_SRCDIRS),-I$(wildcard $(SRCDIR)/$(dir)))
 
@@ -31,14 +27,14 @@ CXX_SRCS := $(foreach dir,$(CXX_SRCDIRS),$(wildcard $(SRCDIR)/$(dir)/*.cpp))
 CUDA_SRCS := $(foreach dir,$(CUDA_SRCDIRS),$(wildcard $(SRCDIR)/$(dir)/*.cu))
 
 # Object files
-CXX_OBJS := $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(CXX_SRCS))
-CUDA_OBJS := $(patsubst $(SRCDIR)/%.cu,$(OBJDIR)/%.o,$(CUDA_SRCS))
+CXX_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(notdir $(CXX_SRCS)))
+CUDA_OBJS := $(patsubst %.cu,$(OBJDIR)/%.o,$(notdir $(CUDA_SRCS)))
 
 # Included libraries
-EIGEN_LIB_DIR := $(SRCDIR)/lib
+EIGEN_LIB_DIR := $(SRCDIR)/common/lib
 EIGEN_LIB_NAME := cudart
 
-INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/util
+INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/common/util
 LIB_DIRS := -L$(EIGEN_LIB_DIR)
 LIB_NAMES := -l$(EIGEN_LIB_NAME)
 
@@ -46,51 +42,47 @@ CXXFLAGS += $(INCLUDE_DIRS)
 CUFLAGS += $(INCLUDE_DIRS)
 
 # Define target executable
+ifdef BENCHMARK
+MAIN_SRC := benchmark.cpp
+EXECUTABLE = $(BINDIR)/benchmark
+else
+MAIN_SRC := main_optimize.cpp
 EXECUTABLE = $(BINDIR)/evodevo
+endif
 
 .PHONY: all clean vars
 
 all: $(EXECUTABLE)
 
 # Change this line to select a different main source file
-MAIN_SRC := main.cpp
 
-$(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/$(MAIN_SRC)
+$(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/optimize/$(MAIN_SRC)
 	$(CU) $(CUFLAGS) $(LIB_DIRS) $(INCLUDE_ALL) $^ -o $@ $(LIB_NAMES)
 
 # Simulator
-$(OBJDIR)/simulator/%.o: $(SRCDIR)/simulator/%.cpp | $(OBJDIR)/simulator
+$(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(OBJDIR)/simulator/%.o: $(SRCDIR)/simulator/%.cu | $(OBJDIR)/simulator
+$(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cu | $(OBJDIR)
 	$(CU) $(CUFLAGS) -c -o $@ $<
 
 # Optimizer
-$(OBJDIR)/optimizer/%.o: $(SRCDIR)/optimizer/%.cpp | $(OBJDIR)/optimizer
+$(OBJDIR)/%.o: $(SRCDIR)/optimize/optimize/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 # Evolvables
-$(OBJDIR)/evolvables/%.o: $(SRCDIR)/evolvables/%.cpp | $(OBJDIR)/evolvables
-	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
+$(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -c -o $@ $<
 
 # Evolvables
-$(OBJDIR)/evolvables/%.o: $(SRCDIR)/evolvables/%.cu | $(OBJDIR)/evolvables
-	$(CU) $(CUFLAGS) -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
+$(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cu | $(OBJDIR)
+	$(CU) $(CUFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -c -o $@ $<
 
 # Util
-$(OBJDIR)/util/%.o: $(SRCDIR)/util/%.cpp | $(OBJDIR)/util
-	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/evolvables -I$(SRCDIR)/simulator -I$(SRCDIR)/optimizer -c -o $@ $<
+$(OBJDIR)/%.o: $(SRCDIR)/common/util/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/common/evolvables -I$(SRCDIR)/common/simulator -I$(SRCDIR)/common/optimizer -c -o $@ $<
 
-$(OBJDIR)/simulator:
-	mkdir -p $@
-
-$(OBJDIR)/optimizer:
-	mkdir -p $@
-
-$(OBJDIR)/evolvables:
-	mkdir -p $@
-
-$(OBJDIR)/util:
+$(OBJDIR):
 	mkdir -p $@
 
 vars:

@@ -5,13 +5,11 @@
 #include "VoxelRobot.h"
 #include <Eigen/Core>
 
-#ifdef VIDEO
 #include "plane_model.h"
 #include "robot_model.h"
 #include "Renderer.h"
 
 #include <opencv2/opencv.hpp>
-#endif
 
 #include <filesystem>
 #include <regex>
@@ -24,31 +22,22 @@
 uint runID = 0;
 uint solID = 0;
 
-std::string config_file = "configs/config.default";
+std::string config_file = "configs/config.verify";
 
 void handle_commandline_args(int argc, char** argv);
 int handle_file_io();
 
-#ifdef VIDEO
 GLFWwindow* GLFWsetup(bool visualize);
 void GLFWinitialize();
 void GLFWterminate(GLFWwindow*);
 
 void Render(std::vector<SoftBody>& robots);
 void Visualize(std::vector<SoftBody>& R);
-#endif
 
-template<typename T>
-std::vector<T> Solve();
 std::string out_sol_video_file;
 std::string in_sol_file;
 
 Simulator sim;
-// struct OptimizerStrategies {
-// 	Optimizer<Candidate>::MutationStrat mutator = Optimizer<Candidate>::MUTATE;
-// 	Optimizer<Candidate>::CrossoverStrat crossover = Optimizer<Candidate>::CROSS_SWAP;
-// 	Optimizer<Candidate>::NichingStrat niche = Optimizer<Candidate>::NICHE_NONE;
-// } strats;
 Config config;
 
 int main(int argc, char** argv)
@@ -64,38 +53,6 @@ int main(int argc, char** argv)
 
 	std::vector<SoftBody> solutions;
 
-	switch(config.robot_type){
-		case ROBOT_VOXEL:
-			Evaluator<VoxelRobot>::Initialize(config);
-			break;
-		case ROBOT_NN:
-		default:
-			Evaluator<NNRobot>::Initialize(config);
-			NNRobot::Configure(config.nnrobot);
-	}
-
-	if(config.objectives.optimize) {
-		switch(config.robot_type) {
-			case ROBOT_VOXEL:
-			{
-				std::vector<VoxelRobot> v_solutions = Solve<VoxelRobot>();
-				for(VoxelRobot R : v_solutions) {
-					solutions.push_back(R);
-				}
-				break;
-			}
-			case ROBOT_NN:
-			default:
-			{
-				std::vector<NNRobot> n_solutions = Solve<NNRobot>();
-				for(NNRobot R : n_solutions) {
-					solutions.push_back(R);
-				}
-			}
-		}
-	}
-	
-
 	// TODO: Update for new directories
 	if(config.objectives.verify) {
 		std::string filename_template = "^solution_\\w+\\.\\w+$";
@@ -107,17 +64,17 @@ int main(int argc, char** argv)
 				std::regex_match(file.path().filename().string(), pattern))
 			{
 				std::cout << file.path().filename() << std::endl;
-				switch(config.robot_type) {
+				switch(util::ReadRobotType(file.path())) {
 					case ROBOT_VOXEL: {
 						VoxelRobot solution;
-						solution.Decode(file.path().filename());
+						solution.Decode(file.path());
 						solutions.push_back(solution);
 						break;
 					}
 					case ROBOT_NN:
 					default: {
 						NNRobot solution;
-						solution.Decode(file.path().filename());
+						solution.Decode(file.path());
 						solutions.push_back(solution);
 					}
 				}
@@ -155,27 +112,18 @@ int main(int argc, char** argv)
 		}
 	}
 
-	#ifdef VIDEO
-		if(config.objectives.movie) {
-			Render(solutions);
-		}
+	
+	if(config.objectives.movie) {
+		Render(solutions);
+	}
 
-		if(config.objectives.visualize) {
-			Visualize(solutions);
-		}
-	#endif
+	if(config.objectives.visualize) {
+		Visualize(solutions);
+	}
 
 	return 0;
 }
 
-template<typename T>
-std::vector<T> Solve() {
-	Optimizer<T> O;
-    O.Solve(config);
-	return O.getSolutions();
-}
-
-#ifdef VIDEO
 void Render(std::vector<SoftBody>& robots) {
 	printf("RENDERING\n");
 
@@ -300,7 +248,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 
 	{ // non-glfw scope
-		Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
+		Shader shader("./shaders/vert.glsl", "./shaders/frag.glsl");
 		Camera camera(window, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 
 		SoftBody R = robots[camera.tabIdx];
@@ -325,21 +273,19 @@ void Visualize(std::vector<SoftBody>& robots) {
 		// Main while loop
 		uint i = 0;
 		std::vector<Element> robot_elements(1);
-
-		// printf("-----------------------\n");
-		
 		
 		glfwSetWindowUserPointer(window, &camera);
 		glfwSetKeyCallback(window, keyCallback);
 
-		uint tabId = camera.tabIdx;
+		int tabId = -1;
 		while (!glfwWindowShouldClose(window))
 		{
-			if(tabId != camera.tabIdx) {
+			if(tabId != (int) camera.tabIdx) {
 				tabId = camera.tabIdx;
 				R = robots[tabId];
 				model.Update(R);
 				sim.Reset();
+				printf("Robot %i, fitness: %f\n", tabId, R.fitness());
 			}
 
 			// printf("Iteration: %u\n", i);
@@ -460,39 +406,38 @@ void GLFWterminate(GLFWwindow* window) {
 	// Terminate GLFW before ending the program
 	glfwTerminate();
 }
-#endif
 
 int handle_file_io() {
-	// Get current date and time
-	auto now = std::chrono::system_clock::now();
-	time_t current_time = std::chrono::system_clock::to_time_t(now);
+	// // Get current date and time
+	// auto now = std::chrono::system_clock::now();
+	// time_t current_time = std::chrono::system_clock::to_time_t(now);
 
-	// Convert current time to a string with format YYYY-MM-DD-HHMMSS
-	char time_str[20];
-	strftime(time_str, sizeof(time_str), "%Y-%m-%d-%H%M%S", localtime(&current_time));
+	// // Convert current time to a string with format YYYY-MM-DD-HHMMSS
+	// char time_str[20];
+	// strftime(time_str, sizeof(time_str), "%Y-%m-%d-%H%M%S", localtime(&current_time));
 
-	// Create config out_dir folder
-	util::MakeDirectory(config.io.out_dir);
+	// // Create config out_dir folder
+	// util::MakeDirectory(config.io.out_dir);
 
-	// Create folder with current time as name
-	config.io.out_dir = config.io.out_dir + "/" + std::string(time_str);
-	util::MakeDirectory(config.io.out_dir);
+	// // Create folder with current time as name
+	// config.io.out_dir = config.io.out_dir + "/" + std::string(time_str);
+	// util::MakeDirectory(config.io.out_dir);
 	
 	std::ifstream src(config_file, std::ios::binary);
 	if(!src) {
 		std::cerr << "Error opening config file: " << config_file << std::endl;
 		return 1;
 	}
-	std::ofstream dst(config.io.out_dir + "/config.txt", std::ios::binary);
-	if (!dst) {
-        std::cerr << "Error creating result file: " << config.io.out_dir << "/config.txt" << std::endl;
-        return 1;
-    }
-	dst << src.rdbuf();
-	if (dst.fail()) {
-        std::cerr << "Error writing to result file: " << config.io.out_dir << "/config.txt" << std::endl;
-		return 1;
-	}
+	// std::ofstream dst(config.io.out_dir + "/config.txt", std::ios::binary);
+	// if (!dst) {
+    //     std::cerr << "Error creating result file: " << config.io.out_dir << "/config.txt" << std::endl;
+    //     return 1;
+    // }
+	// dst << src.rdbuf();
+	// if (dst.fail()) {
+    //     std::cerr << "Error writing to result file: " << config.io.out_dir << "/config.txt" << std::endl;
+	// 	return 1;
+	// }
 
 	return 0;
 }

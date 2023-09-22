@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1)
 set(CMAKE_CUDA_COMPILER "nvcc")
 set(CMAKE_CXX_COMPILER "g++")
 
-project(evodevo C CXX CUDA)
+project(visualzie C CXX CUDA)
 
 # Set language standards
 set(CMAKE_CXX_STANDARD 17)
@@ -21,29 +21,18 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20015")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
 endif()
 
-## MAIN OPTIONS ##
-if(DEFINED ENV{VIDEO})
-  add_definitions("-DVIDEO")
-endif()
+set(VISUALIZE main_visualize.cpp)
 
-if(BENCHMARK)
-  message("Configuring for benchmarks")
-  set(EVODEVO benchmark.cpp)
-else()
-  message("Configuring for optimization")
-  set(EVODEVO main.cpp)
-endif()
+set(VISUALIZE
+  ${VISUALIZE}
+  ../common/simulator/Simulator.cu
 
-set(EVODEVO
-  ${EVODEVO}
-  simulator/Simulator.cu
+  ../common/evolvables/SoftBody.cpp
+  ../common/evolvables/VoxelRobot.cpp
+  ../common/evolvables/NNRobot.cpp
+  ../common/evolvables/knn.cu
 
-  evolvables/SoftBody.cpp
-  evolvables/VoxelRobot.cpp
-  evolvables/NNRobot.cpp
-  evolvables/knn.cu
-
-  util/util.cpp
+  ../common/util/util.cpp
 )
 
 set(RENDER
@@ -61,24 +50,23 @@ set(RENDER
 
 # Create executable
 if(DEFINED ENV{VIDEO} AND NOT BENCHMARK)
-add_executable(evodevo ${EVODEVO} ${RENDER})
+add_executable(visualizer ${VISUALIZE} ${RENDER})
 else()
-add_executable(evodevo ${EVODEVO})
+add_executable(visualizer ${VISUALIZE})
 endif()
 
 # Set CUDA architectures
-set_target_properties(evodevo PROPERTIES CUDA_ARCHITECTURES "61;75")
+set_target_properties(visualizer PROPERTIES CUDA_ARCHITECTURES "61;75")
 
 # Set include directories
-target_include_directories(evodevo PUBLIC
-  lib
-  simulator
-  optimizer
-  util
-  evolvables
+target_include_directories(visualizer PUBLIC
+  ../common/lib
+  ../common/simulator
+  ../optimize/optimizer
+  ../common/util
+  ../common/evolvables
 )
 
-if(DEFINED ENV{VIDEO} AND NOT BENCHMARK)
 # Set include directories for local build
 # Find OpenCV package
 find_package(OpenCV REQUIRED)
@@ -86,17 +74,16 @@ find_package(OpenCV REQUIRED)
 # Add subdirectory for renderer
 add_subdirectory(renderer)
 
-target_include_directories(evodevo PUBLIC
+target_include_directories(visualizer PUBLIC
   renderer/src
   models
 )
 
 # Link libraries
-target_link_libraries(evodevo PUBLIC
+target_link_libraries(visualizer PUBLIC
   glad
   glfw
   glm
   stb
   ${OpenCV_LIBS}
 )
-endif()

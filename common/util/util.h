@@ -25,6 +25,8 @@ namespace util {
     void RemoveOldFiles(const std::string& dir);
 
     Config ReadConfigFile(const std::string& filename);
+
+    RobotType ReadRobotType(const std::string& filename);
 }
 
 #endif

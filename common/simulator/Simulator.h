@@ -54,7 +54,7 @@ protected:
 
 	std::vector<Environment> mEnvironments;
     float total_time = 0;
-    float deltaT = 0.0005f;
+    float deltaT = 0.001f;
     float max_time = 10.0f;
 	bool track_stresses = false;
 

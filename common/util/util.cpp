@@ -327,16 +327,12 @@ Config ReadConfigFile(const std::string& filename) {
     if(config_map.find("HIDDEN_LAYER_SIZES") != config_map.end()) {
         config.nnrobot.hidden_layer_sizes.clear();
         
-        size_t pos = 0;
-        std::string sizes_str = config_map["HIDDEN_LAYER_SIZES"];
-        std::string delimiter = ",";
-        while ((pos = sizes_str.find(",")) != std::string::npos) {
-            std::string token = sizes_str.substr(0, pos);
-            int size_i = std::stoi(token);
-            config.nnrobot.hidden_layer_sizes.push_back(size_i);
-            sizes_str.erase(0, pos + delimiter.length());
-        }
-        config.nnrobot.hidden_layer_sizes.push_back(std::stoi(sizes_str));
+        std::istringstream ss(config_map["HIDDEN_LAYER_SIZES"]);
+        std::string cell;
+
+        while (std::getline(ss, cell, ',')) {
+            config.nnrobot.hidden_layer_sizes.push_back(std::stoi(cell));
+        }     
     }
 
     /* TODO: 
@@ -350,6 +346,40 @@ Config ReadConfigFile(const std::string& filename) {
     */ 
 
     return config;
+}
+
+RobotType ReadRobotType(const std::string& filename) {
+    std::ifstream file(filename);
+    if (file) {
+        std::string line;
+        while (std::getline(file, line)) {
+            // Ignore comments and empty lines
+            if (line.empty() || line[0] == '#') {
+                continue;
+            }
+
+            // Split line into key-value pair
+            std::size_t pos = line.find('=');
+            if (pos == std::string::npos) {
+                continue;
+            }
+
+            std::string key = line.substr(0, pos);
+            std::string value = line.substr(pos+1);
+            if(key == "type") {
+                if(value == "NNRobot")
+                    return ROBOT_NN;
+                else if(value == "VoxelRobot")
+                    return ROBOT_VOXEL;
+                else
+                    break;
+            }
+        }
+        std::cerr << "ERROR: ReadRobotType could not parse config file " << filename << std::endl;
+    } else {
+        std::cerr << "ERROR: config file " << filename << " does not exist" << std::endl;
+    }
+    return ROBOT_VOXEL;
 }
 
 }
