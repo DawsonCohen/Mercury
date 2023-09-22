@@ -13,6 +13,9 @@
 
 class Camera
 {
+private:
+	GLFWwindow* window;
+	
 public:
 	// Stores the main vectors of the camera
 	glm::vec3 Position;
@@ -25,10 +28,6 @@ public:
 	// Prevents the camera from jumping around when first clicking left click
 	bool firstClick = true;
 
-	// Stores the width and height of the window
-	int width;
-	int height;
-
 	// Adjust the speed of the camera and it's sensitivity when looking around
 	uint tabIdx = 0;
 	uint num_tabs = 1;
@@ -36,7 +35,7 @@ public:
 	float sensitivity = 5.0f;
 
 	// Camera constructor to set up initial values
-	Camera(int width, int height, glm::vec3 position, float rotX = 0.0f, uint tabCount = 1);
+	Camera(GLFWwindow* window, glm::vec3 position, float rotX = 0.0f, uint tabCount = 1);
 
 	// Updates the camera matrix to the Vertex Shader
 	void updateMatrix(float FOVdeg, float nearPlane, float farPlane);
@@ -49,6 +48,6 @@ public:
 	// Exports the camera matrix to a shader
 	void SetUniforms(Shader& shader) const;
 	// Handles camera inputs
-	void Inputs(GLFWwindow* window);
+	void Update();
 };
 #endif

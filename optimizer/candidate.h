@@ -19,11 +19,11 @@ friend class Evaluator;
 protected:
     float   mFitness = 0;
     uint    mParetoLayer = 0;
+    uint    mAge;
+    bool    mParentFlag = 0;
+    bool    mValid = true;
 
 public:
-    uint     mAge;
-    bool    parentFlag = 0;
-    bool    valid = true;
 
     Candidate() : mAge(0) {}
     virtual ~Candidate() {}
@@ -45,10 +45,13 @@ public:
     void IncrementAge() { mAge++; };
 
     float fitness() const { return mFitness; }
+    bool isValid() const { return mValid; }
+    bool isParent() const { return mParentFlag; }
     uint age() const { return mAge; }
     uint paretoLayer() const { return mParetoLayer; }
 
     void setFitness(float fit) { mFitness = fit; }
+    void setParent(bool on) { mParentFlag = on; }
 
 
     // void Randomize();

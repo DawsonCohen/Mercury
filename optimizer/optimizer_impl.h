@@ -73,13 +73,13 @@ void Optimizer<T>::RandomizePopulation(std::vector<T>& population) {
 template<typename T>
 void Optimizer<T>::RandomizeSolution(Solution<T> sol) {
     sol->Randomize();
-    sol->mAge = 1;
+    sol->IncrementAge();
 }
 
 template<typename T>
 void Optimizer<T>::MutateSolution(Solution<T> sol) {
     sol->Mutate();
-    sol->mAge += 1;
+    sol->IncrementAge();
 }
 
 template<typename T>
@@ -127,8 +127,8 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
             parents.first   = &subpop[first];
             parents.second  = &subpop[second];
 
-            subpop[first].parentFlag = 1;
-            subpop[second].parentFlag = 1;
+            subpop[first].setParent(1);
+            subpop[second].setParent(1);
 
             children = T::Crossover({*parents.first, *parents.second});
             
@@ -140,13 +140,13 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
 
             switch(mutator){
                 case MUTATE_RANDOM:
-                    subpop[working_index].parentFlag = 1;
+                    subpop[working_index].setParent(1);
                     RandomizeSolution(&new_sol);
                     break;
                 case MUTATE:
                 default:
                 {
-                    subpop[working_index].parentFlag = 1;
+                    subpop[working_index].setParent(1);
                     MutateSolution(&new_sol);
                 }
             }
@@ -292,9 +292,9 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         ChildStep(full_pop);
 
         for(uint i = 0; i < population.size(); i++) {
-            if(full_pop[i].parentFlag == 1){
+            if(full_pop[i].isParent()){
                 population[i].IncrementAge();
-                full_pop[i].parentFlag = 0;
+                full_pop[i].setParent(0);
             }
         }
         Evaluator<T>::pareto_sort(population.begin(),population.end());
@@ -343,6 +343,13 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
                 population[i].fitnessReadout().data());
             i++;
         }
+        uint valid = 0;
+        uint invalid = 0;
+        for(const Candidate& c : population) {
+            if(c.isValid()) valid++;
+            else invalid++;
+        }
+        printf("Valid: %u,\tInvalid: %u\n",valid,invalid);
         printf("----------------------\n");
 
         std::string gen_directory = working_directory + "/generation_" + std::to_string(generation) + "_fitness_" + std::to_string(best_fitness);

@@ -4,20 +4,22 @@
 #include "vec_math.cuh"
 #include <math.h>
 #include <assert.h>
+#include <stdio.h>
 
-#define EPS 0.0000001
-#define MAX_FORCE 100000
+#define EPS (float) 0.000001
+#define MIN_DIST (float) 0.005
+#define MAX_FORCE (float) 200000
 
 // Explicity assumes each mass is of unit 1 mass
 __device__
-inline float3 gravityForce() {
-	return {0, -9.81f, 0};
+inline void gravityForce(float3& force) {
+	force = {0, -9.81f, 0};
 }
 
 __device__
-inline float3 collisionForce(float3 pos, float4 vel, float3 force,
+inline void collisionForce(float3 pos, float4 vel, float3& force,
 					float4 env) {
-	if(pos.y > 0.0f) return force;
+	if(pos.y > 0.0f) return;
 	
 	float3 Fc = {0.0f, 0.0f, 0.0f}; // force due to collision
 	float3 Ff = {0.0f, 0.0f, 0.0f}; // force due to friction
@@ -47,8 +49,6 @@ inline float3 collisionForce(float3 pos, float4 vel, float3 force,
 	force.x = Fc.x + Ff.x;
 	force.y = Fc.y;
 	force.z = Fc.z + Ff.z;
-
-	return force;
 }
 
 /*
@@ -59,11 +59,12 @@ inline float3 collisionForce(float3 pos, float4 vel, float3 force,
 		w - g		acceleration due to gravity
 */
 __device__
-inline float3 environmentForce(float3 pos, float4 vel, float3 force,
+inline void environmentForce(float3 pos, float4 vel, float3& force,
 						float4 env) {
-	force = gravityForce();
-	force = collisionForce(pos,vel,force,env);
-	return force;
+	gravityForce(force);
+	// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
+	collisionForce(pos,vel,force,env);
+	// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
 }
 
 /*
@@ -74,14 +75,14 @@ inline float3 environmentForce(float3 pos, float4 vel, float3 force,
 		w - phi		phase
 */
 __device__
-inline float3 springForce(float3 bl, float3 br, float4 mat, 
+inline void springForce(float3 bl, float3 br, float4 mat, 
 					float mean_length, float time,
-					float3 &force, float &magF)
+					float3& force, float& magF)
 {
 	if(mat.x == 0.0f) {
 		force = {0.0f, 0.0f, 0.0f};
 		magF = 0.0f;
-		return force;
+		return;
 	}
 
 	float3	dir, diff;
@@ -109,15 +110,14 @@ inline float3 springForce(float3 bl, float3 br, float4 mat,
 		__fdiv_rn(diff.y,L),
 		__fdiv_rn(diff.z,L)
 	};
-	if(L > EPS) {
-		magF = mat.x*(rest_length-L);
+	if(isnan(dir.x) || isnan(dir.y) || isnan(dir.z)) {
+		force = {0.0f, 0.0f, 0.0f};
 	} else {
-		magF =  MAX_FORCE;
+		magF = min(mat.x*(rest_length-L), MAX_FORCE);
+		force = magF * dir;
 	}
 
-	force = magF * dir;
-	
-	return force;
+	// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
 }
 
 struct SimOptions {
@@ -157,7 +157,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
 	}
 	__syncthreads();
 
@@ -179,6 +179,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		mat = __ldg(&mats[i+springOffset]);
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
+		// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
 
 		atomicAdd(&(s_force[left].x), force.x);
 		atomicAdd(&(s_force[left].y), force.y);
@@ -200,12 +201,15 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		vel.y += (s_force[i].y * opt.dt)*opt.env.z;
 		vel.z += (s_force[i].z * opt.dt)*opt.env.z;
 
+		// assert(!isnan(vel.x) && !isnan(vel.y) && !isnan(vel.z));
+
 		// new position = old position + velocity * deltaTime
 		s_pos[i].x += vel.x * opt.dt;
 		s_pos[i].y += vel.y * opt.dt;
 		s_pos[i].z += vel.z * opt.dt;
 
 		// store new position and velocity
+		// assert(!isnan(pos3.x) && !isnan(pos3.y) && !isnan(pos3.z));
 		pos3 = s_pos[i];
 		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
 		newVel[i+massOffset] = vel;
@@ -242,7 +246,7 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		s_force[i] = environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
 	}
 	__syncthreads();
 
@@ -273,6 +277,8 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		mat = __ldg(&mats[i+springOffset]);
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
+
+		// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
 
 		atomicAdd(&(s_force[left].x), force.x);
 		atomicAdd(&(s_force[left].y), force.y);

@@ -32,6 +32,7 @@ int handle_file_io();
 #ifdef VIDEO
 GLFWwindow* GLFWsetup(bool visualize);
 void GLFWinitialize();
+void GLFWterminate(GLFWwindow*);
 
 void Render(std::vector<SoftBody>& robots);
 void Visualize(std::vector<SoftBody>& R);
@@ -146,7 +147,7 @@ int main(int argc, char** argv)
 	}
 
 	if(config.objectives.bounce) {
-		if(config.objectives.verify) {
+		if(config.objectives.verify || (!config.objectives.optimize && !config.objectives.verify && !config.objectives.zoo)) {
 			for(SoftBody& R : solutions) {
 				Eigen::Vector3f translation(0.0f,7.0f,0.0f);
 				R.translate(translation);
@@ -178,114 +179,116 @@ std::vector<T> Solve() {
 void Render(std::vector<SoftBody>& robots) {
 	printf("RENDERING\n");
 
-	Camera camera(config.renderer.width, config.renderer.height, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
-	// Camera camera(config.renderer.width, config.renderer.height, glm::vec3(-1.5f, 10.0f, 10.0f), 5.0f);
-	// Camera camera(config.renderer.width, config.renderer.height, glm::vec3(4.0f, 10.0f, 15.0f), 20.0f);
-	// camera = Camera(config.renderer.width, config.renderer.height, glm::vec3(5.0f, 5.0f, 30.0f), 1.0f);
-
-	SoftBody R = robots[camera.tabIdx];
-	RobotModel<SoftBody> model(R);
-
 	GLFWwindow* window = GLFWsetup(false);
-	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
-	shader.Bind();
-
-	model.Bind();
-
-	shader.Unbind();
 	
-	// opencv video writer
-	cv::VideoWriter video;
+	{ // non-glfw scope
+		Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
+		Camera camera(window, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 
-	if(config.objectives.stationary)
-		out_sol_video_file =  config.io.out_dir + "/stationary_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
-	else if(config.objectives.bounce)
-		out_sol_video_file =  config.io.out_dir + "/bounce_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
-	else if(config.objectives.zoo)
-		out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
-	else if(config.objectives.verify)
-		out_sol_video_file =  config.io.out_dir + "/solutions_0.avi";
-	else if(!config.objectives.optimize)
-		out_sol_video_file =  config.io.out_dir + "/random_0.avi";
-	else
-		out_sol_video_file =  config.io.out_dir + "/solution_video_" + std::to_string(runID) + "_" + std::to_string(solID) +".avi";
-	
-	video = cv::VideoWriter(cv::String(out_sol_video_file),
-		cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+		SoftBody R = robots[camera.tabIdx];
+		RobotModel<SoftBody> model(R);
 
-	video.open(cv::String(out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-	assert(video.isOpened());
+		// opencv video writer
+		cv::VideoWriter video;
 
-	PlaneModel p;
+		if(config.objectives.stationary)
+			out_sol_video_file =  config.io.out_dir + "/stationary_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
+		else if(config.objectives.bounce)
+			out_sol_video_file =  config.io.out_dir + "/bounce_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
+		else if(config.objectives.zoo)
+			out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
+		else if(config.objectives.verify)
+			out_sol_video_file =  config.io.out_dir + "/solutions_0.avi";
+		else if(!config.objectives.optimize)
+			out_sol_video_file =  config.io.out_dir + "/random_0.avi";
+		else
+			out_sol_video_file =  config.io.out_dir + "/solution_video_" + std::to_string(runID) + "_" + std::to_string(solID) +".avi";
+		
+		video = cv::VideoWriter(cv::String(out_sol_video_file),
+			cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 
-	float max_render_time = 5;
-	sim.Initialize(robots[0], 1, config.simulator);
-	sim.setMaxTime(1 / config.renderer.fps);
+		video.open(cv::String(out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+		assert(video.isOpened());
 
-	// Main while loop
-	uint tabId = camera.tabIdx;
-	std::vector<Element> robot_elements(1);
-	for(auto solution : robots) {
-		tabId = camera.tabIdx;
-		printf("rendering %u/%lu\n",tabId+1,robots.size());
+		PlaneModel p;
 
-		model.Unbind();
-		SoftBody R = robots[tabId];
-		model.Update(R);
-		model.Bind();
-		sim.Reset();
-		while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
-		{
-			robot_elements[0] = {R.getMasses(),R.getSprings()};
-			std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
-			std::vector<Element> results = sim.Collect(trackers);
+		float max_render_time = 5;
+		sim.Initialize(robots[0], 1, config.simulator);
+		sim.setMaxTime(1 / config.renderer.fps);
 
-			R.Update(results[0]);
+		// Main while loop
+		uint tabId = camera.tabIdx;
+		std::vector<Element> robot_elements(1);
+		for(auto solution : robots) {
+			tabId = camera.tabIdx;
+			printf("rendering %u/%lu\n",tabId+1,robots.size());
+
+			SoftBody R = robots[tabId];
 			model.Update(R);
+			sim.Reset();
+			while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
+			{
+				robot_elements[0] = {R.getMasses(),R.getSprings()};
+				std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
+				std::vector<Element> results = sim.Collect(trackers);
 
-			// Specify the color of the background
-			GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
-			// Clean the back buffer and depth buffer
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				R.Update(results[0]);
+				model.Update(R);
 
-			// Handles camera inputs
-			camera.Inputs(window);
-			// Updates and exports the camera matrix to the Vertex Shader
-			camera.updateMatrix(45.0f, 0.1f, 100.0f);
+				// Specify the color of the background
+				GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
+				// Clean the back buffer and depth buffer
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			model.Draw(shader, camera);
+				// Handles camera inputs
+				camera.Update();
+				// Updates and exports the camera matrix to the Vertex Shader
+				camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-			p.Draw(shader, camera);
+				model.Draw(shader, camera);
 
-			cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
-			//use fast 4-byte alignment (default anyway) if possible
-			glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
+				p.Draw(shader, camera);
 
-			//set length of one complete row in destination data (doesn't need to equal frame.cols)
-			glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
-			glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
+				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
+				//use fast 4-byte alignment (default anyway) if possible
+				glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
 
-			cv::flip(frame, frame, 0);
+				//set length of one complete row in destination data (doesn't need to equal frame.cols)
+				glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
+				glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
 
-			video.write(frame);
+				cv::flip(frame, frame, 0);
 
-			// Swap the back buffer with the front buffer
-			glfwSwapBuffers(window);
-			// Take care of all GLFW events
-			glfwPollEvents();
+				video.write(frame);
+
+				// Swap the back buffer with the front buffer
+				glfwSwapBuffers(window);
+				// Take care of all GLFW events
+				glfwPollEvents();
+			}
+			camera.Tab();
 		}
-		camera.Tab();
+		video.release();
 	}
 
-	video.release();
-	// Delete all the objects we've created
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LINE_SMOOTH);
+	GLFWterminate(window);
+}
 
-	// Delete window before ending the program
-	glfwDestroyWindow(window);
-	// Terminate GLFW before ending the program
-	glfwTerminate();
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	// unused variables
+	(void) scancode;
+	(void) mods;
+
+	Camera* camera = static_cast<Camera*>(glfwGetWindowUserPointer(window));
+
+	if(camera){
+		if (action == GLFW_PRESS) {
+			// Handle key press.
+			if (key == GLFW_KEY_TAB) {
+				camera->Tab();
+			}
+		}
+	}
 }
 
 void Visualize(std::vector<SoftBody>& robots) {
@@ -294,115 +297,111 @@ void Visualize(std::vector<SoftBody>& robots) {
 	// R.printObjectPositions();
 
 	GLFWwindow* window = GLFWsetup(true);
-	Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
-	shader.Bind();
-	Camera camera(config.renderer.width, config.renderer.height, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
-	// Camera camera(config.renderer.width, config.renderer.height, glm::vec3(-1.5f, 5.0f, 15.0f), 5.0f);
 
-	SoftBody R = robots[camera.tabIdx];
-	RobotModel<SoftBody> model(R);
 
-	model.Bind();
+	{ // non-glfw scope
+		Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
+		Camera camera(window, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 
-	shader.Unbind();
-	
-	// opencv video writer
-	cv::VideoWriter video;
-	if(config.objectives.movie) {
-		out_sol_video_file =  config.io.out_dir + "/solution_live_video.avi";
-		video = cv::VideoWriter(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-		video.open(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
-		assert(video.isOpened());
-	}
+		SoftBody R = robots[camera.tabIdx];
+		RobotModel<SoftBody> model(R);
 
-	PlaneModel p;
-
-	float prevTime = glfwGetTime();
-
-	sim.Initialize(robots[0], 1, config.simulator);
-	sim.setMaxTime( 1 / config.renderer.fps);
-
-	// Main while loop
-	uint i = 0;
-	std::vector<Element> robot_elements(1);
-
-	// printf("-----------------------\n");
-	
-	uint tabId = camera.tabIdx;
-	while (!glfwWindowShouldClose(window))
-	{
-		if(tabId != camera.tabIdx) {
-			tabId = camera.tabIdx;
-			model.Unbind();
-			R = robots[tabId];
-			model.Update(R);
-			model.Bind();
-			sim.Reset();
-		}
-
-		// printf("Iteration: %u\n", i);
-		float crntTime = glfwGetTime();
-		
-		robot_elements[0] = {R.getMasses(),R.getSprings()};
-		std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
-		std::vector<Element> results = sim.Collect(trackers);
-
-		R.Update(results[0]);
-
-		model.Update(R);
-
-		while ((crntTime - prevTime) < 1 / config.renderer.fps) {
-			crntTime = glfwGetTime();
-		}
-
-		// Simple timer
-		prevTime = crntTime;
-		
-		// Specify the color of the background
-		// GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
-		GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
-		// Clean the back buffer and depth buffer
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Handles camera inputs
-		camera.Inputs(window);
-		// Updates and exports the camera matrix to the Vertex Shader
-		camera.updateMatrix(45.0f, 0.1f, 100.0f);
-
-		model.Draw(shader, camera);
-
-		p.Draw(shader, camera);
-
+		// opencv video writer
+		cv::VideoWriter video;
 		if(config.objectives.movie) {
-			cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
-			//use fast 4-byte alignment (default anyway) if possible
-			glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
-
-			//set length of one complete row in destination data (doesn't need to equal frame.cols)
-			glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
-			glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
-
-			cv::flip(frame, frame, 0);
-
-			video.write(frame);
+			out_sol_video_file =  config.io.out_dir + "/solution_live_video.avi";
+			video = cv::VideoWriter(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+			video.open(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
+			assert(video.isOpened());
 		}
 
-		// Swap the back buffer with the front buffer
-		glfwSwapBuffers(window);
-		// Take care of all GLFW events
-		glfwPollEvents();
-		i++;
+		PlaneModel p;
+
+		float prevTime = glfwGetTime();
+
+		sim.Initialize(robots[0], 1, config.simulator);
+		sim.setMaxTime( 1 / config.renderer.fps);
+
+		// Main while loop
+		uint i = 0;
+		std::vector<Element> robot_elements(1);
+
+		// printf("-----------------------\n");
+		
+		
+		glfwSetWindowUserPointer(window, &camera);
+		glfwSetKeyCallback(window, keyCallback);
+
+		uint tabId = camera.tabIdx;
+		while (!glfwWindowShouldClose(window))
+		{
+			if(tabId != camera.tabIdx) {
+				tabId = camera.tabIdx;
+				R = robots[tabId];
+				model.Update(R);
+				sim.Reset();
+			}
+
+			// printf("Iteration: %u\n", i);
+			float crntTime = glfwGetTime();
+			
+			robot_elements[0] = {R.getMasses(),R.getSprings()};
+			std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
+			std::vector<Element> results = sim.Collect(trackers);
+
+			R.Update(results[0]);
+
+			model.Update(R);
+
+			while ((crntTime - prevTime) < 1 / config.renderer.fps) {
+				crntTime = glfwGetTime();
+			}
+
+			// Simple timer
+			prevTime = crntTime;
+			
+			// Specify the color of the background
+			// GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
+			GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
+			// Clean the back buffer and depth buffer
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+			// Handles camera inputs
+			camera.Update();
+			// Updates and exports the camera matrix to the Vertex Shader
+			camera.updateMatrix(45.0f, 0.1f, 100.0f);
+
+			model.Draw(shader, camera);
+
+			p.Draw(shader, camera);
+
+			if(config.objectives.movie) {
+				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
+				//use fast 4-byte alignment (default anyway) if possible
+				glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
+
+				//set length of one complete row in destination data (doesn't need to equal frame.cols)
+				glPixelStorei(GL_PACK_ROW_LENGTH, frame.step/frame.elemSize());
+				glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
+
+				cv::flip(frame, frame, 0);
+
+				video.write(frame);
+			}
+
+			if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+				glfwSetWindowShouldClose(window, true);
+			}
+
+			// Swap the back buffer with the front buffer
+			glfwSwapBuffers(window);
+			// Take care of all GLFW events
+			glfwPollEvents();
+			i++;
+		}
+		video.release();
 	}
-
-	video.release();
-	// Delete all the objects we've created
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_LINE_SMOOTH);
-
-	// Delete window before ending the program
-	glfwDestroyWindow(window);
-	// Terminate GLFW before ending the program
-	glfwTerminate();
+	GLFWterminate(window);
 }
 
 
@@ -449,6 +448,17 @@ void GLFWinitialize()	        // We call this right after our OpenGL window is c
 	// Specify the viewport of OpenGL in the Window
 	// In this case the viewport goes from x = 0, y = 0, to x = config.renderer.width, y = config.renderer.height
 	glViewport(0, 0, config.renderer.width, config.renderer.height);
+}
+
+void GLFWterminate(GLFWwindow* window) {
+	// Delete all the objects we've created
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LINE_SMOOTH);
+
+	// Delete window before ending the program
+	glfwDestroyWindow(window);
+	// Terminate GLFW before ending the program
+	glfwTerminate();
 }
 #endif
 

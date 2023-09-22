@@ -132,7 +132,7 @@ void SoftBody::updateCOM() {
 void SoftBody::updateFitness() {
     updateCOM();
 
-    if(!valid) {
+    if(!mValid) {
         mFitness = 0.0f;
         return;
     }

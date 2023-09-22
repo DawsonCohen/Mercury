@@ -53,6 +53,7 @@ void Mesh::Draw(Shader& shader, Camera& camera) const {
 	GLCall(glDrawElements(GL_LINES, mIndices.size(), GL_UNSIGNED_INT, 0));
 
 	mVAO.Unbind();
+	shader.Unbind();
 }
 
 void Mesh::updateVertex(size_t index, Vertex v) {

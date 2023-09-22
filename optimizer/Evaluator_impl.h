@@ -37,7 +37,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
 
     for(auto& R : solutions) {
         R.Reset();
-        if(R.valid)
+        if(R.isValid())
             elements.push_back({R.getMasses(), R.getSprings()});
     }
     

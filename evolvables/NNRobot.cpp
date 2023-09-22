@@ -210,6 +210,9 @@ void NNRobot::Build() {
     forward();
 
     std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
+    for(unsigned int i = 0; i < masses.size(); i++) {
+        masses[i].pos = masses[i].pos + 0.003f*(Eigen::Vector3f::Random(3));
+    }
     for (unsigned int i = 0; i < masses.size(); i++) {
         for (unsigned int j = i + 1; j < masses.size(); j++) {
             dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
@@ -233,7 +236,7 @@ void NNRobot::Build() {
         Material mat1 = masses[i].material;
 
         for (auto neighbor : neighbors) {
-            if(neighbor.second < EPS) valid = false;
+            if(neighbor.second < EPS) mValid = false;
 
             Material mat2 = masses[neighbor.first].material;
             std::vector<Material> mats = {mat1, mat2};

@@ -36,14 +36,17 @@ void Model::Unbind() {
 void Model::Draw(Shader &shader, Camera& camera)
 {
     shader.Bind();
+    Bind();
     shader.SetUniformMatrix4fv("model", mObjectModel);
 
     for(Mesh& mesh : mMeshes) {
         mesh.Draw(shader,camera);
     }
+    Unbind();
 	// for(size_t i = 0; i < mMeshes.size(); i++) {
 	// 	mMeshes[i].Draw(shader, camera);
 	// }
+    shader.Unbind();
 }
 
 void Model::rotate(float deg, glm::vec3 axis) {

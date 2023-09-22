@@ -46,9 +46,9 @@ private:
             float az = uniform(gen) * 2 * M_PI;
             float r = uniform(gen);
 
-            float x = r * sin(el) * cos(az);
-            float z = r * sin(el) * sin(az);
-            float y = r * cos(el);
+            float x = r * cos(el) * cos(az);
+            float z = r * cos(el) * sin(az);
+            float y = r * sin(el);
 
             Mass m(i,x,y,z);
             masses.push_back(m);
