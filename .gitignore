@@ -1,7 +1,19 @@
 # Build files
+##folders
 obj/
-build/
-run_evo
+CMakeFiles
+
+##files
+visualize/visualizer
+optimize/evodevo
+benchmark
+CMakeCache.txt
+cmake_install.cmake
+*.out
+*.a
+*.cmake
+Makefile
+!optimizer/Makefile
 
 # Videos and results
 *.avi
@@ -9,3 +21,6 @@ z_results/
 
 # Environment
 .vscode
+
+# included files
+lib/Eigen
