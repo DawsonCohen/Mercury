@@ -14,6 +14,8 @@ public:
     static Simulator Sim;
     static float baselineTime;
     static float evaluationTime;
+    static float devoPeriod;
+    static float devoCycles;
     static Config::Simulator sim_config;
 
     static T protoRobot;

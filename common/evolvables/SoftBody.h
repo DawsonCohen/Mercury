@@ -66,6 +66,8 @@ public:
 
 	float getSimTime() const { return sim_time; }
 	float getTotalSimTime() const { return total_sim_time; }
+	Eigen::Vector3f getCOM() const { return mCOM; }
+	Eigen::Vector3f getClosestPos() const { return mClosestPos; }
     void incrementSimTime(float dt) { sim_time += dt; total_sim_time += dt; }
     void resetSimTime() { sim_time = 0; }
 

@@ -158,8 +158,6 @@ void Render(std::vector<SoftBody>& robots) {
 		video.open(cv::String(out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 		assert(video.isOpened());
 
-		PlaneModel p;
-
 		float max_render_time = 10;
 		sim.Initialize(robots[0], 1, config.simulator);
 		sim.setMaxTime(1 / config.renderer.fps);
@@ -194,8 +192,6 @@ void Render(std::vector<SoftBody>& robots) {
 				camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
 				model.Draw(shader, camera);
-
-				p.Draw(shader, camera);
 
 				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
 				//use fast 4-byte alignment (default anyway) if possible
@@ -263,8 +259,6 @@ void Visualize(std::vector<SoftBody>& robots) {
 			assert(video.isOpened());
 		}
 
-		PlaneModel p;
-
 		float prevTime = glfwGetTime();
 
 		sim.Initialize(robots[0], 1, config.simulator);
@@ -318,8 +312,6 @@ void Visualize(std::vector<SoftBody>& robots) {
 			camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
 			model.Draw(shader, camera);
-
-			p.Draw(shader, camera);
 
 			if(config.objectives.movie) {
 				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);

@@ -254,6 +254,18 @@ Config ReadConfigFile(const std::string& filename) {
         config.evaluator.eval_time = stof(config_map["EVAL_TIME"]);
     }
 
+    if(config_map.find("DEVO_TIME") != config_map.end()) {
+        config.evaluator.devo_time = stof(config_map["DEVO_TIME"]);
+    }
+
+    if(config_map.find("DEVO_CYCLES") != config_map.end()) {
+        config.evaluator.devo_cycles = stoi(config_map["DEVO_CYCLES"]);
+    }
+
+    if(config_map.find("REPLACE_AMOUNT") != config_map.end()) {
+        config.evaluator.replace_amount = stoi(config_map["REPLACE_AMOUNT"]);
+    }
+    
     if(config_map.find("TRACK_STRESSES") != config_map.end()) {
         if(isdigit(config_map["TRACK_STRESSES"][0]) && stoi(config_map["TRACK_STRESSES"]))
             config.simulator.track_stresses = true;

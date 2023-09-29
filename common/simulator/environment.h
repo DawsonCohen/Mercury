@@ -4,12 +4,37 @@
 #include "spring.h"
 #include "mass.h"
 
+enum EnvironmentType {
+    ENVIRONMENT_LAND,
+    ENVIRONMENT_WATER
+};
+
 struct Environment
 {
-	float floor_stiffness = 1000000;
-	Eigen::Vector3f g = Eigen::Vector3f(0.0f, -9.81f, 0.0f);
+	EnvironmentType type;
+	float floor_stiffness;
+	float g;
+	float friction;
+	float drag;
 	float damping = 0.99f;
-	float friction = 0.8f;
+};
+
+const Environment EnvironmentLand {
+	ENVIRONMENT_LAND,
+	1000000.0f,
+	9.81f,
+	0.8f,
+	0.0f,
+	0.99f
+};
+
+const Environment EnvironmentWater {
+	ENVIRONMENT_WATER,
+	0.0,
+	0.0f,
+	0.0f,
+	1.204f,
+	0.99f
 };
 
 #endif

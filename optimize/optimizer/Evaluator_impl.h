@@ -7,6 +7,12 @@ template<typename T>
 ulong Evaluator<T>::eval_count = 0;
 
 template<typename T>
+float Evaluator<T>::devoPeriod = 0;
+
+template<typename T>
+float Evaluator<T>::devoCycles = 0;
+
+template<typename T>
 float Evaluator<T>::baselineTime = 5.0f;
 
 template<typename T>
@@ -18,6 +24,7 @@ Config::Simulator Evaluator<T>::sim_config = Config::Simulator();
 template<typename T>
 Simulator Evaluator<T>::Sim = Simulator();
 
+
 template<typename T>
 void Evaluator<T>::Initialize(Config config) {
     T prototype;
@@ -26,6 +33,8 @@ void Evaluator<T>::Initialize(Config config) {
 	Sim.Initialize(prototype, config.evaluator.pop_size*1.5, sim_config);
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;
+    devoPeriod = config.evaluator.devo_time;
+    devoCycles = config.evaluator.devo_cycles;
 }
 
 template<typename T>
@@ -40,6 +49,9 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
         if(R.isValid())
             elements.push_back({R.getMasses(), R.getSprings()});
     }
+
+    Sim.setDevoTime(devoPeriod);
+    Sim.setDevoCycles(devoCycles);
     
     Sim.setMaxTime(baselineTime);
 

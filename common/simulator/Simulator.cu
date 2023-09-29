@@ -184,7 +184,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dStresses,  springSizefloat);
 	cudaMalloc((void**)&m_dSpringIDs,  springSizeuint);
 
-	envBuf[0] = Environment();
+	envBuf[0] = EnvironmentWater;
 	envCount++;
 }
 
@@ -193,10 +193,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	std::vector<ElementTracker> trackers = Allocate(elements);
 	
-	float3 gravity = {envBuf[0].g.x(), envBuf[0].g.y(), envBuf[0].g.z()};
-	float stiffness = envBuf[0].floor_stiffness;
-	float mu = envBuf[0].friction;
-	float zeta = envBuf[0].damping;
 	float simTimeRemaining = max_time;
 	Eigen::Vector3f pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
@@ -278,13 +274,53 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	SimOptions opt = {
 		deltaT,
-		make_float4(stiffness,mu,zeta,gravity.y),
+		devo,
 		massesPerBlock, springsPerBlock,
 		numMasses, numSprings,
-		shiftskip
+		shiftskip,
+		envBuf[0]
 	};
-	
-	uint step = 0;
+		
+	//This is for if we want to settle the robot before devo
+	//float hold_time = 0.0f;
+		
+	uint devo_cycle = 1;
+	uint step_count = 0;
+	float devoTimeRemaining = devo_time;
+
+	if(devo) {
+		while(devo_cycle <= max_devo_cycles) {
+			while(devoTimeRemaining > 0.0f){
+				integrateBodiesStresses<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
+					(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+					(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+					(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
+					(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
+					(float*) m_dStresses, (uint*) m_dSpringIDs,
+					total_time, step_count, opt);
+					
+				gpuErrchk( cudaPeekAtLastError() );
+				cudaDeviceSynchronize();
+				
+				std::swap(m_currentRead, m_currentWrite);
+				
+				step_count++;
+				total_time += deltaT;
+				devoTimeRemaining -= deltaT;
+			}
+
+			// replaceSprings<<<numBlocks,threadsPerBlock,sharedMemSize>>>((ushort2*) m_dPairs, m_dMaxStressCount, m_dMinStressCount);
+			devo_cycle++;
+			devoTimeRemaining = devo_time;
+			//TODO: Remove and add masses function
+			//TODO: Clear Stress Count
+		}
+	}
+
+	//Reset body before final evaluation
+	//Might not be needed if we have a hold time in the water
+	//resetBodies(); - resets all masses to neutral position, sets forces and accelerations to 0, set time and step to 0.
+
 	while(simTimeRemaining > 0.0f) {
 		if(track_stresses) {
 			integrateBodiesStresses<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
@@ -293,15 +329,13 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
 				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 				(float*) m_dStresses, (uint*) m_dSpringIDs,
-				total_time, step, opt);
+				total_time, step_count, opt);
 		} else {
 			integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
-				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
-				(float*) m_dStresses, (uint*) m_dSpringIDs,
-				total_time, step, opt);
+				total_time, step_count, opt);
 		}
 
 		gpuErrchk( cudaPeekAtLastError() );
@@ -309,7 +343,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 			
 		std::swap(m_currentRead, m_currentWrite);
 		
-		step++;
+		step_count++;
 		total_time += deltaT;
 		simTimeRemaining -= deltaT;
 	}
@@ -421,3 +455,68 @@ Element Simulator::CollectElement(const ElementTracker& tracker) {
 	
 	return {result_masses, result_springs};
 }
+
+/*
+uint partition(ushort *minStressCount, ushort *spring_ids, uint start, uint end) {
+	uint pivot = minStressCount[start];
+    uint count = 0, pivot_index, i = start, j = end;
+
+    for (int i = start + 1; i <= end; i++) {
+        if (arr[i] <= pivot)
+            count++;
+    }
+ 
+    pivot_index = start + count;
+    std::swap(minStressCount[pivot_index], minStressCount[start]);
+	std::swap(spring_ids[pivot_index], spring_ids[start]);
+ 
+    while (i < pivot_index && j > pivot_index) {
+        while (minStressCount[i] <= pivot) {
+            i++;
+        }
+        while (minStressCount[j] > pivot) {
+            j--;
+        }
+        if (i < pivot_index && j > pivot_index) {
+            std::swap(minStressCount[i++], minStressCount[j--]);
+			std::swap(spring_ids[i++], spring_ids[j--]);
+        }
+    }
+ 
+    return pivot_index;
+}
+
+void quickSort(ushort *minStressCount, ushort *spring_ids, uint start, uint end) {
+    if (start >= end)
+        return;
+ 
+    uint partition = partition(minStressCount, spring_ids, start, end);
+    quickSort(minStressCount, spring_ids, partition-1);
+    quickSort(minStressCount, spring_ids, partition+1, end);
+}
+
+void linkedSort(ushort minStressCount, ushort *spring_ids, uint num_springs) {
+	quicksort(ushort2 minStressCount, ushort *spring_ids, 0, num_springs-1)
+}
+
+void Simulator::replaceSprings(ushort2 *__restrict__ pairs, ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount) {
+	ushort2 rand1, rand2;
+	//TODO: Properly alloc memory for this
+	//TODO: Find and pass num_springs
+	ushort spring_ids[num_springs];
+	for(uint i = 0; i < num_springs; i++){
+		spring_ids[i] = i;
+	}
+	
+	linkedSort(minStressCount, spring_ids, num_springs);
+
+	for(uint i = 0; i < replace_amount; i++) {
+		rand1 = rand() % num_springs;
+		do {
+			rand2 = rand() % num_springs;
+		} while(rand1 == rand2)
+		pairs[spring_ids[i]].x = rand1;
+		pairs[spring_ids[i]].y = rand2;
+		//TODO: Calculate New Rest Length - Might need to pass in masses for that
+	}
+}*/

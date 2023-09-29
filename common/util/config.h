@@ -65,6 +65,9 @@ struct Config {
 		int pop_size = 512;
 		float base_time = 3.0;
 		float eval_time = 10.0;
+		float devo_time = 1.0;
+		uint replace_amount = 100;
+		uint devo_cycles = 100;
 	} evaluator;
 	struct Simulator {
 		bool track_stresses = false;

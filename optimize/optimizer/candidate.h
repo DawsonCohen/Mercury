@@ -62,11 +62,21 @@ public:
     virtual void Clear() = 0;
 
     bool operator < (const Candidate& R) const {
-        return mParetoLayer > R.mParetoLayer;
+        if(mParetoLayer > R.mParetoLayer)
+            return true;
+        else if(mParetoLayer == R.mParetoLayer)
+            return mFitness < R.mFitness;
+
+        return false;
     }
 
     bool operator > (const Candidate& R) const {
-        return mParetoLayer < R.mParetoLayer;
+        if(mParetoLayer < R.mParetoLayer)
+            return true;
+        else if(mParetoLayer == R.mParetoLayer)
+            return mFitness > R.mFitness;
+        
+        return false;
     }
 
     bool operator <= (const Candidate& R) const {

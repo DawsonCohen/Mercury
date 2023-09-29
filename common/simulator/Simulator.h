@@ -46,6 +46,8 @@ public:
 	// Getter/setter maximum simulation time in seconds
 	float getMaxTime() const { return max_time; }
 	void setMaxTime(float tmax) { max_time = tmax; }
+	void setDevoTime(float tmax) { devo_time  = tmax; }
+	void setDevoCycles(uint cycles) { max_devo_cycles = cycles; }
 
 	void Reset() { total_time = 0.0f; }
 
@@ -56,7 +58,10 @@ protected:
     float total_time = 0;
     float deltaT = 0.001f;
     float max_time = 10.0f;
+    float devo_time = 1.0f;
+    uint max_devo_cycles = 100;
 	bool track_stresses = false;
+	bool devo = false;
 
 	Mass*			massBuf;
 	Spring*			springBuf;
