@@ -67,32 +67,6 @@ NNRobot::NNRobot(const unsigned int num_masses) :
     Build();
 }
 
-/*std::vector<std::pair<uint, float>> cuda_knn(uint i, const std::vector<Mass>& masses, uint k) {
-    float *points_list = (float*) malloc(masses.size()*3*sizeof(float))
-    float *neighbors_distances = (float*) malloc(masses.size()*(k+1)*sizeof(float))
-    int *neighbors_list = (int*) malloc(masses.size()*(k+1)*sizeof(int))  
-
-    for(uint i = 0; i < masses.size(); i++){
-        Eigen::Vector3f pos = masses[i].pos
-        points_list[i*3] = pos.x()
-        points_list[i*3+1] = pos.y()
-        points_list[i*3+2] = pos.z()
-    }
-
-    while(!knn_cuda_global(points_list, masses.size(), points_list, masses.size(), 3, k+1, neighbors_distances, neighbors_list)){}
-
-    std::vector<std::pair<uint, float>> neighbors(k);
-    for(uint i = 0; i < masses.size(); i++){
-        for(uint j = 0; j < k; j++){
-            neighbors[i*k + j] = {neighbors_list[i*(k+1)+j+1],neighbors_distances[i*(k+1)+j+1]}
-        }
-    }
-    free(points_list);
-    free(neighbors_distances);
-    free(neighbors_list);
-    return neighbors;
-}*/
-
 void NNRobot::Randomize() {
     for(unsigned int i = 0; i < weights.size(); i++) {
         weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
@@ -287,7 +261,6 @@ void NNRobot::Build() {
     // start = std::chrono::high_resolution_clock::now();
     
     auto knns = KNN::KNN(*this, springs_per_mass);
-    uint8_t spring_alloc[masses.size()][masses.size()] = {0};
     
     // end = std::chrono::high_resolution_clock::now();
     // execute_time = std::chrono::duration<float>(end - start).count();

@@ -130,7 +130,7 @@ void Render(std::vector<SoftBody>& robots) {
 	GLFWwindow* window = GLFWsetup(false);
 	
 	{ // non-glfw scope
-		Shader shader("../shaders/vert.glsl", "../shaders/frag.glsl");
+		Shader shader("./shaders/vert.glsl", "./shaders/frag.glsl");
 		Camera camera(window, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 
 		SoftBody R = robots[camera.tabIdx];
@@ -160,7 +160,7 @@ void Render(std::vector<SoftBody>& robots) {
 
 		PlaneModel p;
 
-		float max_render_time = 5;
+		float max_render_time = 10;
 		sim.Initialize(robots[0], 1, config.simulator);
 		sim.setMaxTime(1 / config.renderer.fps);
 

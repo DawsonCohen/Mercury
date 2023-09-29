@@ -40,12 +40,11 @@ private:
 
     void forward() {
         masses.clear();
-        std::default_random_engine sphere = std::default_random_engine(3);
 
         for(unsigned int i = 0; i < maxMasses; i++) {
-            float el = (uniform(sphere) * M_PI) - M_PI/2;
-            float az = uniform(sphere) * 2 * M_PI;
-            float r = uniform(sphere);
+            float el = (uniform(gen) * M_PI) - M_PI/2;
+            float az = uniform(gen) * 2 * M_PI;
+            float r = uniform(gen);
 
             float x = r * cos(el) * cos(az);
             float z = r * cos(el) * sin(az);
