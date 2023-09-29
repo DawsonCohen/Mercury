@@ -51,8 +51,6 @@ public:
 
 	void Reset() { total_time = 0.0f; }
 
-	void replaceSprings(ushort2 *__restrict__ pairs, ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount)
-
 protected:
 	bool initialized = false;
 
@@ -63,6 +61,7 @@ protected:
     float devo_time = 1.0f;
     uint max_devo_cycles = 100;
 	bool track_stresses = false;
+	bool devo = false;
 
 	Mass*			massBuf;
 	Spring*			springBuf;

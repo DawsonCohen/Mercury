@@ -2,6 +2,7 @@
 #define __SIM_KERNEL_CUH__
 
 #include "vec_math.cuh"
+#include "environment.h"
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -13,22 +14,22 @@
 // Explicity assumes each mass is of unit 1 mass
 __device__
 inline void gravityForce(float3& force, float g) {
-	force = {0, -g, 0};
+	force.y += -g;
 }
 
-/*__device__
+__device__
 inline void collisionForce(float3 pos, float4 vel, float3& force,
-					float4 env) {
+					float floor_stiffness, float friction) {
 	if(pos.y > 0.0f) return;
 	
 	float3 Fc = {0.0f, 0.0f, 0.0f}; // force due to collision
 	float3 Ff = {0.0f, 0.0f, 0.0f}; // force due to friction
 	float magFc, magFf;
 
-	Fc.y = env.x * (0.0f - pos.y);
+	Fc.y = floor_stiffness * (0.0f - pos.y);
 
 	magFc = l2norm(force);
-	magFf = env.y * Fc.y;
+	magFf = friction * Fc.y;
 
 	//Static Friction
 	if(fabsf(vel.x) < EPS && fabsf(vel.z) < EPS) {
@@ -49,41 +50,34 @@ inline void collisionForce(float3 pos, float4 vel, float3& force,
 	force.x = Fc.x + Ff.x;
 	force.y = Fc.y;
 	force.z = Fc.z + Ff.z;
-
-	return force;
-}*/
+}
 
 __device__
-inline float3 dragForce(float4 vel, float3& force,
+inline void dragForce(const float4& vel, float3& force,
 					float rho) {	
-	float3 Fd = {0.0f, 0.0f, 0.0f}; //Force due to drag - 1/2 * rho * v^2 * A * Cd (Assume A and Cd are 1)
-	Fd.x = 1/2*vel.x*vel.x*rho;
-	Fd.y = 1/2*vel.y*vel.y*rho;
-	Fd.z = 1/2*vel.z*vel.z*rho;
-	force.x += Fd.x;
-	force.y += Fd.y;
-	force.z += Fd.z;
-	return force;
+	//Force due to drag = -1/2 * rho * v * |v| * A * Cd (Assume A and Cd are 1)
+	float mag_vel = __fsqrt_rn(
+		  __fmul_rn(vel.x,vel.x)
+		+ __fmul_rn(vel.y,vel.y)
+		+ __fmul_rn(vel.z,vel.z)
+		);
+	force.x += -0.5f*rho*vel.x*mag_vel;
+	force.y += -0.5f*rho*vel.y*mag_vel;
+	force.z += -0.5f*rho*vel.z*mag_vel;
 }
 
-/*
-	env: float4 describing global environment variables
-		x - k		stiffness
-		//y - mu		coefficient of friction
-		y - rho		coefficient of drag
-		z - zeta	damping
-		w - g		acceleration due to gravity
-*/
 __device__
-inline void environmentForce(float3 pos, float4 vel, float3& force,
-						float4 env) {
-	gravityForce(force, env.w);
-	// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
-	//collisionForce(pos,vel,force,env);
-	// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
-	dragForce(vel,force,env.y);
-	return force;
+inline void environmentForce(float3 pos, const float4& vel, float3& force,
+						const Environment& env) {
+	switch(env.type) {
+		case ENVIRONMENT_LAND:
+			gravityForce(force, env.g);
+			collisionForce(pos,vel,force,env.floor_stiffness,env.friction);
+		case ENVIRONMENT_WATER:
+			dragForce(vel,force,env.drag);
+	}
 }
+
 
 /*
 	mat: float4 describing spring material
@@ -134,18 +128,17 @@ inline void springForce(float3 bl, float3 br, float4 mat,
 		magF = min(mat.x*(rest_length-L), MAX_FORCE);
 		force = magF * dir;
 	}
-
-	// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
 }
 
 struct SimOptions {
 	float dt;
-	float4 env;
+	bool devo;
 	uint massesPerBlock;
 	uint springsPerBlock;
 	uint maxMasses;
 	uint maxSprings;
 	short shiftskip;
+	Environment env;
 };
 
 // TODO: test with single spring
@@ -173,6 +166,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+		s_force[i] = {0.0f, 0.0f, 0.0f};
 		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
 	}
 	__syncthreads();
@@ -195,7 +189,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		mat = __ldg(&mats[i+springOffset]);
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
-		// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
 
 		atomicAdd(&(s_force[left].x), force.x);
 		atomicAdd(&(s_force[left].y), force.y);
@@ -213,11 +206,9 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		vel = oldVel[i+massOffset];
 
-		vel.x += (s_force[i].x * opt.dt)*opt.env.z;
-		vel.y += (s_force[i].y * opt.dt)*opt.env.z;
-		vel.z += (s_force[i].z * opt.dt)*opt.env.z;
-
-		// assert(!isnan(vel.x) && !isnan(vel.y) && !isnan(vel.z));
+		vel.x += (s_force[i].x * opt.dt)*opt.env.damping;
+		vel.y += (s_force[i].y * opt.dt)*opt.env.damping;
+		vel.z += (s_force[i].z * opt.dt)*opt.env.damping;
 
 		// new position = old position + velocity * deltaTime
 		s_pos[i].x += vel.x * opt.dt;
@@ -410,9 +401,9 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		vel = oldVel[i+massOffset];
 
-		vel.x += (s_force[i].x * opt.dt)*opt.env.z;
-		vel.y += (s_force[i].y * opt.dt)*opt.env.z;
-		vel.z += (s_force[i].z * opt.dt)*opt.env.z;
+		vel.x += (s_force[i].x * opt.dt)*opt.env.damping;
+		vel.y += (s_force[i].y * opt.dt)*opt.env.damping;
+		vel.z += (s_force[i].z * opt.dt)*opt.env.damping;
 
 		// new position = old position + velocity * deltaTime
 		s_pos[i].x += vel.x * opt.dt;
@@ -424,6 +415,11 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
 		newVel[i+massOffset] = vel;
 	}
+}
+
+__global__ void
+inline replaceSprings(ushort2 *__restrict__ pairs, ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount) {
+	
 }
 
 #endif

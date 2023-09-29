@@ -184,7 +184,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dStresses,  springSizefloat);
 	cudaMalloc((void**)&m_dSpringIDs,  springSizeuint);
 
-	envBuf[0] = Environment();
+	envBuf[0] = EnvironmentWater;
 	envCount++;
 }
 
@@ -193,11 +193,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	std::vector<ElementTracker> trackers = Allocate(elements);
 	
-	float3 gravity = {envBuf[0].g.x(), envBuf[0].g.y(), envBuf[0].g.z()};
-	float rho = envBuf[0].drag;
-	float stiffness = envBuf[0].floor_stiffness;
-	//float mu = envBuf[0].friction;
-	float zeta = envBuf[0].damping;
 	float simTimeRemaining = max_time;
 	Eigen::Vector3f pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
@@ -279,14 +274,13 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	SimOptions opt = {
 		deltaT,
-		make_float4(stiffness,rho,zeta,gravity.y),
+		devo,
 		massesPerBlock, springsPerBlock,
 		numMasses, numSprings,
-		shiftskip
+		shiftskip,
+		envBuf[0]
 	};
 		
-	uint step = 0;
-	
 	//This is for if we want to settle the robot before devo
 	//float hold_time = 0.0f;
 		
@@ -294,31 +288,33 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	uint step_count = 0;
 	float devoTimeRemaining = devo_time;
 
-	while(devo_cycle <= max_devo_cycles) {
-		while(devoTimeRemaining > 0.0f){
-			integrateBodiesStresses<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
-				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
-				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
-				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
-				(float*) m_dStresses, (uint*) m_dSpringIDs,
-				total_time, step, opt);
+	if(devo) {
+		while(devo_cycle <= max_devo_cycles) {
+			while(devoTimeRemaining > 0.0f){
+				integrateBodiesStresses<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
+					(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+					(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+					(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
+					(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
+					(float*) m_dStresses, (uint*) m_dSpringIDs,
+					total_time, step_count, opt);
+					
+				gpuErrchk( cudaPeekAtLastError() );
+				cudaDeviceSynchronize();
 				
-			gpuErrchk( cudaPeekAtLastError() );
-			cudaDeviceSynchronize();
-			
-			std::swap(m_currentRead, m_currentWrite);
-			
-			step++;
-			total_time += deltaT;
-			devoTimeRemaining -= deltaT;
-		}
+				std::swap(m_currentRead, m_currentWrite);
+				
+				step_count++;
+				total_time += deltaT;
+				devoTimeRemaining -= deltaT;
+			}
 
-		replaceSprings(m_dPairs, m_dMaxStressCount, m_dMinStressCount);
-		devo_cycle++;
-		devoTimeRemaining = devo_time;
-		//TODO: Remove and add masses function
-		//TODO: Clear Stress Count
+			// replaceSprings<<<numBlocks,threadsPerBlock,sharedMemSize>>>((ushort2*) m_dPairs, m_dMaxStressCount, m_dMinStressCount);
+			devo_cycle++;
+			devoTimeRemaining = devo_time;
+			//TODO: Remove and add masses function
+			//TODO: Clear Stress Count
+		}
 	}
 
 	//Reset body before final evaluation
@@ -333,13 +329,13 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
 				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 				(float*) m_dStresses, (uint*) m_dSpringIDs,
-				total_time, step, opt);
+				total_time, step_count, opt);
 		} else {
 			integrateBodies<<<numBlocks,threadsPerBlock,sharedMemSize>>>(
 				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 				(ushort2*)  m_dPairs,  (float4*) m_dMats,  (float*) m_dLbars,
-				total_time, step, opt);
+				total_time, step_count, opt);
 		}
 
 		gpuErrchk( cudaPeekAtLastError() );
@@ -347,7 +343,7 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 			
 		std::swap(m_currentRead, m_currentWrite);
 		
-		step++;
+		step_count++;
 		total_time += deltaT;
 		simTimeRemaining -= deltaT;
 	}

@@ -7,6 +7,12 @@ template<typename T>
 ulong Evaluator<T>::eval_count = 0;
 
 template<typename T>
+float Evaluator<T>::devoPeriod = 0;
+
+template<typename T>
+float Evaluator<T>::devoCycles = 0;
+
+template<typename T>
 float Evaluator<T>::baselineTime = 5.0f;
 
 template<typename T>
@@ -17,6 +23,7 @@ Config::Simulator Evaluator<T>::sim_config = Config::Simulator();
 
 template<typename T>
 Simulator Evaluator<T>::Sim = Simulator();
+
 
 template<typename T>
 void Evaluator<T>::Initialize(Config config) {
