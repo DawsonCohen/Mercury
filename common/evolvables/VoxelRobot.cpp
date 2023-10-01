@@ -72,7 +72,8 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
         
         //  Get material of all owning voxels
         BasisIdx path = indices - v_src.indices;
-        Material mat;
+        Material mat, avgMat;
+        uint8_t matEncoding = 0x00u;
 
         BasisIdx neighbors[4];
         for(uint i = 0; i < 4; i++) {
@@ -95,13 +96,13 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                     neighbors[i] = v_src.indices - nprox;
                 }
             }
-            std::vector<Material> nMats;
             for(uint i = 0; i < 4; i++) {
                 if(!isValidIdx(neighbors[i])) continue;
                 Voxel neighbor = voxels[getVoxelIdx(neighbors[i])];
-                nMats.push_back(neighbor.mat);
+                if(neighbor.mat.encoding != materials::air.encoding)
+                    matEncoding |= neighbor.mat.encoding;
             }
-            mat = Material::avg(nMats);
+            mat = materials::getCompositeMaterials(matEncoding);
         } else if(abs(path.x)+abs(path.y)+abs(path.z) == 2) { // diagonal
             BasisIdx nprox = {!path.x,!path.y,!path.z};
             BasisIdx neighborIdx = v_src.indices - nprox;
@@ -109,11 +110,13 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                 if(!isValidIdx(neighborIdx)) {
                     mat = v_src.mat;
                 } else {
-                    std::vector<Material> nMats;
                     Voxel neighbor = voxels[getVoxelIdx(neighborIdx)];
-                    nMats.push_back(neighbor.mat);
-                    nMats.push_back(v_src.mat);
-                    mat = Material::avg(nMats);
+                    if(neighbor.mat.encoding != materials::air.encoding)
+                        matEncoding |= neighbor.mat.encoding;
+                    if(v_src.mat.encoding != materials::air.encoding)
+                        matEncoding |= v_src.mat.encoding;
+
+                    mat = materials::getCompositeMaterials(matEncoding);
                 }
             } else {
                 BasisIdx srcprx = {path.x==-1,path.y==-1,path.z==-1};
@@ -124,11 +127,13 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                 if(!isValidIdx(neighborIdx)) {
                     mat = v_matsrc.mat;
                 } else {
-                    std::vector<Material> nMats;
                     Voxel neighbor = voxels[getVoxelIdx(neighborIdx)];
-                    nMats.push_back(neighbor.mat);
-                    nMats.push_back(v_matsrc.mat);
-                    mat = Material::avg(nMats);
+                    if(neighbor.mat.encoding != materials::air.encoding)
+                        matEncoding |= neighbor.mat.encoding;
+                    if(v_matsrc.mat.encoding != materials::air.encoding)
+                        matEncoding |= v_matsrc.mat.encoding;
+                    
+                    mat = materials::getCompositeMaterials(matEncoding);
                 }
             }
         } else { // body diagonal
@@ -281,7 +286,6 @@ void VoxelRobot::Strip() {
 void VoxelRobot::Build() {
     Clear();
     Strip();
-    // Mass::nextIndex = 0;
 
     mVolume = 0;
 
@@ -295,7 +299,6 @@ void VoxelRobot::Build() {
     
     std::vector<Spring> _springs;
     BuildSpringsRecurse(_springs, {0,0,0}, visited);
-    // AssignMaterials(_springs);
     setSprings(_springs);
     ShiftX(*this);
     ShiftY(*this);
@@ -308,13 +311,15 @@ void VoxelRobot::BuildFromCircles() {
         if((uint) v.indices.x == xCount-1 || (uint) v.indices.y == yCount-1 || (uint) v.indices.z == zCount-1)
             continue;
         std::vector<Material> mats;
-        mats.push_back(materials::air);
+        uint8_t matEncoding = 0x00u;
         float dist;
         for(Circle& c : circles) {
             dist = (v.center-c.center).norm();
-            if(dist < c.radius) mats.push_back(c.mat);
+            if(dist < c.radius) {
+                matEncoding |= c.mat.encoding;
+            }
         }
-        v.mat = Material::avg(mats);
+        v.mat = materials::getCompositeMaterials(matEncoding);
     }
 
     Build();

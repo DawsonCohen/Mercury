@@ -69,8 +69,9 @@ protected:
 	Environment*	envBuf;
 
 	// CPU data
-	ushort   *m_hPairs;
-	float  *m_hMats;
+	ushort *m_hPairs;
+	uint8_t *m_hMatEncodings;
+	float  *m_hAvgMats;
 	float  *m_hLbars;
 	float  *m_hPos;
 	float  *m_hVel;
@@ -79,8 +80,9 @@ protected:
 	uint   *m_hSpringIDs;
 
 	// GPU data
-	float   *m_dPos[2], *m_dVel[2],
-			*m_dMats;
+	float   *m_dPos[2], *m_dVel[2];
+	uint8_t  *m_dMatEncodings;
+	float   *m_dAvgMats;
 	ushort	*m_dPairs;
 	float	*m_dLbars;
 	ushort  *m_dMaxStressCount, *m_dMinStressCount;

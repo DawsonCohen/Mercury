@@ -46,14 +46,16 @@ int main(int argc, char** argv)
 	util::MakeDirectory(out_dir);
 
 	if(argc > 1) {
-		if(std::string(argv[1]) == std::string("nn"))
+		if(std::string(argv[1]) == std::string("voxel"))
+			VoxelBenchmark();
+		else if(std::string(argv[1]) == std::string("nn"))
 			NNBenchmark();
 		else if(std::string(argv[1]) == std::string("build"))
 			NNBuildBenchmark();
 		else
-			VoxelBenchmark();
+			NNBenchmark();
 	} else {
-		VoxelBenchmark();
+		NNBenchmark();
 	}
 	
 	return 0;

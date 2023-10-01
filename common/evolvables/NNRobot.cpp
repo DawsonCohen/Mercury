@@ -275,12 +275,8 @@ void NNRobot::Build() {
             if(neighbor.second < EPS) mValid = false;
 
             Material mat2 = masses[neighbor.first].material;
-            std::vector<Material> mats = {mat1, mat2};
-            Material mat;
-            if(mat1 == materials::air || mat2 == materials::air)
-                mat = materials::air;
-            else
-                mat = Material::avg(mats);
+            Material mat = materials::getCompositeMaterials(mat1.encoding | mat2.encoding);
+
             Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
             springs.push_back(s);
         }

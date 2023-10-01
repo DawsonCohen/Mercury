@@ -55,16 +55,34 @@ inline void collisionForce(float3 pos, float4 vel, float3& force,
 __device__
 inline void dragForce(const float4& vel, float3& force,
 					float rho) {	
-	//Force due to drag = -1/2 * rho * v * |v| * A * Cd (Assume A and Cd are 1)
-	float mag_vel = __fsqrt_rn(
+	//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
+	float mag_vel_squared = 
 		  __fmul_rn(vel.x,vel.x)
 		+ __fmul_rn(vel.y,vel.y)
-		+ __fmul_rn(vel.z,vel.z)
-		);
-	force.x += -0.5f*rho*vel.x*mag_vel;
-	force.y += -0.5f*rho*vel.y*mag_vel;
-	force.z += -0.5f*rho*vel.z*mag_vel;
+		+ __fmul_rn(vel.z,vel.z);
+	float mag_vel = __fsqrt_rn(mag_vel_squared);
+
+	if(mag_vel < EPS) return;
+
+	float magFd = min(0.5*rho*mag_vel_squared, MAX_FORCE);
+
+	force.x += -magFd * __fdiv_rn(vel.x, mag_vel);
+	force.y += -magFd * __fdiv_rn(vel.y, mag_vel);
+	force.z += -magFd * __fdiv_rn(vel.z, mag_vel);
 }
+
+// inline void dragForce(const float4& vel, float3& force,
+// 					float rho) {	
+// 	//Force due to drag = -1/2 * rho * v * |v| * A * Cd (Assume A and Cd are 1)
+// 	float mag_vel = __fsqrt_rn(
+// 		  __fmul_rn(vel.x,vel.x)
+// 		+ __fmul_rn(vel.y,vel.y)
+// 		+ __fmul_rn(vel.z,vel.z)
+// 		);
+// 	force.x += -0.5f*rho*vel.x*mag_vel;
+// 	force.y += -0.5f*rho*vel.y*mag_vel;
+// 	force.z += -0.5f*rho*vel.z*mag_vel;
+// }
 
 __device__
 inline void environmentForce(float3 pos, const float4& vel, float3& force,
@@ -137,6 +155,7 @@ struct SimOptions {
 	uint springsPerBlock;
 	uint maxMasses;
 	uint maxSprings;
+	uint materialCount;
 	short shiftskip;
 	Environment env;
 };
@@ -145,12 +164,14 @@ struct SimOptions {
 __global__ void
 inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
-				ushort2 *__restrict__ pairs, float4 *__restrict__ mats, float *__restrict__ Lbars,
+				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matEncodings, float *__restrict__ Lbars,
+				float4 *__restrict__ compositeMats,
 				float time, uint step, SimOptions opt)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
 	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
+	float4	*s_compositeMats = (float4*) &s_force[opt.massesPerBlock];
 	
 	uint massOffset   = blockIdx.x * opt.massesPerBlock;
 	uint springOffset = blockIdx.x * opt.springsPerBlock;
@@ -169,12 +190,17 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		s_force[i] = {0.0f, 0.0f, 0.0f};
 		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
 	}
+
+	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
+		s_compositeMats[i] = compositeMats[i];
+	}
 	__syncthreads();
 
 	float4	mat;
 	float3	bl, br;
 	float3	force;
 	ushort2	pair;
+	uint8_t	matEncoding;
 	float	Lbar,
 			magF;
 	ushort	left, right;
@@ -182,11 +208,14 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
 		pair = __ldg(&pairs[i+springOffset]);
+		matEncoding = __ldg(&matEncodings[i+springOffset]);
 		left  = pair.x;
 		right = pair.y;
 		bl = s_pos[left];
 		br = s_pos[right];
-		mat = __ldg(&mats[i+springOffset]);
+
+		mat = s_compositeMats[ matEncoding ];
+
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
 
@@ -227,14 +256,16 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 __global__ void
 inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
-				ushort2 *__restrict__ pairs, float4 *__restrict__ mats, float *__restrict__ Lbars,
+				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matEncodings, float *__restrict__ Lbars,
 				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
 				float *__restrict__ stresses, uint *__restrict__ ids,
+				float4 *__restrict__ compositeMats,
 				float time, uint step, SimOptions opt)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
 	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
+	float4	*s_compositeMats = (float4*) &s_force[opt.massesPerBlock];
 
 	__shared__ ushort maxStressedSprings[1024];
 	__shared__ ushort minStressedSprings[1024];
@@ -253,7 +284,12 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+		s_force[i] = {0.0f, 0.0f, 0.0f};
 		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+	}
+
+	for(uint i = tid; i < opt.materialCount*opt.materialCount; i += stride) {
+		s_compositeMats[i] = compositeMats[i];
 	}
 	__syncthreads();
 
@@ -261,12 +297,13 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	float3	bl, br;
 	float3	force;
 	ushort2	pair;
+	uint8_t	matEncoding;
 	float	Lbar,
 			magF;
 	ushort	left, right;
 
-	float	minStress = 0.0f,
-			maxStress  = 0.0f,
+	float	minNormalizedStress = 0.0f,
+			maxNormalizedStress  = 0.0f,
 			nextMinStress = 0.0f;
 	ushort	maxSpringIdx = tid,
 			minSpringIdx = tid,
@@ -277,11 +314,14 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
 		pair = __ldg(&pairs[i+springOffset]);
+		matEncoding = __ldg(&matEncodings[i+springOffset]);
 		left  = pair.x;
 		right = pair.y;
 		bl = s_pos[left];
 		br = s_pos[right];
-		mat = __ldg(&mats[i+springOffset]);
+
+		mat = s_compositeMats[ matEncoding ];
+		
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
 
@@ -296,17 +336,17 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		atomicAdd(&(s_force[right].z), -force.z);
 
 		if(step % (opt.shiftskip+1) == 0) {
-			if(fabsf(magF) > maxStress) {
-				maxStress = fabsf(magF);
+			if(fabsf(magF) > maxNormalizedStress) {
+				maxNormalizedStress = __fdiv_rn(fabsf(magF), Lbar);
 				maxSpringIdx = i;
 			}
-			if(((fabsf(magF) < minStress) || (minStress == 0.0f)) && fabsf(magF) > 0.0f) {
+			if(((fabsf(magF) < minNormalizedStress) || (minNormalizedStress == 0.0f)) && fabsf(magF) > 0.0f) {
 				if(i > tid) {
-					nextMinStress = minStress;
+					nextMinStress = minNormalizedStress;
 					nextMinSpringIdx = minSpringIdx;
 				}
 
-				minStress = fabsf(magF);
+				minNormalizedStress = __fdiv_rn(fabsf(magF), Lbar);
 				minSpringIdx = i;
 				
 			}
@@ -319,12 +359,12 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 
 	ushort2 cMaxPair,
 			cMinPair;
+	uint8_t	cMaxMatEncoding,
+			cMinMatEncoding;
 	ushort	cMax_MaxCount,
 			cMax_MinCount,
 			cMin_MaxCount,
 			cMin_MinCount;
-	float4	cMaxMat,
-			cMinMat;
 	float	cMaxLbar,
 			cMinLbar;
 	#ifdef FULL_STRESS
@@ -337,12 +377,12 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	
 	if(minSpringIdx == maxSpringIdx) { // guarentees not both max and min
 		minSpringIdx = nextMinSpringIdx;
-		minStress = nextMinStress;
+		minNormalizedStress = nextMinStress;
 	}
 
 	if(step % (opt.shiftskip+1) == 0) {
-		maxStressCount[maxSpringIdx + springOffset] += (maxStress > 0.0f);
-		minStressCount[minSpringIdx + springOffset] += (minStress > 0.0f);
+		maxStressCount[maxSpringIdx + springOffset] += (maxNormalizedStress > 0.0f);
+		minStressCount[minSpringIdx + springOffset] += (minNormalizedStress > 0.0f);
 		maxStressedSprings[tid]  = maxSpringIdx;
 		minStressedSprings[tid]  = minSpringIdx;
 		
@@ -350,13 +390,13 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		cMaxPair = pairs[maxSpringIdx + springOffset];
 		cMax_MaxCount = maxStressCount[maxSpringIdx + springOffset];
 		cMax_MinCount = minStressCount[maxSpringIdx + springOffset];
-		cMaxMat = mats[maxSpringIdx + springOffset];
+		cMaxMatEncoding = matEncodings[maxSpringIdx + springOffset];
 		cMaxLbar = Lbars[maxSpringIdx + springOffset];
 
 		cMinPair = pairs[minSpringIdx + springOffset];
 		cMin_MaxCount = maxStressCount[minSpringIdx + springOffset];
 		cMin_MinCount = minStressCount[minSpringIdx + springOffset];
-		cMinMat = mats[minSpringIdx + springOffset];
+		cMinMatEncoding = matEncodings[minSpringIdx + springOffset];
 		cMinLbar = Lbars[minSpringIdx + springOffset];
 
 		#ifdef FULL_STRESS
@@ -375,13 +415,13 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		nextGroup_MinSpringIdx = minStressedSprings[tid_next];
 
 		pairs[nextGroup_MaxSpringIdx + springOffset] = cMaxPair;
-		mats[nextGroup_MaxSpringIdx + springOffset] = cMaxMat;
+		matEncodings[nextGroup_MaxSpringIdx + springOffset] = cMaxMatEncoding;
 		Lbars[nextGroup_MaxSpringIdx + springOffset] = cMaxLbar;
 		maxStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MaxCount;
 		minStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MinCount;
 
 		pairs[nextGroup_MinSpringIdx + springOffset] = cMinPair;
-		mats[nextGroup_MinSpringIdx + springOffset] = cMinMat;
+		matEncodings[nextGroup_MinSpringIdx + springOffset] = cMinMatEncoding;
 		Lbars[nextGroup_MinSpringIdx + springOffset] = cMinLbar;
 		maxStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MaxCount;
 		minStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MinCount;
