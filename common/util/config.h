@@ -71,6 +71,8 @@ struct Config {
 	} evaluator;
 	struct Simulator {
 		bool track_stresses = false;
+		bool devo = false;
+		bool visual = false;
 	} simulator;
 
 	struct Renderer {

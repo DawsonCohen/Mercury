@@ -18,6 +18,8 @@
 #define INIT_POP_SIZE 1
 
 void VoxelBenchmark();
+void StressBenchmark();
+void DevoBenchmark();
 void NNBenchmark();
 void NNBuildBenchmark();
 Simulator sim;
@@ -52,6 +54,10 @@ int main(int argc, char** argv)
 			NNBenchmark();
 		else if(std::string(argv[1]) == std::string("build"))
 			NNBuildBenchmark();
+		else if(std::string(argv[1]) == std::string("stress"))
+			StressBenchmark();
+		else if(std::string(argv[1]) == std::string("devo"))
+			DevoBenchmark();
 		else
 			NNBenchmark();
 	} else {
@@ -85,6 +91,109 @@ void VoxelBenchmark() {
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
 		sim.Initialize(R,pop_size);
+		sim.setMaxTime(MAX_TIME);
+
+		printf("STARTED\n");
+		auto start = std::chrono::high_resolution_clock::now();
+		
+		sim.Simulate(robots);
+		auto end = std::chrono::high_resolution_clock::now();
+		printf("FINISHED\n\n");
+
+		execute_time = std::chrono::duration<float>(end - start).count();
+
+		num_springs = R.getSprings().size() * pop_size * (sim.getMaxTime() / sim.getDeltaT());
+		float springs_per_sec = num_springs / execute_time;
+
+		fprintf(pFile,"%lu,%lu,%f\n", num_springs,R.getSprings().size()*pop_size,execute_time);
+		printf("%u ROBOTS (%.2e SPRINGS) IN %f SECONDS\n", pop_size, (float) num_springs, execute_time);
+		printf("%.2e SPRINGS PER SECOND\n", (float) springs_per_sec);
+		printf("--------------------------\n");
+
+		pop_size *= 2;
+	}
+	fclose(pFile);
+}
+
+void StressBenchmark() {
+	printf("BENCHMARKING VOXEL STRESSES\n");
+	VoxelRobot R;
+
+	uint pop_size = INIT_POP_SIZE;
+	sim.Initialize(R,pop_size);
+
+	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getDeltaT());
+
+	FILE* pFile = fopen((out_dir + "/stress_benchmark.csv").c_str(),"w");
+
+	float execute_time;
+
+	fprintf(pFile,"springs simulated, springs per iteration, execute time\n");
+
+	while(num_springs < MAX_SPRINGS) {
+		std::vector<Element> robots;
+		for(uint i = 0; i < pop_size; i++) {
+			robots.push_back({R.getMasses(), R.getSprings()});
+		}
+
+		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
+		
+		Config::Simulator simConfig;
+		simConfig.track_stresses = true;
+
+		sim.Initialize(R,pop_size, simConfig);
+		sim.setMaxTime(MAX_TIME);
+
+		printf("STARTED\n");
+		auto start = std::chrono::high_resolution_clock::now();
+		
+		sim.Simulate(robots);
+		auto end = std::chrono::high_resolution_clock::now();
+		printf("FINISHED\n\n");
+
+		execute_time = std::chrono::duration<float>(end - start).count();
+
+		num_springs = R.getSprings().size() * pop_size * (sim.getMaxTime() / sim.getDeltaT());
+		float springs_per_sec = num_springs / execute_time;
+
+		fprintf(pFile,"%lu,%lu,%f\n", num_springs,R.getSprings().size()*pop_size,execute_time);
+		printf("%u ROBOTS (%.2e SPRINGS) IN %f SECONDS\n", pop_size, (float) num_springs, execute_time);
+		printf("%.2e SPRINGS PER SECOND\n", (float) springs_per_sec);
+		printf("--------------------------\n");
+
+		pop_size *= 2;
+	}
+	fclose(pFile);
+}
+
+void DevoBenchmark() {
+	printf("BENCHMARKING VOXEL DEVOS\n");
+	VoxelRobot R;
+
+	uint pop_size = INIT_POP_SIZE;
+	sim.Initialize(R,pop_size);
+
+	ulong num_springs = R.getSprings().size() * (sim.getMaxTime() / sim.getDeltaT());
+
+	FILE* pFile = fopen((out_dir + "/devo_benchmark.csv").c_str(),"w");
+
+	float execute_time;
+
+	fprintf(pFile,"springs simulated, springs per iteration, execute time\n");
+
+	while(num_springs < MAX_SPRINGS) {
+		std::vector<Element> robots;
+		for(uint i = 0; i < pop_size; i++) {
+			robots.push_back({R.getMasses(), R.getSprings()});
+		}
+
+		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
+		
+		Config::Simulator simConfig;
+		simConfig.track_stresses = true;
+		simConfig.devo = true;
+
+		sim.Initialize(R,pop_size, simConfig);
 		sim.setMaxTime(MAX_TIME);
 
 		printf("STARTED\n");

@@ -182,17 +182,17 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	// Initialize and compute environment forces
 	float4 pos4;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		pos4 = oldPos[i+massOffset];
+		pos4 = __ldg(&oldPos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
-		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+		environmentForce(s_pos[i],__ldg(&oldVel[i+massOffset]),s_force[i],opt.env);
 	}
 
 	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
-		s_compositeMats[i] = compositeMats[i];
+		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
 	__syncthreads();
 
@@ -279,18 +279,19 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	// Initialize and compute environment forces
 	float4 pos4;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		pos4 = oldPos[i+massOffset];
+		pos4 = __ldg(&oldPos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
-		environmentForce(s_pos[i],oldVel[i+massOffset],s_force[i],opt.env);
+		environmentForce(s_pos[i],__ldg(&oldVel[i+massOffset]),s_force[i],opt.env);
 	}
 
 	for(uint i = tid; i < opt.materialCount*opt.materialCount; i += stride) {
-		s_compositeMats[i] = compositeMats[i];
+		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
+
 	__syncthreads();
 
 	float4	mat;
@@ -455,11 +456,6 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
 		newVel[i+massOffset] = vel;
 	}
-}
-
-__global__ void
-inline replaceSprings(ushort2 *__restrict__ pairs, ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount) {
-	
 }
 
 #endif

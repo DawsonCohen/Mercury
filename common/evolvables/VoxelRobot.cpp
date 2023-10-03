@@ -102,7 +102,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                 if(neighbor.mat.encoding != materials::air.encoding)
                     matEncoding |= neighbor.mat.encoding;
             }
-            mat = materials::getCompositeMaterials(matEncoding);
+            mat = materials::decode(matEncoding);
         } else if(abs(path.x)+abs(path.y)+abs(path.z) == 2) { // diagonal
             BasisIdx nprox = {!path.x,!path.y,!path.z};
             BasisIdx neighborIdx = v_src.indices - nprox;
@@ -116,7 +116,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                     if(v_src.mat.encoding != materials::air.encoding)
                         matEncoding |= v_src.mat.encoding;
 
-                    mat = materials::getCompositeMaterials(matEncoding);
+                    mat = materials::decode(matEncoding);
                 }
             } else {
                 BasisIdx srcprx = {path.x==-1,path.y==-1,path.z==-1};
@@ -133,7 +133,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
                     if(v_matsrc.mat.encoding != materials::air.encoding)
                         matEncoding |= v_matsrc.mat.encoding;
                     
-                    mat = materials::getCompositeMaterials(matEncoding);
+                    mat = materials::decode(matEncoding);
                 }
             }
         } else { // body diagonal
@@ -319,7 +319,7 @@ void VoxelRobot::BuildFromCircles() {
                 matEncoding |= c.mat.encoding;
             }
         }
-        v.mat = materials::getCompositeMaterials(matEncoding);
+        v.mat = materials::decode(matEncoding);
     }
 
     Build();

@@ -34,6 +34,8 @@ public:
 	Element CollectElement(const ElementTracker& tracker);
 	std::vector<ElementTracker> Simulate(std::vector<Element>& elements);
 
+	void Devo();
+
 	// void Simulate(std::vector<Mass>& masses, const std::vector<Spring>& springs);
 
 	// Getter/setter time step in seconds
@@ -59,9 +61,9 @@ protected:
     float deltaT = 0.001f;
     float max_time = 10.0f;
     float devo_time = 1.0f;
-    uint max_devo_cycles = 100;
-	bool track_stresses = false;
-	bool devo = false;
+    uint max_devo_cycles = 1;
+	uint replacedSpringsPerElement = 1000; // recommend multiple of 32 for warp
+	// bool track_stresses = false;
 
 	Mass*			massBuf;
 	Spring*			springBuf;
@@ -69,42 +71,51 @@ protected:
 	Environment*	envBuf;
 
 	// CPU data
-	ushort *m_hPairs;
-	uint8_t *m_hMatEncodings;
-	float  *m_hAvgMats;
-	float  *m_hLbars;
-	float  *m_hPos;
-	float  *m_hVel;
-	ushort *m_hMaxStressCount, *m_hMinStressCount;
-	float  *m_hStresses;
-	uint   *m_hSpringIDs;
+	ushort  *m_hPairs;
+	uint8_t *m_hMassMatEncodings;
+	uint8_t *m_hSpringMatEncodings;
+	float   *m_hCompositeMats;
+	float   *m_hLbars;
+	float   *m_hPos;
+	float   *m_hVel;
+	ushort  *m_hMaxStressCount, *m_hMinStressCount;
+	float   *m_hStresses;
+	uint    *m_hSpringIDs;
 
 	// GPU data
 	float   *m_dPos[2], *m_dVel[2];
-	uint8_t  *m_dMatEncodings;
-	float   *m_dAvgMats;
+	uint8_t *m_dMassMatEncodings;
+	uint8_t *m_dSpringMatEncodings;
+	float   *m_dCompositeMats;
 	ushort	*m_dPairs;
+	ushort  *m_dRandomPairs;
 	float	*m_dLbars;
 	ushort  *m_dMaxStressCount, *m_dMinStressCount;
+	ushort  *m_dMinStressCount_Sorted;
 	float	*m_dStresses;
 	uint    *m_dSpringIDs;
+	uint    *m_dSpringIDs_Sorted;
 
 	unsigned char m_currentRead,
 			 	  m_currentWrite;
 
-	const uint  threadsPerBlock = 1024;
+	const uint  simThreadsPerBlock = 1024;
+	const uint  devoThreadsPerBlock = 256;
 
 	uint springsPerElement = 0;
 	uint massesPerElement  = 0;
 	uint maxElements       = 0;
 	uint maxMasses 	       = 0;
 	uint maxSprings        = 0;
+	uint maxReplaced       = 0;
 	uint maxEnvs           = 0;
 	uint numElements       = 0;
 	uint numMasses         = 0;
 	uint numSprings        = 0;
 	uint envCount          = 0;
 	uint elementCount      = 0;
+
+	Config::Simulator config;
 };
 
 #endif

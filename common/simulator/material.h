@@ -146,7 +146,7 @@ class materials {
 		return matLookup(matId);
 	}
 
-	static Material getCompositeMaterials(u_char encoding) {
+	static Material decode(u_char encoding) {
         static bool initialized = false;
         static Material compositeMaterials[1 << MATERIAL_COUNT];
 
