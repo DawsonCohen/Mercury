@@ -22,7 +22,7 @@
 uint runID = 0;
 uint solID = 0;
 
-std::string config_file = "configs/config.verify";
+std::string config_file = "configs/config.random";
 
 void handle_commandline_args(int argc, char** argv);
 int handle_file_io();
@@ -183,6 +183,7 @@ void Render(std::vector<SoftBody>& robots) {
 
 				// Specify the color of the background
 				GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
+				// GLCall(glClearColor(0.1f, 0.1f, 0.1f, 1.0f));
 				// Clean the back buffer and depth buffer
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -261,6 +262,8 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		float prevTime = glfwGetTime();
 
+		config.simulator.track_stresses = true;
+		config.simulator.visual = true;
 		sim.Initialize(robots[0], 1, config.simulator);
 		sim.setMaxTime( 1 / config.renderer.fps);
 
@@ -271,6 +274,9 @@ void Visualize(std::vector<SoftBody>& robots) {
 		glfwSetWindowUserPointer(window, &camera);
 		glfwSetKeyCallback(window, keyCallback);
 
+		float devoPeriod = 2.0f;
+		float lastDevo = 0.0f;
+
 		int tabId = -1;
 		while (!glfwWindowShouldClose(window))
 		{
@@ -279,6 +285,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 				R = robots[tabId];
 				model.Update(R);
 				sim.Reset();
+				lastDevo = 0.0f;
 				printf("Robot %i, fitness: %f\n", tabId, R.fitness());
 			}
 
@@ -287,6 +294,10 @@ void Visualize(std::vector<SoftBody>& robots) {
 			
 			robot_elements[0] = {R.getMasses(),R.getSprings()};
 			std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
+			if(sim.getTotalTime() - lastDevo > devoPeriod) {
+				lastDevo = sim.getTotalTime();
+				sim.Devo();
+			}
 			std::vector<Element> results = sim.Collect(trackers);
 
 			R.Update(results[0]);
@@ -302,7 +313,9 @@ void Visualize(std::vector<SoftBody>& robots) {
 			
 			// Specify the color of the background
 			// GLCall(glClearColor(0.73f, 0.85f, 0.92f, 1.0f));
-			GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
+			GLCall(glClearColor(0.1f, 0.1f, 0.1f, 1.0f));
+			// GLCall(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));
+			// GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
 			// Clean the back buffer and depth buffer
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

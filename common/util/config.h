@@ -73,6 +73,7 @@ struct Config {
 		bool track_stresses = false;
 		bool devo = false;
 		bool visual = false;
+		uint replacedSpringsPerElement = 32;
 	} simulator;
 
 	struct Renderer {

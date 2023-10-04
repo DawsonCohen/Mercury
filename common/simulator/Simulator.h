@@ -58,11 +58,11 @@ protected:
 
 	std::vector<Environment> mEnvironments;
     float total_time = 0;
-    float deltaT = 0.001f;
+    float deltaT = 0.0005f;
     float max_time = 10.0f;
     float devo_time = 1.0f;
     uint max_devo_cycles = 1;
-	uint replacedSpringsPerElement = 1000; // recommend multiple of 32 for warp
+	uint replacedSpringsPerElement = 32; // recommend multiple of 32 for warp
 	// bool track_stresses = false;
 
 	Mass*			massBuf;

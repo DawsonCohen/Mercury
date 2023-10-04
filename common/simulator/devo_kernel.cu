@@ -1,11 +1,15 @@
 #ifndef __DEVO_KERNEL_CUH__
 #define __DEVO_KERNEL_CUH__
 
+#include "vec_math.cuh"
 #include <curand_kernel.h>
 #include <stdint.h>
+#include <assert.h>
+#include <stdio.h>
 
 __global__ void
 inline randomIntegerPairKernel(int N, ushort2* results, int min_value, int max_value, unsigned int seed) {
+
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x;
     
@@ -29,17 +33,25 @@ struct DevoOptions {
     uint springsPerElement;
     uint massesPerElement;
     uint replacedSpringsPerElement;
+    uint materialCount;
 };
 
 __global__ void
 inline replaceSprings(ushort2 *__restrict__ pairs, uint8_t *__restrict__ massMatEncodings, 
+            float4 *__restrict__ massPos, float *__restrict__ Lbars,
             uint8_t *__restrict__ springMatEncodings, uint *__restrict__ sortedSpringIds,
-            ushort2* newPairs, DevoOptions opt) {
+            ushort2* newPairs, float4 *__restrict__ compositeMats,
+            float time, DevoOptions opt) {
+	extern __shared__ float4 s_devo[];
+	float4	*s_compositeMats = s_devo;
 
-	int tid    = threadIdx.x * blockDim.x + threadIdx.x;
+	int tid    = blockIdx.x * blockDim.x + threadIdx.x;
 	int stride = blockDim.x;
 
-	__syncthreads();
+
+    for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
+		s_compositeMats[i] = __ldg(&compositeMats[i]);
+	}
 
     uint    elementId,
             massOffset,
@@ -47,7 +59,12 @@ inline replaceSprings(ushort2 *__restrict__ pairs, uint8_t *__restrict__ massMat
             springId;
 	ushort2	newPair;
 	ushort	left, right;
-	uint8_t	matEncodingLeft, matEncodingRight;
+    float4  posLeft, posRight;
+    float4  newMat;
+    float3  posDiff;
+    float   rest_length,
+            relative_change;
+	uint8_t	matEncodingLeft, matEncodingRight, newMatEncoding;
 
 	for(uint i = tid; 
         i < opt.maxReplacedSprings && (i / opt.replacedSpringsPerElement) * opt.springsPerElement < opt.maxSprings; 
@@ -68,7 +85,25 @@ inline replaceSprings(ushort2 *__restrict__ pairs, uint8_t *__restrict__ massMat
         matEncodingLeft = massMatEncodings[left + massOffset];
         matEncodingLeft = massMatEncodings[right + massOffset];
 
-        springMatEncodings[springId] = matEncodingLeft | matEncodingRight;
+
+        posLeft =  massPos[left+massOffset]; 
+        posRight =  massPos[right+massOffset];
+
+        posDiff = {
+            posLeft.x - posRight.x,
+            posLeft.y - posRight.y,
+            posLeft.z - posRight.z
+        };
+
+        newMatEncoding = matEncodingLeft | matEncodingRight;
+        newMat = s_compositeMats[newMatEncoding];
+
+        rest_length = l2norm(posDiff);
+        relative_change = newMat.y * sinf(newMat.z * time + newMat.w);
+        
+        Lbars[springId] = rest_length / (1+relative_change);
+        springMatEncodings[springId] = newMatEncoding;
+
     }
 }
 

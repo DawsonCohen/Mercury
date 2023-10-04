@@ -23,7 +23,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 namespace KNN {
 
-void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float* d_values_out, uint count) {
+void key_value_sort(float* d_keys_in, float* d_keys_out, uint* d_values_in, uint* d_values_out, uint count) {
     // Determine number of segments
     int num_segments = count;
 
@@ -42,7 +42,7 @@ void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float
     size_t temp_storage_bytes = 0;
     cub::DeviceSegmentedRadixSort::SortPairs(
         d_temp_storage, temp_storage_bytes,
-        d_values_in, d_values_out, d_keys_in, d_keys_out,
+        d_keys_in, d_keys_out, d_values_in, d_values_out,
         count*count, num_segments, d_offsets, d_offsets+1);
 
     // Allocate temporary storage
@@ -51,7 +51,7 @@ void key_value_sort(uint* d_keys_in, uint* d_keys_out, float* d_values_in, float
     // Run sorting operation
     cub::DeviceSegmentedRadixSort::SortPairs(
         d_temp_storage, temp_storage_bytes,
-        d_values_in, d_values_out, d_keys_in, d_keys_out,
+        d_keys_in, d_keys_out, d_values_in, d_values_out,
         count*count, num_segments, d_offsets, d_offsets+1);
 
     delete[] h_offsets;
@@ -103,7 +103,7 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
     gpuErrchk( cudaPeekAtLastError() );
     cudaDeviceSynchronize();
 
-    key_value_sort(d_ids, d_ids_sorted, d_distances, d_distances_sorted, num_masses);
+    key_value_sort(d_distances, d_distances_sorted, d_ids, d_ids_sorted, num_masses);
 
     cudaMemcpy(h_distances, d_distances_sorted, num_masses * num_masses * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(h_ids, d_ids_sorted, num_masses * num_masses * sizeof(uint), cudaMemcpyDeviceToHost);

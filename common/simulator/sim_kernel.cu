@@ -288,7 +288,7 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		environmentForce(s_pos[i],__ldg(&oldVel[i+massOffset]),s_force[i],opt.env);
 	}
 
-	for(uint i = tid; i < opt.materialCount*opt.materialCount; i += stride) {
+	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
 		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
 
