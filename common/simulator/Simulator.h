@@ -27,14 +27,13 @@ public:
 	void Initialize(Element prototype, uint maxElements, Config::Simulator config = Config::Simulator());
 	void Initialize(uint massesPerElement, uint springsPerElement, uint maxElements, Config::Simulator);
 	
-	std::vector<ElementTracker> Allocate(const std::vector<Element>& element);
+	std::vector<ElementTracker> SetElements(const std::vector<Element>& elements);
 	ElementTracker AllocateElement(const Element& e);
-
+	void Simulate(float sim_duration, bool trackStresses = false);
+	void Devo();
 	std::vector<Element> Collect(const std::vector<ElementTracker>& trackers);
 	Element CollectElement(const ElementTracker& tracker);
-	std::vector<ElementTracker> Simulate(std::vector<Element>& elements);
 
-	void Devo();
 
 	// void Simulate(std::vector<Mass>& masses, const std::vector<Spring>& springs);
 
@@ -45,12 +44,6 @@ public:
 	// Get simulated time elapsed in seconds
 	float getTotalTime() const { return total_time; }
 
-	// Getter/setter maximum simulation time in seconds
-	float getMaxTime() const { return max_time; }
-	void setMaxTime(float tmax) { max_time = tmax; }
-	void setDevoTime(float tmax) { devo_time  = tmax; }
-	void setDevoCycles(uint cycles) { max_devo_cycles = cycles; }
-
 	void Reset() { total_time = 0.0f; }
 
 protected:
@@ -58,10 +51,7 @@ protected:
 
 	std::vector<Environment> mEnvironments;
     float total_time = 0;
-    float deltaT = 0.0005f;
-    float max_time = 10.0f;
-    float devo_time = 1.0f;
-    uint max_devo_cycles = 1;
+    float deltaT = 0.001f;
 	uint replacedSpringsPerElement = 32; // recommend multiple of 32 for warp
 	// bool track_stresses = false;
 

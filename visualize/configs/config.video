@@ -1,11 +1,16 @@
 # Configuration file for evo-devo
-ROBOT_TYPE=NNRobot
 
 # Objectives
-INTERACTIVE=1
-VERIFY=1
+OPTIMIZE=
+VISUALIZE=
+WRITE_VIDEO=1
+VERIFY=
 ZOO=
+BOUNCE=
 STATIONARY=
+
+ROBOT_TYPE=NNRobot
+POP_SIZE=1
 
 # NN RobotType
 CROSSOVER_NEURONS=5
@@ -16,12 +21,9 @@ HIDDEN_LAYER_SIZES=25,25
 # Evaluator Parameters
 BASE_TIME=3.0
 EVAL_TIME=10.0
-DEVO_TIME=2.0
-DEVO_CYCLES=0
 
 # Simulator Parameters
-TRACK_STRESSES=1
-DEVO=1 # TODO
+TRACK_STRESSES=
 
 # Renderer Parameters
 WIDTH=1600
@@ -30,8 +32,8 @@ FPS=30.0
 MAX_TIME=10.0
 
 # IO
-IN_DIR=/home/dawson/evo-devo/z_results/2023-10-06-015700/run_0/generation_10_fitness_2.535734
-OUT_DIR=./z_results
+IN_DIR=
+OUT_DIR=../z_results
 
 # COMPUTE
 CUDA_VISIBLE_GPU=0

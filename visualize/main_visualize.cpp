@@ -1,6 +1,5 @@
 #include "Simulator.h"
-#include "optimizer.h"
-#include "util.h"
+#include "visualizer_util.h"
 #include "NNRobot.h"
 #include "VoxelRobot.h"
 #include <Eigen/Core>
@@ -19,9 +18,6 @@
 #include <string>
 #include <sys/stat.h>
 
-uint runID = 0;
-uint solID = 0;
-
 std::string config_file = "configs/config.random";
 
 void handle_commandline_args(int argc, char** argv);
@@ -38,14 +34,14 @@ std::string out_sol_video_file;
 std::string in_sol_file;
 
 Simulator sim;
-Config config;
+VisualizerConfig config;
 
 int main(int argc, char** argv)
 {
 	handle_commandline_args(argc, argv);
 
 	printf("----CONFIG----\n");
-	config = util::ReadConfigFile(config_file);
+	config = util::visualizer::ReadConfigFile(config_file);
 	handle_file_io();
 	printf("--------------\n");
 	std::cout << "Ouput directory: " << config.io.out_dir << std::endl;
@@ -82,10 +78,10 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	if(!config.objectives.optimize && !config.objectives.verify && !config.objectives.zoo) {
+	if(!config.objectives.verify) {
 		uint seed = std::chrono::system_clock::now().time_since_epoch().count();
 		srand(seed);
-		for(int i = 0; i < config.optimizer.pop_size; i++) {
+		for(uint i = 0; i < config.visualizer.rand_count; i++) {
 			switch(config.robot_type) {
 				case ROBOT_VOXEL: {
 					VoxelRobot solution = VoxelRobot();
@@ -103,21 +99,12 @@ int main(int argc, char** argv)
 		}
 	}
 
-	if(config.objectives.bounce) {
-		if(config.objectives.verify || (!config.objectives.optimize && !config.objectives.verify && !config.objectives.zoo)) {
-			for(SoftBody& R : solutions) {
-				Eigen::Vector3f translation(0.0f,7.0f,0.0f);
-				R.translate(translation);
-			}
-		}
-	}
-
 	
-	if(config.objectives.movie) {
+	if(config.objectives.video) {
 		Render(solutions);
 	}
 
-	if(config.objectives.visualize) {
+	if(config.objectives.interactive) {
 		Visualize(solutions);
 	}
 
@@ -140,17 +127,13 @@ void Render(std::vector<SoftBody>& robots) {
 		cv::VideoWriter video;
 
 		if(config.objectives.stationary)
-			out_sol_video_file =  config.io.out_dir + "/stationary_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
-		else if(config.objectives.bounce)
-			out_sol_video_file =  config.io.out_dir + "/bounce_" + std::to_string(runID) + "_"+ std::to_string(solID) +".avi";
+			out_sol_video_file =  config.io.out_dir + "/stationary_0.avi";
 		else if(config.objectives.zoo)
 			out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
 		else if(config.objectives.verify)
 			out_sol_video_file =  config.io.out_dir + "/solutions_0.avi";
-		else if(!config.objectives.optimize)
-			out_sol_video_file =  config.io.out_dir + "/random_0.avi";
 		else
-			out_sol_video_file =  config.io.out_dir + "/solution_video_" + std::to_string(runID) + "_" + std::to_string(solID) +".avi";
+			out_sol_video_file =  config.io.out_dir + "/random_0.avi";
 		
 		video = cv::VideoWriter(cv::String(out_sol_video_file),
 			cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
@@ -158,9 +141,14 @@ void Render(std::vector<SoftBody>& robots) {
 		video.open(cv::String(out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 		assert(video.isOpened());
 
-		float max_render_time = 10;
+		float max_render_time = config.visualizer.showcase_time;
+		
 		sim.Initialize(robots[0], 1, config.simulator);
-		sim.setMaxTime(1 / config.renderer.fps);
+
+		float time_step = 1 / config.renderer.fps;
+		uint devo_cycles = config.devo.devo_cycles;
+		float devo_time = config.devo.devo_time;
+		float timeToDevo = devo_time;
 
 		// Main while loop
 		uint tabId = camera.tabIdx;
@@ -170,12 +158,22 @@ void Render(std::vector<SoftBody>& robots) {
 			printf("rendering %u/%lu\n",tabId+1,robots.size());
 
 			SoftBody R = robots[tabId];
-			model.Update(R);
 			sim.Reset();
+			robot_elements[0] = {R.getMasses(),R.getSprings()};
+			std::vector<ElementTracker> trackers = sim.SetElements(robot_elements);
+						
 			while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
 			{
-				robot_elements[0] = {R.getMasses(),R.getSprings()};
-				std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
+				if(devo_cycles > 0 && timeToDevo <= 0.0f) {
+					devo_cycles--;
+					timeToDevo = devo_time;
+					sim.Devo();
+				} else if(devo_cycles > 0) {
+					timeToDevo -= time_step;
+				}
+
+				sim.Simulate(time_step);
+				
 				std::vector<Element> results = sim.Collect(trackers);
 
 				R.Update(results[0]);
@@ -253,7 +251,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		// opencv video writer
 		cv::VideoWriter video;
-		if(config.objectives.movie) {
+		if(config.objectives.video) {
 			out_sol_video_file =  config.io.out_dir + "/solution_live_video.avi";
 			video = cv::VideoWriter(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 			video.open(out_sol_video_file,cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
@@ -262,10 +260,12 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		float prevTime = glfwGetTime();
 
-		config.simulator.track_stresses = true;
-		config.simulator.visual = true;
 		sim.Initialize(robots[0], 1, config.simulator);
-		sim.setMaxTime( 1 / config.renderer.fps);
+
+		float time_step = 1 / config.renderer.fps;
+		uint devo_cycles = config.devo.devo_cycles;
+		float devo_time = config.devo.devo_time;
+		float timeToDevo = devo_time;
 
 		// Main while loop
 		uint i = 0;
@@ -274,30 +274,36 @@ void Visualize(std::vector<SoftBody>& robots) {
 		glfwSetWindowUserPointer(window, &camera);
 		glfwSetKeyCallback(window, keyCallback);
 
-		float devoPeriod = 2.0f;
-		float lastDevo = 0.0f;
-
 		int tabId = -1;
+		std::vector<ElementTracker> trackers;
 		while (!glfwWindowShouldClose(window))
 		{
 			if(tabId != (int) camera.tabIdx) {
 				tabId = camera.tabIdx;
-				R = robots[tabId];
-				model.Update(R);
 				sim.Reset();
-				lastDevo = 0.0f;
+				timeToDevo = devo_time;
+				devo_cycles = config.devo.devo_cycles;
+
+				R = robots[tabId];
+				robot_elements[0] = {R.getMasses(),R.getSprings()};
+				trackers = sim.SetElements(robot_elements);
+
 				printf("Robot %i, fitness: %f\n", tabId, R.fitness());
+			}
+
+			if(devo_cycles > 0 && timeToDevo <= 0.0f) {
+					devo_cycles--;
+					timeToDevo = devo_time;
+					sim.Devo();
+			} else if(devo_cycles > 0) {
+				timeToDevo -= time_step;
 			}
 
 			// printf("Iteration: %u\n", i);
 			float crntTime = glfwGetTime();
 			
-			robot_elements[0] = {R.getMasses(),R.getSprings()};
-			std::vector<ElementTracker> trackers = sim.Simulate(robot_elements);
-			if(sim.getTotalTime() - lastDevo > devoPeriod) {
-				lastDevo = sim.getTotalTime();
-				sim.Devo();
-			}
+			sim.Simulate(time_step);
+
 			std::vector<Element> results = sim.Collect(trackers);
 
 			R.Update(results[0]);
@@ -326,7 +332,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 			model.Draw(shader, camera);
 
-			if(config.objectives.movie) {
+			if(config.objectives.video) {
 				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
 				//use fast 4-byte alignment (default anyway) if possible
 				glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);

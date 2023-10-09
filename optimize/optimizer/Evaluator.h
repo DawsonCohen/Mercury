@@ -3,7 +3,7 @@
 
 #include "candidate.h"
 #include "Simulator.h"
-#include "config.h"
+#include "optimizer_config.h"
 #include <vector>
 #include <algorithm>
 
@@ -14,13 +14,13 @@ public:
     static Simulator Sim;
     static float baselineTime;
     static float evaluationTime;
-    static float devoPeriod;
+    static float devoTime;
     static float devoCycles;
     static Config::Simulator sim_config;
 
     static T protoRobot;
 
-    static void Initialize(Config config);
+    static void Initialize(OptimizerConfig config);
     static void BatchEvaluate(std::vector<T>&);
 
     static void pareto_classify(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end) {

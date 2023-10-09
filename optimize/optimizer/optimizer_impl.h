@@ -15,7 +15,7 @@
 #include <memory>
 #include <cmath>
 #include <utility>
-#include "util.h"
+#include "optimizer_util.h"
 
 template<typename T>
 Optimizer<T>::Optimizer() {
@@ -371,8 +371,8 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 }
 
 template<typename T>
-std::vector<T> Optimizer<T>::Solve(Config config) {
-    Config::Optimizer opt_config = config.optimizer;
+std::vector<T> Optimizer<T>::Solve(OptimizerConfig config) {
+    OptimizerConfig::Optimizer opt_config = config.optimizer;
     niche_count = opt_config.niche_count;
     steps_to_combine = opt_config.steps_to_combine;
     exchange_steps = opt_config.steps_to_exchange;
@@ -403,17 +403,17 @@ std::vector<T> Optimizer<T>::Solve(Config config) {
 
 		printf("SOLUTIONS: %lu\n", solutions.size());
 
-		std::string solution_fitness_file("solution_history");
-		std::string population_fitness_file("fitness_history");
-		std::string population_diversity_file("diversity_history");
+		std::string solution_fitness_filename("solution_history");
+		std::string population_fitness_filename("fitness_history");
+		std::string population_diversity_filename("diversity_history");
 
 		std::string fitnessHistoryCSV = util::FitnessHistoryToCSV(getFitnessHistory());
 		std::string popFitHistoryCSV = util::PopulationFitnessHistoryToCSV(getPopulationHistory());
 		std::string popDivHistoryCSV = util::PopulationDiversityHistoryToCSV(getPopulationHistory());
 
-		util::WriteCSV(solution_fitness_file, working_directory, fitnessHistoryCSV);
-		util::WriteCSV(population_fitness_file, working_directory, popFitHistoryCSV);
-		util::WriteCSV(population_diversity_file, working_directory, popDivHistoryCSV);
+		util::WriteCSV(solution_fitness_filename, working_directory, fitnessHistoryCSV);
+		util::WriteCSV(population_fitness_filename, working_directory, popFitHistoryCSV);
+		util::WriteCSV(population_diversity_filename, working_directory, popDivHistoryCSV);
         
 		printf("Run %i Success\n", N);
 		reset();

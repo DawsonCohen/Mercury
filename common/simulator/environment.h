@@ -1,13 +1,7 @@
 #ifndef __ENVIRONMENT_H__
 #define __ENVIRONMENT_H__
 
-#include "spring.h"
-#include "mass.h"
-
-enum EnvironmentType {
-    ENVIRONMENT_LAND,
-    ENVIRONMENT_WATER
-};
+#include "structs.h"
 
 struct Environment
 {

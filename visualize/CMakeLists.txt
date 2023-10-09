@@ -25,6 +25,7 @@ set(VISUALIZE main_visualize.cpp)
 
 set(VISUALIZE
   ${VISUALIZE}
+  ../common
   ../common/simulator/Simulator.cu
 
   ../common/evolvables/SoftBody.cpp
@@ -33,6 +34,7 @@ set(VISUALIZE
   ../common/evolvables/knn.cu
 
   ../common/util/util.cpp
+  util/visualizer_util.cpp
 )
 
 set(RENDER
@@ -77,6 +79,7 @@ add_subdirectory(renderer)
 target_include_directories(visualizer PUBLIC
   renderer/src
   models
+  util
 )
 
 # Link libraries

@@ -4,8 +4,8 @@
 #include "vec_math.cuh"
 #include "environment.h"
 #include <math.h>
+#include <stdint.h>
 #include <assert.h>
-#include <stdio.h>
 
 #define EPS (float) 0.000001
 #define MIN_DIST (float) 0.005
@@ -150,7 +150,6 @@ inline void springForce(float3 bl, float3 br, float4 mat,
 
 struct SimOptions {
 	float dt;
-	bool devo;
 	uint massesPerBlock;
 	uint springsPerBlock;
 	uint maxMasses;

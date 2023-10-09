@@ -1,5 +1,5 @@
-#ifndef __Evaluator_Impl_H__
-#define __Evaluator_Impl_H__
+#ifndef __EVALUATOR_IMPL_H__
+#define __EVALUATOR_IMPL_H__
 
 #include "Evaluator.h"
 
@@ -7,7 +7,7 @@ template<typename T>
 ulong Evaluator<T>::eval_count = 0;
 
 template<typename T>
-float Evaluator<T>::devoPeriod = 0;
+float Evaluator<T>::devoTime = 0;
 
 template<typename T>
 float Evaluator<T>::devoCycles = 0;
@@ -26,15 +26,15 @@ Simulator Evaluator<T>::Sim = Simulator();
 
 
 template<typename T>
-void Evaluator<T>::Initialize(Config config) {
+void Evaluator<T>::Initialize(OptimizerConfig config) {
     T prototype;
     
     sim_config = config.simulator;
 	Sim.Initialize(prototype, config.evaluator.pop_size*1.5, sim_config);
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;
-    devoPeriod = config.evaluator.devo_time;
-    devoCycles = config.evaluator.devo_cycles;
+    devoTime = config.devo.devo_time;
+    devoCycles = config.devo.devo_cycles;
 }
 
 template<typename T>
@@ -50,22 +50,24 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
             elements.push_back({R.getMasses(), R.getSprings()});
     }
 
-    Sim.setDevoTime(devoPeriod);
-    Sim.setDevoCycles(devoCycles);
-    
-    Sim.setMaxTime(baselineTime);
+    std::vector<ElementTracker> trackers = Sim.SetElements(elements);
 
-    std::vector<ElementTracker> trackers = Sim.Simulate(elements);
     
+    for(uint i = 0; i < devoCycles; i++) {
+        Sim.Simulate(devoTime, true);
+
+        Sim.Devo();
+    }
+
+    Sim.Simulate(baselineTime);
     std::vector<Element> results = Sim.Collect(trackers);
 
     for(uint i = 0; i < solutions.size(); i++) {
         solutions[i].Update(results[i]);
         solutions[i].updateBaseline();
     }
-    Sim.setMaxTime(evaluationTime);
-    // TODO: "continue" simulation without copying vector again
-    trackers = Sim.Simulate(elements);
+    
+    Sim.Simulate(evaluationTime);
     results = Sim.Collect(trackers);
 
     for(uint i = 0; i < solutions.size(); i++) {

@@ -34,14 +34,14 @@ template<typename T>
 std::vector<T> Solve();
 
 Simulator sim;
-Config config;
+OptimizerConfig config;
 
 int main(int argc, char** argv)
 {
 	handle_commandline_args(argc, argv);
 
 	printf("----CONFIG----\n");
-	config = util::ReadConfigFile(config_file);
+	config = util::optimizer::ReadConfigFile(config_file);
 	handle_file_io();
 	printf("--------------\n");
 	std::cout << "Ouput directory: " << config.io.out_dir << std::endl;

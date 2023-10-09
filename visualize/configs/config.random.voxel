@@ -1,9 +1,9 @@
 # Configuration file for evo-devo
-ROBOT_TYPE=NNRobot
+ROBOT_TYPE=VoxelRobot
 
 # Objectives
 INTERACTIVE=1
-VERIFY=1
+VERIFY=
 ZOO=
 STATIONARY=
 
@@ -14,14 +14,11 @@ SPRINGS_PER_MASS=25
 HIDDEN_LAYER_SIZES=25,25
 
 # Evaluator Parameters
-BASE_TIME=3.0
-EVAL_TIME=10.0
 DEVO_TIME=2.0
-DEVO_CYCLES=0
+DEVO_CYCLES=5
 
 # Simulator Parameters
-TRACK_STRESSES=1
-DEVO=1 # TODO
+TIME_STEP=0.001
 
 # Renderer Parameters
 WIDTH=1600
@@ -30,7 +27,7 @@ FPS=30.0
 MAX_TIME=10.0
 
 # IO
-IN_DIR=/home/dawson/evo-devo/z_results/2023-10-06-015700/run_0/generation_10_fitness_2.535734
+IN_DIR=
 OUT_DIR=./z_results
 
 # COMPUTE

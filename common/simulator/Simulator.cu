@@ -93,8 +93,9 @@ void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint m
 	maxMasses = massesPerElement*maxElements;
 	maxSprings = springsPerElement*maxElements;
 
-	replacedSpringsPerElement = config.replacedSpringsPerElement;
+	replacedSpringsPerElement = config.replaced_springs_per_element;
 	maxReplaced = replacedSpringsPerElement * maxElements;
+	deltaT = config.time_step;
 	
 	this->config = config;
 
@@ -216,16 +217,23 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dSpringIDs,  springSizeuint);
 	cudaMalloc((void**)&m_dSpringIDs_Sorted,  springSizeuint);
 
-	envBuf[0] = EnvironmentWater;
+	switch(config.env_type) {
+		case ENVIRONMENT_LAND:
+			envBuf[0] = EnvironmentLand;
+		case ENVIRONMENT_WATER:
+			envBuf[0] = EnvironmentWater;
+	}
 	envCount++;
 }
 
-std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) {
-	numMasses = 0; numSprings = 0; numElements = 0;
+std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& elements) {
+	std::vector<ElementTracker> trackers;
 
-	std::vector<ElementTracker> trackers = Allocate(elements);
-	
-	float simTimeRemaining = max_time;
+	numMasses = 0; numSprings = 0; numElements = 0;
+	for(uint i = 0; i < elements.size(); i++) {
+		trackers.push_back(AllocateElement(elements[i]));
+	}
+
 	Eigen::Vector3f pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
 		float  mass = massBuf[i].mass;
@@ -279,14 +287,20 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 	cudaMemcpy(m_dSpringMatEncodings,   m_hSpringMatEncodings,   numSprings * sizeof(uint8_t), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dCompositeMats,   m_hCompositeMats,   (1<<MATERIAL_COUNT) *4*sizeof(float), cudaMemcpyHostToDevice);
 
-	cudaMemcpy(m_dSpringIDs,   m_hSpringIDs,   numSprings*sizeof(uint), cudaMemcpyHostToDevice);
 	#ifdef FULL_STRESS
 	cudaMemcpy(m_dStresses,   m_hStresses,   numSprings*sizeof(float), cudaMemcpyHostToDevice);
 	#endif
 
+	cudaMemcpy(m_dSpringIDs,   m_hSpringIDs,   numSprings*sizeof(uint), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMaxStressCount,   m_hMaxStressCount,   numSprings*sizeof(ushort), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMinStressCount,    m_hMinStressCount,    numSprings*sizeof(ushort), cudaMemcpyHostToDevice);
 	gpuErrchk( cudaPeekAtLastError() );
+
+	return trackers;
+}
+
+void Simulator::Simulate(float sim_duration, bool trackStresses) {
+	float simTimeRemaining = sim_duration;
 	
 	/*
 	Notes on SM resources:
@@ -319,72 +333,22 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 
 	SimOptions opt = {
 		deltaT,
-		config.devo,
 		massesPerBlock, springsPerBlock,
 		numMasses, numSprings,
 		MATERIAL_COUNT,
 		shiftskip,
 		envBuf[0]
 	};
-		
-	//This is for if we want to settle the robot before devo
-	//float hold_time = 0.0f;
-		
-	uint devo_cycle = 0;
+	
 	uint step_count = 0;
-	float devoTimeRemaining = devo_time;
-
-	if(config.devo) {
-		while(devo_cycle < max_devo_cycles) {
-			while(devoTimeRemaining > 0.0f){
-				integrateBodiesStresses<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
-					(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
-					(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-					(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
-					(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
-					(float*) m_dStresses, (uint*) m_dSpringIDs,
-					(float4*) m_dCompositeMats,
-					total_time, step_count, opt);
-					
-				gpuErrchk( cudaPeekAtLastError() );
-				cudaDeviceSynchronize();
-				
-				std::swap(m_currentRead, m_currentWrite);
-				
-				step_count++;
-				total_time += deltaT;
-				devoTimeRemaining -= deltaT;
-			}
-
-			Devo();
-			gpuErrchk( cudaPeekAtLastError() );
-			devo_cycle++;
-			devoTimeRemaining = devo_time;
-		}
-	}
-
-	//Reset body before final evaluation
-	//Might not be needed if we have a hold time in the water
-	//resetBodies(); - resets all masses to neutral position, sets forces and accelerations to 0, set time and step to 0.
-
+	
 	while(simTimeRemaining > 0.0f) {
-		if(config.track_stresses) {
-			integrateBodiesStresses<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
-				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
-				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
-				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
-				(float*) m_dStresses, (uint*) m_dSpringIDs,
-				(float4*) m_dCompositeMats,
-				total_time, step_count, opt);
-		} else {
-			integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
-				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
-				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
-				(float4*) m_dCompositeMats,
-				total_time, step_count, opt);
-		}
+		integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
+			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+			(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
+			(float4*) m_dCompositeMats,
+			total_time, step_count, opt);
 
 		gpuErrchk( cudaPeekAtLastError() );
 		cudaDeviceSynchronize();
@@ -395,51 +359,6 @@ std::vector<ElementTracker> Simulator::Simulate(std::vector<Element>& elements) 
 		total_time += deltaT;
 		simTimeRemaining -= deltaT;
 	}
-
-	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hMaxStressCount,m_dMaxStressCount,numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hMinStressCount, m_dMinStressCount, numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
-	#ifdef FULL_STRESS
-	cudaMemcpy(m_hStresses,   m_dStresses,   numSprings*sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hSpringIDs,   m_dSpringIDs,   numSprings*sizeof(uint), cudaMemcpyDeviceToHost);
-	#endif
-
-	for(uint i = 0; i < numMasses; i++) {
-		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
-		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
-		massBuf[i].pos = Eigen::Vector3f(pos.x,pos.y,pos.z);
-
-		assert(!isnan(pos.x) && !isnan(pos.y) && !isnan(pos.z));
-
-		massBuf[i].vel = Eigen::Vector3f(vel.x,vel.y,vel.z);
-	}
-
-	#if defined(FULL_STRESS) && defined(WRITE_STRESS)
-	std::vector<std::tuple<uint, float, uint, uint>> stressHistory;
-
-	for(uint i = 0; i < maxSprings; i++) {
-		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hMaxStressCount[i], m_hMinStressCount[i]});
-	}
-	// std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
-	// util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
-	#endif
-
-	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
-
-	return trackers;
-}
-
-
-std::vector<ElementTracker> Simulator::Allocate(const std::vector<Element>& elements) {
-	std::vector<ElementTracker> trackers;
-
-	for(uint i = 0; i < elements.size(); i++) {
-		trackers.push_back(AllocateElement(elements[i]));
-	}
-
-	return trackers;
 }
 
 ElementTracker Simulator::AllocateElement(const Element& e) {
@@ -481,6 +400,38 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 }
 
 std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& trackers) {
+	cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hMaxStressCount,m_dMaxStressCount,numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hMinStressCount, m_dMinStressCount, numSprings*sizeof(ushort),cudaMemcpyDeviceToHost);
+	#ifdef FULL_STRESS
+	cudaMemcpy(m_hStresses,   m_dStresses,   numSprings*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hSpringIDs,   m_dSpringIDs,   numSprings*sizeof(uint), cudaMemcpyDeviceToHost);
+	#endif
+
+	for(uint i = 0; i < numMasses; i++) {
+		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
+		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
+		massBuf[i].pos = Eigen::Vector3f(pos.x,pos.y,pos.z);
+
+		assert(!isnan(pos.x) && !isnan(pos.y) && !isnan(pos.z));
+
+		massBuf[i].vel = Eigen::Vector3f(vel.x,vel.y,vel.z);
+	}
+
+	#if defined(FULL_STRESS) && defined(WRITE_STRESS)
+	std::vector<std::tuple<uint, float, uint, uint>> stressHistory;
+
+	for(uint i = 0; i < maxSprings; i++) {
+		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hMaxStressCount[i], m_hMinStressCount[i]});
+	}
+	// std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
+	// util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
+	#endif
+
+	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
+
 	std::vector<Element> elements;
 	for(const ElementTracker& tracker : trackers) {
 		Element e = CollectElement(tracker);

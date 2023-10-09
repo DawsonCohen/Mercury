@@ -17,7 +17,7 @@ OBJDIR := obj
 BINDIR := .
 
 # Source directories
-CXX_SRCDIRS := common/simulator common/evolvables optimize/optimizer common/util
+CXX_SRCDIRS := common/simulator common/evolvables optimize/optimizer optimize/optimizer/util common/util
 CUDA_SRCDIRS := common/simulator common/evolvables
 
 INCLUDE_ALL := $(foreach dir,$(CXX_SRCDIRS),-I$(wildcard $(SRCDIR)/$(dir)))
@@ -34,7 +34,7 @@ CUDA_OBJS := $(patsubst %.cu,$(OBJDIR)/%.o,$(notdir $(CUDA_SRCS)))
 EIGEN_LIB_DIR := $(SRCDIR)/common/lib
 EIGEN_LIB_NAME := cudart
 
-INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/common/util
+INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/common/util -I$(SRCDIR)/optimize/optimizer/util
 LIB_DIRS := -L$(EIGEN_LIB_DIR)
 LIB_NAMES := -l$(EIGEN_LIB_NAME)
 
@@ -67,7 +67,11 @@ $(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cu | $(OBJDIR)
 	$(CU) $(CUFLAGS) -c -o $@ $<
 
 # Optimizer
-$(OBJDIR)/%.o: $(SRCDIR)/optimize/optimize/%.cpp | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/optimize/optimizer/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Optimizer Util
+$(OBJDIR)/%.o: $(SRCDIR)/optimize/optimizer/util/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 # Evolvables

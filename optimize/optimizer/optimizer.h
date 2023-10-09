@@ -10,7 +10,7 @@
 #include <map>
 #include <vector>
 #include "Evaluator.h"
-#include "config.h"
+#include "optimizer_config.h"
 
 template<typename T>
 using Solution = T*;
@@ -172,7 +172,7 @@ public:
         fitness_history.clear();
         population_history.clear();
     }
-    std::vector<T> Solve(Config config = Config());
+    std::vector<T> Solve(OptimizerConfig config = OptimizerConfig());
     
     std::vector<T>& getSolutions() {return solutions;}
     

@@ -18,6 +18,7 @@ Makefile
 # Videos and results
 *.avi
 z_results/
+z_archive/
 
 # Environment
 .vscode

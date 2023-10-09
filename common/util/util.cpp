@@ -11,47 +11,6 @@
 #include "util.h"
 
 namespace util {
-    
-std::string FitnessHistoryToCSV(std::vector<std::tuple<ulong,float>>& h) {
-    std::string s = "evaluation, solution_fitness\n";
-    for(size_t i = 0; i < h.size(); i++) {
-        s += std::to_string(std::get<0>(h[i])) + ", " + std::to_string(std::get<1>(h[i]))+"\n";
-    }
-
-    return s;
-}
-
-std::string PopulationFitnessHistoryToCSV(std::vector<std::tuple<ulong, std::vector<float>, std::vector<float>>> h) {
-    std::string s = "evaluation";
-    for(size_t i = 0; i < std::get<1>(h[0]).size(); i++) {
-        s += ", organism_"+std::to_string(i);
-    }
-    s+="\n";
-
-    for(size_t i = 0; i < h.size(); i++) {
-        for(size_t j = 0; j < std::get<1>(h[0]).size(); j++) {
-            s += std::to_string(std::get<0>(h[i])) + ", "+std::to_string(std::get<1>(h[i])[j]);
-        }
-        s+="\n";
-    }
-    return s;
-}
-
-std::string PopulationDiversityHistoryToCSV(std::vector<std::tuple<ulong, std::vector<float>, std::vector<float>>> h) {
-    std::string s = "evaluation";
-    for(size_t i = 0; i < std::get<1>(h[0]).size(); i++) {
-        s += ", organism_"+std::to_string(i);
-    }
-    s+="\n";
-
-    for(size_t i = 0; i < h.size(); i++) {
-        for(size_t j = 0; j < std::get<1>(h[0]).size(); j++) {
-            s += std::to_string(std::get<0>(h[i])) + ", "+std::to_string(std::get<2>(h[i])[j]);
-        }
-        s+="\n";
-    }
-    return s;
-}
 
 void RemoveOldFiles(const std::string& dir) {
     DIR* directory = opendir(dir.data());
@@ -129,7 +88,7 @@ int WriteCSV(const std::string& filename, const std::string& directory, const st
     return 0;
 }
 
-Config ReadConfigFile(const std::string& filename) {
+Config common::ReadConfigFile(const std::string& filename) {
     std::unordered_map<std::string, std::string> config_map;
 
     Config config;
@@ -171,107 +130,6 @@ Config ReadConfigFile(const std::string& filename) {
             std::cerr << "Robot type " << config_map["ROBOT_TYPE"] << " not supported" << std::endl;
         }
     }
-    
-    if(config_map.find("POP_SIZE") != config_map.end()) {
-        config.optimizer.pop_size = stoi(config_map["POP_SIZE"]);
-        config.evaluator.pop_size = stoi(config_map["POP_SIZE"]);
-    }
-
-    // OPTIMIZER CONFIGS
-    if(config_map.find("REPEATS") != config_map.end()) {
-        config.optimizer.repeats = stoi(config_map["REPEATS"]);
-    }
-
-    if(config_map.find("MAX_EVALS") != config_map.end()) {
-        config.optimizer.max_evals = stoi(config_map["MAX_EVALS"]);
-    }
-
-    if(config_map.find("NICHE_COUNT") != config_map.end()) {
-        config.optimizer.niche_count = stoi(config_map["NICHE_COUNT"]);
-    }
-
-    if(config_map.find("STEPS_TO_COMBINE") != config_map.end()) {
-        config.optimizer.steps_to_combine = stoi(config_map["STEPS_TO_COMBINE"]);
-    }
-
-    if(config_map.find("STEPS_TO_EXCHANGE") != config_map.end()) {
-        config.optimizer.steps_to_exchange = stoi(config_map["STEPS_TO_EXCHANGE"]);
-    }
-
-    if(config_map.find("MUTATION") != config_map.end()) {
-        if(config_map["MUTATION"] == "mutate") {
-            config.optimizer.mutation = MUTATE;
-        } else if(config_map["MUTATION"] == "random") {
-            config.optimizer.mutation = MUTATE_RANDOM;
-        } else {
-            std::cerr << "Mutation type " << config_map["MUTATION"] << " not supported" << std::endl;
-        }
-    }
-
-    if(config_map.find("CROSSOVER") != config_map.end()) {
-        if(config_map["CROSSOVER"] == "swap") {
-            config.optimizer.crossover = CROSS_SWAP;
-        } else if(config_map["CROSSOVER"] == "dc") {
-            config.optimizer.crossover = CROSS_DC;
-        } else if(config_map["CROSSOVER"] == "none") {
-            config.optimizer.crossover = CROSS_NONE;
-        } else if(config_map["CROSSOVER"] == "beam") {
-            config.optimizer.crossover = CROSS_BEAM;
-        } else {
-            std::cerr << "Crossover type " << config_map["CROSSOVER"] << " not supported" << std::endl;
-        }
-    }
-
-    if(config_map.find("NICHE") != config_map.end()) {
-        if(config_map["NICHE"] == "alps") {
-            config.optimizer.niche = NICHE_ALPS;
-        } else if(config_map["NICHE"] == "hfc") {
-            config.optimizer.niche = NICHE_HFC;
-        } else if(config_map["NICHE"] == "none") {
-            config.optimizer.niche = NICHE_NONE;
-        } else {
-            std::cerr << "niche type " << config_map["NICHE"] << " not supported" << std::endl;
-        }
-    }
-
-    if(config_map.find("MUTATION_RATE") != config_map.end()) {
-        config.optimizer.mutation_rate = stof(config_map["MUTATION_RATE"]);
-    }
-
-    if(config_map.find("CROSSOVER_RATE") != config_map.end()) {
-        config.optimizer.crossover_rate = stof(config_map["CROSSOVER_RATE"]);
-    }
-
-    if(config_map.find("ELITISM") != config_map.end()) {
-        config.optimizer.elitism = stof(config_map["ELITISM"]);
-    }
-
-    if(config_map.find("BASE_TIME") != config_map.end()) {
-        config.evaluator.base_time = stof(config_map["BASE_TIME"]);
-    }
-
-    if(config_map.find("EVAL_TIME") != config_map.end()) {
-        config.evaluator.eval_time = stof(config_map["EVAL_TIME"]);
-    }
-
-    if(config_map.find("DEVO_TIME") != config_map.end()) {
-        config.evaluator.devo_time = stof(config_map["DEVO_TIME"]);
-    }
-
-    if(config_map.find("DEVO_CYCLES") != config_map.end()) {
-        config.evaluator.devo_cycles = stoi(config_map["DEVO_CYCLES"]);
-    }
-
-    if(config_map.find("REPLACE_AMOUNT") != config_map.end()) {
-        config.evaluator.replace_amount = stoi(config_map["REPLACE_AMOUNT"]);
-    }
-    
-    if(config_map.find("TRACK_STRESSES") != config_map.end()) {
-        if(isdigit(config_map["TRACK_STRESSES"][0]) && stoi(config_map["TRACK_STRESSES"]))
-            config.simulator.track_stresses = true;
-        else
-            config.simulator.track_stresses = false;
-    }
 
     if(config_map.find("OUT_DIR") != config_map.end()) {
         config.io.out_dir = config_map["OUT_DIR"];
@@ -279,6 +137,22 @@ Config ReadConfigFile(const std::string& filename) {
 
     if(config_map.find("IN_DIR") != config_map.end()) {
         config.io.in_dir = config_map["IN_DIR"];
+    }
+
+    if(config_map.find("TIME_STEP") != config_map.end()) {
+        config.simulator.time_step = stof(config_map["TIME_STEP"]);
+    }
+
+    if(config_map.find("REPLACED_AMOUNT") != config_map.end()) {
+        config.simulator.replaced_springs_per_element = stoi(config_map["REPLACED_AMOUNT"]);
+    }
+
+    if(config_map.find("DEVO_TIME") != config_map.end()) {
+        config.devo.devo_time = stof(config_map["DEVO_TIME"]);
+    }
+
+    if(config_map.find("DEVO_CYCLES") != config_map.end()) {
+        config.devo.devo_cycles = stoi(config_map["DEVO_CYCLES"]);
     }
 
     if(config_map.find("CROSSOVER_NEURONS") != config_map.end()) {
@@ -293,49 +167,6 @@ Config ReadConfigFile(const std::string& filename) {
         config.nnrobot.springs_per_mass = stoi(config_map["SPRINGS_PER_MASS"]);
     }
 
-    if(config_map.find("OPTIMIZE") != config_map.end()) {
-        if(isdigit(config_map["OPTIMIZE"][0]) && stoi(config_map["OPTIMIZE"]))
-            config.objectives.optimize = true;
-        else
-            config.objectives.optimize = false;
-    }
-
-    if(config_map.find("VISUALIZE") != config_map.end()) {
-        if(isdigit(config_map["VISUALIZE"][0]) && stoi(config_map["VISUALIZE"]))
-            config.objectives.visualize = true;
-    }
-    
-    if(config_map.find("WRITE_VIDEO") != config_map.end()) {
-        if(isdigit(config_map["WRITE_VIDEO"][0]) && stoi(config_map["WRITE_VIDEO"]))
-            config.objectives.movie = true;
-    }
-    
-    if(config_map.find("WRITE_STRESS") != config_map.end()) {
-        if(isdigit(config_map["WRITE_STRESS"][0]) && stoi(config_map["WRITE_STRESS"])) {
-            // TODO
-        }
-    }
-    
-    if(config_map.find("VERIFY") != config_map.end()) {
-        if(isdigit(config_map["VERIFY"][0]) && stoi(config_map["VERIFY"]))
-            config.objectives.verify = true;
-    }
-    
-    if(config_map.find("ZOO") != config_map.end()) {
-        if(isdigit(config_map["ZOO"][0]) && stoi(config_map["ZOO"]))
-            config.objectives.zoo = true;
-    }
-    
-    if(config_map.find("BOUNCE") != config_map.end()) {
-        if(isdigit(config_map["BOUNCE"][0]) && stoi(config_map["BOUNCE"]))
-            config.objectives.bounce = true;
-    }
-    
-    if(config_map.find("STATIONARY") != config_map.end()) {
-        if(isdigit(config_map["STATIONARY"][0]) && stoi(config_map["STATIONARY"]))
-            config.objectives.stationary = true;
-    }
-
     if(config_map.find("HIDDEN_LAYER_SIZES") != config_map.end()) {
         config.nnrobot.hidden_layer_sizes.clear();
         
@@ -344,18 +175,19 @@ Config ReadConfigFile(const std::string& filename) {
 
         while (std::getline(ss, cell, ',')) {
             config.nnrobot.hidden_layer_sizes.push_back(std::stoi(cell));
-        }     
+        }
     }
 
-    /* TODO: 
-    
-    width
-    height
-    fps
-    max_time
+    if(config_map.find("CUDA_VISIBLE_DEVICES") != config_map.end()) {
+        config.hardware.cuda_device_ids.clear();
+        
+        std::istringstream ss(config_map["CUDA_VISIBLE_DEVICES"]);
+        std::string cell;
 
-    cuda_device_ids
-    */ 
+        while (std::getline(ss, cell, ',')) {
+            config.hardware.cuda_device_ids.push_back(std::stoi(cell));
+        }
+    }
 
     return config;
 }
