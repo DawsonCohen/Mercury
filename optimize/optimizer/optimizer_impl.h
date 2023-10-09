@@ -394,10 +394,10 @@ std::vector<T> Optimizer<T>::Solve(OptimizerConfig config) {
 
         switch(niche){
             case NICHE_NONE:
-                return NoNicheSolve();
+                solutions = NoNicheSolve();
                 break;
             default:
-                return NoNicheSolve();
+                solutions = NoNicheSolve();
                 break;
         }
 
