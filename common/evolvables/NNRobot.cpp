@@ -13,6 +13,15 @@
 
 #define EPS 0.0001
 
+
+std::ostream& operator<<(std::ostream& out, const Mass& m) {
+    return out << m.id << "-" << m.pos.x() << "-" << m.pos.y() << "-" << m.pos.z() << "-" << m.mass;
+}
+
+std::ostream& operator<<(std::ostream& out, const Spring& s) {
+  return out << s.m0 << "-" << s.m1 << "-" << s.rest_length << "-" << s.mean_length << "-" << s.material.encoding;
+}
+
 std::vector<int> NNRobot::hidden_sizes = std::vector<int>{25,25};
 unsigned int NNRobot::num_layers = 4;
 int NNRobot::crossover_neuron_count = 5;
@@ -140,6 +149,17 @@ std::vector<float> NNRobot::findDiversity(std::vector<NNRobot> pop) {
 std::string NNRobot::Encode() const {
     std::stringstream ss;
     ss << "type=NNRobot\n";
+    ss << "masses=";
+    for(unsigned int i = 0; i < masses.size(); i++) {
+        ss << masses[i];
+        ss << (i < masses.size()- 1 ? "," : "\n");
+    }
+    ss << "springs=";
+    for(unsigned int i = 0; i < springs.size(); i++) {
+        ss << springs[i];
+        ss << (i < springs.size()- 1 ? "," : "\n");
+    }
+    /*ss << "type=NNRobot\n";
     ss << "architecture=";
     for (unsigned int i = 0; i < hidden_sizes.size(); i++) {
         ss << hidden_sizes[i];
@@ -160,13 +180,77 @@ std::string NNRobot::Encode() const {
             ss << "\n";
         }
         ss << "\n";
-    }
+    }*/
     return ss.str();
 }
 
 void NNRobot::Decode(const std::string& filename) {
     std::ifstream infile(filename);
     if (infile)
+    {
+        std::string line;
+        masses.clear();
+        springs.clear();
+
+        std::getline(infile, line);
+        std::getline(infile, line);
+        std::size_t pos = line.find('=');
+        std::string key = line.substr(0, pos);
+        std::string value = line.substr(pos+1);
+        if(key == "masses") {
+            std::istringstream lineStream(value);
+            std::string cell;
+
+            while (std::getline(lineStream, cell, ',')) {
+                std::istringstream mass(cell);
+                std::string param;
+                float x,y,z, m;
+                uint id;
+                std::getline(mass, param, '-');
+                id = std::stoi(param);
+                std::getline(mass, param, '-');
+                x = std::stof(param);
+                std::getline(mass, param, '-');
+                y = std::stof(param);
+                std::getline(mass, param, '-');
+                z = std::stof(param);
+                std::getline(mass, param, '-');
+                m = std::stof(param);
+                masses.push_back(Mass(id, x, y, z, m));
+            }
+        }
+        std::getline(infile, line);
+        pos = line.find('=');
+        key = line.substr(0, pos);
+        value = line.substr(pos+1);
+        if(key == "springs") {
+            std::istringstream lineStream(value);
+            std::string cell;
+
+            while (std::getline(lineStream, cell, ',')) {
+                std::istringstream spring(cell);
+                std::string param;
+                uint m0, m1;
+                float rl, ml;
+                Material mat;
+
+                std::getline(spring, param, '-');
+                m0 = std::stoi(param);
+                std::getline(spring, param, '-');
+                m1 = std::stoi(param);
+                std::getline(spring, param, '-');
+                rl = std::stof(param);
+                std::getline(spring, param, '-');
+                ml = std::stof(param);
+                std::getline(spring, param, '-');
+                mat = materials::decode(std::stoi(param));
+                Spring s = {m0, m1, rl, ml, mat};
+                springs.push_back(s);
+            }
+        }
+        updateBaseline();
+    }
+    /*if (infile)
     {
         std::string line;
         Eigen::MatrixXf matrix;
@@ -236,7 +320,7 @@ void NNRobot::Decode(const std::string& filename) {
         infile.close();
     }
 
-    Build();
+    Build();*/
 }
 
 void NNRobot::Build() {
