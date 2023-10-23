@@ -7,7 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <random>
-// #include "util.h"
+#include "util.h"
 
 #include <cub/device/device_segmented_radix_sort.cuh>
 
@@ -19,6 +19,31 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
       fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
       if (abort) exit(code);
    }
+}
+
+template <std::size_t... Is, typename... Ts>
+std::string DataToCSVImpl(const std::string& header, const std::vector<std::tuple<Ts...>>& data, std::index_sequence<Is...>)
+{
+    std::ostringstream os;
+
+    // Write the header
+    os << header << std::endl;
+
+    // Write the data
+    for (const auto& row : data)
+    {
+        bool first = true;
+        ((os << (first ? first = false, "" : ","), os << std::get<Is>(row)), ...);
+        os << std::endl;
+    }
+
+    return os.str();
+}
+
+template <typename... Ts>
+std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data)
+{
+    return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>());
 }
 
 Simulator::Simulator(Element prototype, uint maxElements) :
@@ -341,6 +366,12 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 	};
 	
 	uint step_count = 0;
+
+	#ifdef DEBUG_TRACE
+		std::vector<std::tuple<unsigned int, float, float, float, float, float, float, float>> massTrace;
+		static int sim_run = 0;
+	#endif
+
 	
 	while(simTimeRemaining > 0.0f) {
 		integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
@@ -354,11 +385,34 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 		cudaDeviceSynchronize();
 			
 		std::swap(m_currentRead, m_currentWrite);
+
+		#ifdef DEBUG_TRACE
+			if(step_count % 20 == 0) {
+				cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
+				cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
+
+				for(unsigned int i = 0; i < numMasses; i++) {
+					float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
+					float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
+
+					massTrace.push_back({ i, total_time, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z });
+				}
+			}
+
+
+			
+		#endif
 		
 		step_count++;
 		total_time += deltaT;
 		simTimeRemaining -= deltaT;
 	}
+
+	#ifdef DEBUG_TRACE
+		std::string massTraceCSV = DataToCSV<unsigned int, float, float, float, float, float, float, float>("id, time, x, y, z, vx, vy, vz",massTrace);
+		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "./z_results", massTraceCSV);
+		sim_run++;
+	#endif
 }
 
 ElementTracker Simulator::AllocateElement(const Element& e) {

@@ -70,6 +70,7 @@ void SoftBody::Reset() {
     }
     sim_time = 0;
     total_sim_time = 0;
+    updateBaseline();
 }
 
 void SoftBody::Clear() {

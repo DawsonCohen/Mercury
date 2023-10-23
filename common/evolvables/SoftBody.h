@@ -75,7 +75,7 @@ public:
 		masses = e.masses; 
 		springs = e.springs;
 
-		updateCOM();
+		// updateCOM();
 		updateFitness();
 	}
 

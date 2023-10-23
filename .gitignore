@@ -6,6 +6,7 @@ CMakeFiles
 ##files
 visualize/visualizer
 optimize/evodevo
+common/runtests
 benchmark
 CMakeCache.txt
 cmake_install.cmake
@@ -14,11 +15,13 @@ cmake_install.cmake
 *.cmake
 Makefile
 !optimizer/Makefile
+!common/Makefile
 
 # Videos and results
 *.avi
 z_results/
 z_archive/
+*.png
 
 # Environment
 .vscode

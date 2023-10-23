@@ -41,24 +41,29 @@ void RemoveOldFiles(const std::string& dir) {
     closedir(directory);
 }
 
-template<typename... Ts>
-std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data){
+template <std::size_t... Is, typename... Ts>
+std::string DataToCSVImpl(const std::string& header, const std::vector<std::tuple<Ts...>>& data, std::index_sequence<Is...>)
+{
     std::ostringstream os;
-    
-    // Write header
+
+    // Write the header
     os << header << std::endl;
-    
-    // Write data
-    for (auto const& row : data)
+
+    // Write the data
+    for (const auto& row : data)
     {
-        // Write each field of the row separated by commas
         bool first = true;
-        ((os << (first ? first = false, "" : ","), os << std::get<Ts>(row)), ...);
-        
+        ((os << (first ? first = false, "" : ","), os << std::get<Is>(row)), ...);
         os << std::endl;
     }
-    
+
     return os.str();
+}
+
+template <typename... Ts>
+std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data)
+{
+    return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>());
 }
 
 int MakeDirectory(const std::string& directory) {
@@ -81,7 +86,7 @@ int WriteCSV(const std::string& filename, const std::string& directory, const st
     if(outfile.is_open())
         outfile << datastring;
     else {
-        std::cerr << "Error parsing config file: " << std::string(filename) << std::endl;
+        std::cerr << "Error writing to file: " << (directory + std::string("/") + filename) << std::endl;
         return 1;
     }
 
