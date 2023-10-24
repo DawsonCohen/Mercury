@@ -45,8 +45,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     std::vector<Element> elements;
 
     bool robotWasAllocated[solutions.size()];
-    Sim.Reset();
-    std::vector<float> og_fitness;
+    std::vector<float> og_fitness(solutions.size());
     uint i = 0;
     for(auto& R : solutions) {
         R.Reset();
@@ -83,6 +82,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
         if(robotWasAllocated[i]) {
             solutions[i].Update(results[i - skip_count]);
             solutions[i].updateBaseline();
+            og_fitness[i] = solutions[i].fitness();
         } else {
             skip_count++;
         }
