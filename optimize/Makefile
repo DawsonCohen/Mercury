@@ -45,6 +45,10 @@ CUFLAGS += $(INCLUDE_DIRS)
 ifdef BENCHMARK
 MAIN_SRC := benchmark.cpp
 EXECUTABLE = $(BINDIR)/benchmark
+else ifdef TESTS
+MAIN_SRC := tests/test_optimize.cpp
+EXECUTABLE = $(BINDIR)/runtests
+
 else
 MAIN_SRC := main_optimize.cpp
 EXECUTABLE = $(BINDIR)/evodevo
@@ -63,8 +67,13 @@ $(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/optimize/$(MAIN_SRC)
 $(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
+ifdef TESTS
 $(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cu | $(OBJDIR)
 	$(CU) $(CUFLAGS) -c -o $@ $<
+else
+$(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cu | $(OBJDIR)
+	$(CU) $(CUFLAGS) -c -o $@ $<
+endif
 
 # Optimizer
 $(OBJDIR)/%.o: $(SRCDIR)/optimize/optimizer/%.cpp | $(OBJDIR)
@@ -80,7 +89,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cpp | $(OBJDIR)
 
 # Evolvables
 $(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cu | $(OBJDIR)
-	$(CU) $(CUFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -c -o $@ $<
+	$(CU) $(CUFLAGS) -I$(SRCDIR)/common/simulator -DDEBUG_TRACE=1 -I$(SRCDIR)/optimize/optimizer -c -o $@ $<
 
 # Util
 $(OBJDIR)/%.o: $(SRCDIR)/common/util/%.cpp | $(OBJDIR)

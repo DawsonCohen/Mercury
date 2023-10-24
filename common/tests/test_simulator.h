@@ -13,12 +13,21 @@
 #include <sys/stat.h>
 
 #define SIM_TIME 5.0f
+#define ROBO_COUNT 20
 
-int TestSimulator(std::vector<SoftBody>& robots) {
-	Config config;
+int TestSimulator() {
+	Config::Simulator simConfig;
 	Simulator sim;
 
-	sim.Initialize(robots[0], robots.size(), config.simulator);
+	std::vector<SoftBody> robots;
+
+	for(uint i = 0; i < ROBO_COUNT; i++) {
+		NNRobot R;
+		R.Randomize();
+		robots.push_back(R);		
+	}
+
+	sim.Initialize(robots[0], robots.size(), simConfig);
 
 	float time_step = 1 / config.simulator.time_step;
 	uint devo_cycles = config.devo.devo_cycles;

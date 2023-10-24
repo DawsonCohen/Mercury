@@ -340,7 +340,7 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 	uint bytesPerElement = massesPerElement*bytesPerMass;
 	uint bytesPerMaterial = sizeof(float4);
 	// Must equal 1 for proper max/min spring calculation
-	uint elementsPerBlock = min(maxSharedMemSize / bytesPerElement, numElements);
+	uint elementsPerBlock = min((maxSharedMemSize - (1<<MATERIAL_COUNT)*bytesPerMaterial) / bytesPerElement, numElements);
 	uint massesPerBlock = massesPerElement * elementsPerBlock;
 	uint springsPerBlock = springsPerElement * elementsPerBlock;
 	uint sharedMemSize = massesPerBlock * bytesPerMass + (1<<MATERIAL_COUNT)*bytesPerMaterial;
@@ -410,7 +410,7 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 
 	#ifdef DEBUG_TRACE
 		std::string massTraceCSV = DataToCSV<unsigned int, float, float, float, float, float, float, float>("id, time, x, y, z, vx, vy, vz",massTrace);
-		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "./z_results", massTraceCSV);
+		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "/mnt/vault/z_results", massTraceCSV);
 		sim_run++;
 	#endif
 }

@@ -7,6 +7,8 @@ CMakeFiles
 visualize/visualizer
 optimize/evodevo
 common/runtests
+optimize/runtests
+visualize/runtests
 benchmark
 CMakeCache.txt
 cmake_install.cmake

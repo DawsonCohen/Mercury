@@ -1,8 +1,7 @@
 #include "Simulator.h"
-#include "test_simulator.h"
+#include "test_evaluator.h"
 #include "NNRobot.h"
 #include "VoxelRobot.h"
-#include <Eigen/Core>
 
 #include <filesystem>
 #include <regex>
@@ -24,16 +23,7 @@ int main(int argc, char** argv)
 {
 	handle_file_io();
 
-	std::vector<NNRobot> robots;
-
-    for(uint i = 0; i < ROBO_COUNT; i++) {
-		NNRobot R;
-		R.Randomize();
-		robots.push_back(R);
-	}
-
-
-    if(TestSimulator()) {
+    if(TestEvaluator()) {
         std::cout << "Test Case 1: Failed" << std::endl;
     } else {
         std::cout << "Test Case 1: Passed" << std::endl;
