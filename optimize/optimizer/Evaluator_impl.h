@@ -55,6 +55,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
         } else {
             robotWasAllocated[i] = false;
         }
+        i++;
     }
 
     std::vector<ElementTracker> trackers = Sim.SetElements(elements);
