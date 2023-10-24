@@ -28,7 +28,6 @@ Simulator Evaluator<T>::Sim = Simulator();
 template<typename T>
 void Evaluator<T>::Initialize(OptimizerConfig config, T prototype) {
     sim_config = config.simulator;
-	Sim.Initialize(prototype, config.evaluator.pop_size*1.5, sim_config);
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;
     devoTime = config.devo.devo_time;
@@ -40,18 +39,24 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     if(solutions.size() == 0) return;
     printf("EVALUATING %lu SOLUTIONS\n",solutions.size());
 
+	Sim.Initialize(solutions[0], solutions.size(), sim_config);
     // std::vector<T> copy_solutions;
 
     std::vector<Element> elements;
-    std::vector<Element> copy_elements;
 
+    bool robotWasAllocated[solutions.size()];
     Sim.Reset();
     std::vector<float> og_fitness;
-
+    uint i = 0;
     for(auto& R : solutions) {
         R.Reset();
-        // copy_solutions.push_back(R);
-        if(R.isValid()) elements.push_back(R);
+        if(R.isValid()) {
+            elements.push_back(R);
+            robotWasAllocated[i] = true;
+        } else {
+            robotWasAllocated[i] = false;
+        }
+        i++;
     }
 
     std::vector<ElementTracker> trackers = Sim.SetElements(elements);
@@ -73,9 +78,14 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     Sim.Simulate(evaluationTime);
     std::vector<Element> results = Sim.Collect(trackers);
 
+    uint skip_count = 0;
     for(uint i = 0; i < solutions.size(); i++) {
-        solutions[i].Update(results[i]);
-        og_fitness.push_back(solutions[i].fitness());
+        if(robotWasAllocated[i]) {
+            solutions[i].Update(results[i - skip_count]);
+            solutions[i].updateBaseline();
+        } else {
+            skip_count++;
+        }
     }
 
     Sim.Reset();
@@ -99,9 +109,15 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     Sim.Simulate(evaluationTime);
     results = Sim.Collect(trackers);
 
+    skip_count = 0;
     for(uint i = 0; i < solutions.size(); i++) {
-        solutions[i].Update(results[i]);
-        printf("og fitness: %f, new fitness: %f\n", og_fitness[i], solutions[i].fitness());
+        if(robotWasAllocated[i]) {
+            solutions[i].Update(results[i - skip_count]);
+            solutions[i].updateBaseline();
+            printf("og fitness: %f, new fitness: %f\n", og_fitness[i], solutions[i].fitness());
+        } else {
+            skip_count++;
+        }
     }
 
     eval_count += solutions.size();
