@@ -403,9 +403,9 @@ std::vector<T> Optimizer<T>::Solve(OptimizerConfig config) {
 
 		printf("SOLUTIONS: %lu\n", solutions.size());
 
-		std::string solution_fitness_filename("solution_history");
-		std::string population_fitness_filename("fitness_history");
-		std::string population_diversity_filename("diversity_history");
+		std::string solution_fitness_filename("solution_history.csv");
+		std::string population_fitness_filename("fitness_history.csv");
+		std::string population_diversity_filename("diversity_history.csv");
 
 		std::string fitnessHistoryCSV = util::FitnessHistoryToCSV(getFitnessHistory());
 		std::string popFitHistoryCSV = util::PopulationFitnessHistoryToCSV(getPopulationHistory());

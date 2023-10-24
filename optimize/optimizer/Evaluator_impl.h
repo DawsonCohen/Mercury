@@ -26,11 +26,8 @@ Simulator Evaluator<T>::Sim = Simulator();
 
 
 template<typename T>
-void Evaluator<T>::Initialize(OptimizerConfig config) {
-    T prototype;
-    
+void Evaluator<T>::Initialize(OptimizerConfig config, T prototype) {
     sim_config = config.simulator;
-	Sim.Initialize(prototype, config.evaluator.pop_size*1.5, sim_config);
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;
     devoTime = config.devo.devo_time;
@@ -42,12 +39,22 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     if(solutions.size() == 0) return;
     printf("EVALUATING %lu SOLUTIONS\n",solutions.size());
 
+	Sim.Initialize(solutions[0], solutions.size(), sim_config);
+    // std::vector<T> copy_solutions;
+
     std::vector<Element> elements;
 
+    bool robotWasAllocated[solutions.size()];
+
+    uint i = 0;
     for(auto& R : solutions) {
         R.Reset();
-        if(R.isValid())
-            elements.push_back({R.getMasses(), R.getSprings()});
+        if(R.isValid()) {
+            elements.push_back(R);
+            robotWasAllocated[i] = true;
+        } else {
+            robotWasAllocated[i] = false;
+        }
     }
 
     std::vector<ElementTracker> trackers = Sim.SetElements(elements);
@@ -62,16 +69,26 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     Sim.Simulate(baselineTime);
     std::vector<Element> results = Sim.Collect(trackers);
 
+    uint skip_count = 0;
     for(uint i = 0; i < solutions.size(); i++) {
-        solutions[i].Update(results[i]);
-        solutions[i].updateBaseline();
+        if(robotWasAllocated[i]) {
+            solutions[i].Update(results[i - skip_count]);
+            solutions[i].updateBaseline();
+        } else {
+            skip_count++;
+        }
     }
     
     Sim.Simulate(evaluationTime);
     results = Sim.Collect(trackers);
 
+    skip_count = 0;
     for(uint i = 0; i < solutions.size(); i++) {
-        solutions[i].Update(results[i]);
+        if(robotWasAllocated[i]) {
+            solutions[i].Update(results[i - skip_count]);
+        } else {
+            skip_count++;
+        }
     }
 
     for(T& R : solutions) {

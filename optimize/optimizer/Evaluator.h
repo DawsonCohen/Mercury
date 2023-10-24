@@ -20,7 +20,7 @@ public:
 
     static T protoRobot;
 
-    static void Initialize(OptimizerConfig config);
+    static void Initialize(OptimizerConfig config, T prototype = T());
     static void BatchEvaluate(std::vector<T>&);
 
     static void pareto_classify(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end) {
