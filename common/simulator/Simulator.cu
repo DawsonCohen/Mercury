@@ -63,6 +63,8 @@ Simulator::Simulator(Element prototype, uint maxElements) :
 }
 
 Simulator::~Simulator() {
+	if(!initialized) return;
+	
 	// Free CPU
 	delete[] m_hPos;
 	delete[] m_hVel;

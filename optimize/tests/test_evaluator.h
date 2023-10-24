@@ -14,13 +14,12 @@
 #include <string>
 #include <sys/stat.h>
 
-#define SIM_TIME 5.0f
-#define ROBO_COUNT 256
+#define SIM_TIME 10.0f
+#define ROBO_COUNT 10
 
 int TestEvaluator() {
 	OptimizerConfig config;
 	config.evaluator.pop_size = ROBO_COUNT;
-	Simulator sim;
 	std::vector<NNRobot> population(ROBO_COUNT);
 	std::vector<float> og_fitness(ROBO_COUNT);
 

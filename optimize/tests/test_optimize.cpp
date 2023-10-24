@@ -21,7 +21,7 @@ Config config;
 
 int main(int argc, char** argv)
 {
-	handle_file_io();
+	// handle_file_io();
 
     if(TestEvaluator()) {
         std::cout << "Test Case 1: Failed" << std::endl;

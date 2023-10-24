@@ -22,7 +22,7 @@ Config config;
 
 int main(int argc, char** argv)
 {
-	handle_file_io();
+	// handle_file_io();
 
 	std::vector<NNRobot> robots;
 
