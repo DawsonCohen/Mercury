@@ -59,18 +59,13 @@ int TestSimulator() {
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		NNRobot R;
 		R.Randomize();
-		robots.push_back(R);		
+		robots.push_back(R);
 	}
 
 	config.simulator.time_step = 1e-3;
 	sim.Initialize(robots[0], robots.size(), config.simulator);
 
 	std::vector<float> og_fitness = runSimulator(sim, robots);
-	
-	for(auto& R : robots) {
-		R.Reset();
-	}
-	
 	std::vector<float> reset_fitness = runSimulator(sim, robots);
 
 	int successFlag = 0; // default passed

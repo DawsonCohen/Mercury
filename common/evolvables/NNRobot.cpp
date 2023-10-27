@@ -209,7 +209,7 @@ void NNRobot::Decode(const std::string& filename) {
             while (std::getline(lineStream, cell, ';')) {
                 std::istringstream spring(cell);
                 std::string param;
-                uint m0, m1;
+                uint16_t m0, m1;
                 float rl, ml;
                 Material mat;
 
@@ -238,11 +238,8 @@ void NNRobot::Build() {
     forward();
 
     std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
-    for(unsigned int i = 0; i < masses.size(); i++) {
-        masses[i].pos = masses[i].pos + 0.003f*(Eigen::Vector3f::Random(3));
-    }
-    for (unsigned int i = 0; i < masses.size(); i++) {
-        for (unsigned int j = i + 1; j < masses.size(); j++) {
+    for (size_t i = 0; i < masses.size(); i++) {
+        for (size_t j = i + 1; j < masses.size(); j++) {
             dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
         }
     }
@@ -260,20 +257,20 @@ void NNRobot::Build() {
 
     // start = std::chrono::high_resolution_clock::now();
 
-    for (unsigned int i = 0; i < masses.size(); i++) {
+    for (size_t i = 0; i < masses.size(); i++) {
         auto neighbors = knns[i];
         Material mat1 = masses[i].material,
                  mat2, mat;
 
         for (auto neighbor : neighbors) {
             if(neighbor.second < EPS) {
-                mat1 = materials::air;
+                mat = materials::air;
             } else {
                 mat2 = masses[neighbor.first].material;
                 mat = materials::decode(mat1.encoding | mat2.encoding);
             }
 
-            Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
+            Spring s = {(uint16_t)i, neighbor.first, neighbor.second, neighbor.second, mat};
             springs.push_back(s);
         }
     }

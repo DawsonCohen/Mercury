@@ -3,12 +3,12 @@
 
 #include "vec_math.cuh"
 #include "environment.h"
+#include "material.h"
 #include <math.h>
 #include <stdint.h>
 #include <assert.h>
 
 #define EPS (float) 0.000001
-#define MIN_DIST (float) 0.005
 #define MAX_FORCE (float) 200000
 
 // Explicity assumes each mass is of unit 1 mass
@@ -62,27 +62,18 @@ inline void dragForce(const float4& vel, float3& force,
 		+ __fmul_rn(vel.z,vel.z);
 	float mag_vel = __fsqrt_rn(mag_vel_squared);
 
-	if(mag_vel < EPS) return;
+	// if(mag_vel < EPS) return;
 
-	float magFd = min(0.5*rho*mag_vel_squared, MAX_FORCE);
+	// float magFd = min(0.5*rho*mag_vel_squared, MAX_FORCE);
 
-	force.x += -magFd * __fdiv_rn(vel.x, mag_vel);
-	force.y += -magFd * __fdiv_rn(vel.y, mag_vel);
-	force.z += -magFd * __fdiv_rn(vel.z, mag_vel);
+	// force.x += -magFd * __fdiv_rn(vel.x, mag_vel);
+	// force.y += -magFd * __fdiv_rn(vel.y, mag_vel);
+	// force.z += -magFd * __fdiv_rn(vel.z, mag_vel);
+
+	force.x += -0.5*rho*mag_vel*vel.x;
+	force.y += -0.5*rho*mag_vel*vel.y;
+	force.z += -0.5*rho*mag_vel*vel.z;
 }
-
-// inline void dragForce(const float4& vel, float3& force,
-// 					float rho) {	
-// 	//Force due to drag = -1/2 * rho * v * |v| * A * Cd (Assume A and Cd are 1)
-// 	float mag_vel = __fsqrt_rn(
-// 		  __fmul_rn(vel.x,vel.x)
-// 		+ __fmul_rn(vel.y,vel.y)
-// 		+ __fmul_rn(vel.z,vel.z)
-// 		);
-// 	force.x += -0.5f*rho*vel.x*mag_vel;
-// 	force.y += -0.5f*rho*vel.y*mag_vel;
-// 	force.z += -0.5f*rho*vel.z*mag_vel;
-// }
 
 __device__
 inline void environmentForce(float3 pos, const float4& vel, float3& force,
@@ -141,6 +132,7 @@ inline void springForce(float3 bl, float3 br, float4 mat,
 		__fdiv_rn(diff.z,L)
 	};
 	if(isnan(dir.x) || isnan(dir.y) || isnan(dir.z)) {
+		magF = 0.0f;
 		force = {0.0f, 0.0f, 0.0f};
 	} else {
 		magF = min(mat.x*(rest_length-L), MAX_FORCE);

@@ -62,6 +62,16 @@ int main(int argc, char** argv)
 
 		for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
 		{
+			if(std::filesystem::is_regular_file(file.path()) &&
+				std::regex_match(file.path().filename().string(), config_pattern))
+			{
+					opt_config = util::optimizer::ReadConfigFile(file.path());
+					NNRobot::Configure(opt_config.nnrobot);
+			}
+		}
+
+		for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
+		{
 			if (std::filesystem::is_regular_file(file.path()) &&
 				std::regex_match(file.path().filename().string(), pattern))
 			{
@@ -80,15 +90,11 @@ int main(int argc, char** argv)
 						solutions.push_back(solution);
 					}
 				} 
-			} else if(std::filesystem::is_regular_file(file.path()) &&
-				std::regex_match(file.path().filename().string(), config_pattern))
-				{
-					opt_config = util::optimizer::ReadConfigFile(file.path());
 			}
 		}
 	}
-	
 	if(!config.objectives.verify) {
+		NNRobot::Configure(config.nnrobot);
 		uint seed = std::chrono::system_clock::now().time_since_epoch().count();
 		srand(seed);
 		for(uint i = 0; i < config.visualizer.rand_count; i++) {
@@ -320,7 +326,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 			// printf("Iteration: %u\n", i);
 			float crntTime = glfwGetTime();
 			
-			sim.Simulate(time_step);
+			sim.Simulate(time_step, true);
 
 			results = sim.Collect(trackers);
 

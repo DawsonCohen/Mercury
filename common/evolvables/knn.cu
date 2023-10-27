@@ -23,13 +23,13 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 namespace KNN {
 
-void key_value_sort(float* d_keys_in, float* d_keys_out, uint* d_values_in, uint* d_values_out, uint count) {
+void key_value_sort(float* d_keys_in, float* d_keys_out, ushort* d_values_in, ushort* d_values_out, ushort count) {
     // Determine number of segments
     int num_segments = count;
 
     // Allocate memory on device for offsets
     int* h_offsets = new int[num_segments+1];
-    for(uint i = 0; i < num_segments+1; i++) {
+    for(ushort i = 0; i < num_segments+1; i++) {
         h_offsets[i] = (int) count*i;
     }
 
@@ -60,13 +60,13 @@ void key_value_sort(float* d_keys_in, float* d_keys_out, uint* d_values_in, uint
 }
 
 template<typename T>
-std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group, unsigned int K)
+std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const T& mass_group, uint16_t K)
 {
     unsigned int num_masses = mass_group.masses.size();
     
     // CPU data
     float* h_points = new float[num_masses * 3];
-    uint* h_ids = new uint[num_masses * num_masses];
+    uint16_t* h_ids = new ushort[num_masses * num_masses];
     float* h_distances = new float[num_masses * num_masses];
 
     std::vector<Mass> masses = mass_group.masses;
@@ -81,10 +81,10 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
     float* d_points;
     cudaMalloc(&d_points, num_masses * 3 * sizeof(float));
 
-    uint* d_ids;
-    uint* d_ids_sorted;
-    cudaMalloc(&d_ids, num_masses * num_masses * sizeof(uint));
-    cudaMalloc(&d_ids_sorted, num_masses * num_masses * sizeof(uint));
+    uint16_t* d_ids;
+    uint16_t* d_ids_sorted;
+    cudaMalloc(&d_ids, num_masses * num_masses * sizeof(uint16_t));
+    cudaMalloc(&d_ids_sorted, num_masses * num_masses * sizeof(uint16_t));
 
     float* d_distances;
     float* d_distances_sorted;
@@ -95,24 +95,24 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
     cudaMemcpy(d_points, h_points, num_masses * 3 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Compute k-nearest neighbors
-    uint block_count = (num_masses + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    uint16_t block_count = (num_masses + BLOCK_SIZE - 1) / BLOCK_SIZE;
     dim3 num_blocks = {block_count, block_count};
 
     // Execute the kernel
-    symmetric_distance_matrix_kernel<<<num_blocks, {BLOCK_SIZE, BLOCK_SIZE}>>>((float3*) d_points, d_ids, d_distances, num_masses);
+    symmetric_distance_matrix_kernel<<<num_blocks, {BLOCK_SIZE, BLOCK_SIZE}>>>((float3*) d_points, (ushort*) d_ids, d_distances, num_masses);
     gpuErrchk( cudaPeekAtLastError() );
     cudaDeviceSynchronize();
 
     key_value_sort(d_distances, d_distances_sorted, d_ids, d_ids_sorted, num_masses);
 
     cudaMemcpy(h_distances, d_distances_sorted, num_masses * num_masses * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_ids, d_ids_sorted, num_masses * num_masses * sizeof(uint), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_ids, d_ids_sorted, num_masses * num_masses * sizeof(uint16_t), cudaMemcpyDeviceToHost);
     
-    std::vector<std::vector<std::pair<unsigned int,float>>> KNN(
-        num_masses, std::vector<std::pair<unsigned int, float>>(K));
+    std::vector<std::vector<std::pair<uint16_t,float>>> KNN(
+        num_masses, std::vector<std::pair<uint16_t, float>>(K));
 
-    for(uint i = 0; i < num_masses; i++) {
-        for (uint j = 0; j < K; j++) {
+    for(uint16_t i = 0; i < num_masses; i++) {
+        for (uint16_t j = 0; j < K; j++) {
             KNN[i][j].first = h_ids[i*num_masses + j];
             KNN[i][j].second = h_distances[i*num_masses + j];
         }
@@ -134,27 +134,27 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN(const T& mass_group,
 
 
 template<typename T>
-std::vector<std::vector<std::pair<unsigned int,float>>> KNN_CPU(const T& mass_group, unsigned int K)
+std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU(const T& mass_group, uint16_t K)
 {
     unsigned int num_masses = mass_group.masses.size();
 
     std::vector<Mass> masses = mass_group.masses;
 
     std::vector<std::vector<float>> distances(num_masses, std::vector<float>(num_masses));
-    for(uint i = 0; i < num_masses; i++) {
+    for(size_t i = 0; i < num_masses; i++) {
         Eigen::Vector3f p1 = masses[i].pos;
-        for(uint j = 0; j < num_masses; j++) {
+        for(size_t j = 0; j < num_masses; j++) {
             Eigen::Vector3f p2 = masses[j].pos;
             distances[i][j] = distances[j][i] = (p1-p2).norm();
         }
     }
 
-    std::vector<std::vector<std::pair<unsigned int,float>>> KNN(
-        num_masses, std::vector<std::pair<unsigned int, float>>(K));
+    std::vector<std::vector<std::pair<uint16_t,float>>> KNN(
+        num_masses, std::vector<std::pair<uint16_t, float>>(K));
 
-    for(uint i = 0; i < distances.size(); i++) {
-        std::vector<std::pair<uint, float>> neighbors(distances.size());
-        for (uint j = 0; j < distances.size(); j++) {
+    for(size_t i = 0; i < distances.size(); i++) {
+        std::vector<std::pair<uint16_t, float>> neighbors(distances.size());
+        for (size_t j = 0; j < distances.size(); j++) {
             if(distances[i][j] == 0.0f)
                 neighbors[j] = {j, std::numeric_limits<double>::infinity()};
             else
@@ -172,7 +172,7 @@ std::vector<std::vector<std::pair<unsigned int,float>>> KNN_CPU(const T& mass_gr
 }
 
 // Explicit instantiation of bar for NNRobot
-template std::vector<std::vector<std::pair<unsigned int,float>>> KNN<NNRobot>(const NNRobot& mass_group, unsigned int K);
-template std::vector<std::vector<std::pair<unsigned int,float>>> KNN_CPU<NNRobot>(const NNRobot& mass_group, unsigned int K);
+template std::vector<std::vector<std::pair<uint16_t,float>>> KNN<NNRobot>(const NNRobot& mass_group, uint16_t K);
+template std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU<NNRobot>(const NNRobot& mass_group, uint16_t K);
 
 }

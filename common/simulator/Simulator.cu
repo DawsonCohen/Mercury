@@ -116,7 +116,6 @@ void Simulator::Initialize(Element prototype, uint maxElements, Config::Simulato
 void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint maxElements, Config::Simulator config) {
 	massesPerElement = massesPerElement;
 	springsPerElement = springsPerElement;
-	this->maxElements = maxElements;
 	maxMasses = massesPerElement*maxElements;
 	maxSprings = springsPerElement*maxElements;
 
@@ -124,6 +123,7 @@ void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint m
 	maxReplaced = replacedSpringsPerElement * maxElements;
 	deltaT = config.time_step;
 	
+	this->maxElements = maxElements;
 	this->config = config;
 
 	_initialize();
@@ -289,7 +289,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 
 	for(uint i = 0; i < numSprings; i++) {
 		float    lbar     	 = springBuf[i].mean_length;
-		uint	 left     	 = springBuf[i].m0,
+		ushort	 left     	 = springBuf[i].m0,
 			     right	  	 = springBuf[i].m1;
 		uint8_t	 matEncoding = springBuf[i].material.encoding;
 
@@ -339,10 +339,10 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 
 	uint maxSharedMemSize = 49152;
 	uint bytesPerMass = sizeof(float3) + sizeof(float3);
-	uint bytesPerElement = massesPerElement*bytesPerMass;
 	uint bytesPerMaterial = sizeof(float4);
-	// Must equal 1 for proper max/min spring calculation
-	uint elementsPerBlock = min((maxSharedMemSize - (1<<MATERIAL_COUNT)*bytesPerMaterial) / bytesPerElement, numElements);
+	// uint bytesPerElement = massesPerElement*bytesPerMass;
+	// uint elementsPerBlock = min((maxSharedMemSize - (1<<MATERIAL_COUNT)*bytesPerMaterial) / bytesPerElement, numElements);
+	uint elementsPerBlock = 1; // must equal 1
 	uint massesPerBlock = massesPerElement * elementsPerBlock;
 	uint springsPerBlock = springsPerElement * elementsPerBlock;
 	uint sharedMemSize = massesPerBlock * bytesPerMass + (1<<MATERIAL_COUNT)*bytesPerMaterial;
@@ -373,12 +373,22 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 	std::vector<std::tuple<unsigned int, float, float, float, float, float, float, float>> massTrace;
 	
 	while(simTimeRemaining > 0.0f) {
-		integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
-			(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
-			(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
-			(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
-			(float4*) m_dCompositeMats,
-			total_time, step_count, opt);
+		if(trackStresses) {
+			integrateBodiesStresses<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
+				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
+				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
+				(float*) m_dStresses, (uint*) m_dSpringIDs, (float4*) m_dCompositeMats,
+				total_time, step_count, opt);
+		} else {
+			integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
+				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
+				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
+				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
+				(float4*) m_dCompositeMats,
+				total_time, step_count, opt);
+		}
 
 		gpuErrchk( cudaPeekAtLastError() );
 		cudaDeviceSynchronize();
@@ -397,9 +407,6 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 					massTrace.push_back({ i, total_time, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z });
 				}
 			}
-
-
-			
 		}
 		
 		step_count++;
@@ -409,7 +416,7 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 
 	if(trace) {
 		std::string massTraceCSV = DataToCSV<unsigned int, float, float, float, float, float, float, float>("id, time, x, y, z, vx, vy, vz",massTrace);
-		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "./z_results", massTraceCSV);
+		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "/mnt/vault/evo-devo/z_results", massTraceCSV);
 		sim_run++;
 	}
 }
@@ -423,9 +430,7 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 	tracker.mass_end = tracker.mass_begin; 
 	tracker.spring_end = tracker.spring_begin;
 	tracker.offset_end = tracker.offset_begin;
-	uint massOffset = numMasses;
-	
-	numElements++;
+	uint massOffset = massesPerElement * numElements;
 	
 	for(const Mass& m : e.masses) {
 		massBuf[numMasses] = m;
@@ -435,11 +440,12 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 
 	uint i = 0;
 
-	unsigned seed = rand();
-	std::vector<Spring> shuffledSprings(e.springs);
-	std::shuffle(shuffledSprings.begin(), shuffledSprings.end(), std::default_random_engine(seed));
+	// unsigned seed = rand();
+	// std::vector<Spring> shuffledSprings(e.springs);
+	// std::shuffle(shuffledSprings.begin(), shuffledSprings.end(), std::default_random_engine(seed));
 
-	for(const Spring& s : shuffledSprings) {
+	// for(const Spring& s : shuffledSprings) {
+	for(const Spring& s : e.springs) {
 		springBuf[numSprings] = s;
 		tracker.spring_end++;
 
@@ -448,6 +454,8 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 		numSprings++;
 		i++;
 	}
+	
+	numElements++;
 	
 	return tracker;
 }
@@ -478,8 +486,8 @@ std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& track
 	for(uint i = 0; i < maxSprings; i++) {
 		stressHistory.push_back({m_hSpringIDs[i], m_hStresses[i], m_hMaxStressCount[i], m_hMinStressCount[i]});
 	}
-	// std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
-	// util::WriteCSV("../z_results/stress.csv", stressHistoryCSV);
+	std::string stressHistoryCSV = util::DataToCSV("id, stress, max count, min count",stressHistory);
+	util::WriteCSV("stress.csv","../z_results/", stressHistoryCSV);
 	#endif
 
 	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);

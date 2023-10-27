@@ -43,6 +43,8 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     // std::vector<T> copy_solutions;
 
     std::vector<Element> elements;
+    std::vector<Element> results;
+    uint skip_count;
 
     bool robotWasAllocated[solutions.size()];
 
@@ -68,9 +70,9 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     }
 
     Sim.Simulate(baselineTime);
-    std::vector<Element> results = Sim.Collect(trackers);
+    results = Sim.Collect(trackers);
 
-    uint skip_count = 0;
+    skip_count = 0;
     for(uint i = 0; i < solutions.size(); i++) {
         if(robotWasAllocated[i]) {
             solutions[i].Update(results[i - skip_count]);

@@ -147,7 +147,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
             }
         }
 
-        Spring s{srcIdx,vIdx,L,L,mat};
+        Spring s{(uint16_t) srcIdx,(uint16_t) vIdx,L,L,mat};
         _springs.push_back(s);
     }
 

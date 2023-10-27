@@ -7,7 +7,7 @@
 // CUDA kernel to compute the distance matrix
 // TODO change points from float3
 __global__
-inline void distance_matrix_kernel(float3* points, uint* ids, float* distances, uint num_points) {
+inline void distance_matrix_kernel(float3* points, ushort* ids, float* distances, ushort num_points) {
     uint i = threadIdx.x + blockIdx.x * blockDim.x;
     uint j = threadIdx.y + blockIdx.y * blockDim.y;
 
@@ -32,7 +32,7 @@ inline void distance_matrix_kernel(float3* points, uint* ids, float* distances, 
 }
 
 __global__
-inline void symmetric_distance_matrix_kernel(float3* points, uint* ids, float* distances, uint num_points) {
+inline void symmetric_distance_matrix_kernel(float3* points, ushort* ids, float* distances, ushort num_points) {
     uint i = blockIdx.x * blockDim.x + threadIdx.x;
     uint j = blockIdx.y * blockDim.y + threadIdx.y;
 
