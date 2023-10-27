@@ -106,6 +106,7 @@ public:
 
     static void fillRandMasses(unsigned int N, int seed = 0) {
         std::default_random_engine gen = std::default_random_engine(seed);
+        randMasses.clear();
 
         for(unsigned int i = 0; i < N; i++) {
             float el = (uniform(gen) * M_PI) - M_PI/2;

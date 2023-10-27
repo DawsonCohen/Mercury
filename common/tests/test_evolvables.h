@@ -38,13 +38,11 @@ int TestNNRobot() {
     if(R.springs.size() != Rdecoded.springs.size()) return 4;
 
     for(size_t i = 0; i < R.springs.size(); i++) {
-        if(R.springs[i].m0 != Rdecoded.springs[i].m0) {
-            return 1;
-        }
-        if(R.springs[i].m1 != Rdecoded.springs[i].m1) return 5;
-        if(abs(R.springs[i].rest_length - Rdecoded.springs[i].rest_length) > 1e-4f) return 6;
-        if(abs(R.springs[i].mean_length - Rdecoded.springs[i].mean_length) > 1e-4f) return 7;
-        if(R.springs[i].material != Rdecoded.springs[i].material) return 8;
+        if(R.springs[i].m0 != Rdecoded.springs[i].m0) return 5;
+        if(R.springs[i].m1 != Rdecoded.springs[i].m1) return 6;
+        if(abs(R.springs[i].rest_length - Rdecoded.springs[i].rest_length) > 1e-4f) return 7;
+        if(abs(R.springs[i].mean_length - Rdecoded.springs[i].mean_length) > 1e-4f) return 8;
+        if(R.springs[i].material != Rdecoded.springs[i].material) return 9;
     }
 
     return 0;

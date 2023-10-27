@@ -24,7 +24,7 @@ int NNRobot::crossover_neuron_count = 5;
 int NNRobot::mutation_weight_count = 10;
 int NNRobot::springs_per_mass = 25;
 unsigned int NNRobot::maxMasses = 1728;
-unsigned int NNRobot::maxSprings = NNRobot::maxMasses * 25;
+unsigned int NNRobot::maxSprings = NNRobot::maxMasses * NNRobot::springs_per_mass;
 
 void ShiftY(NNRobot& R) {
     bool setFlag = false;

@@ -26,14 +26,9 @@ int main(int argc, char** argv)
 	// handle_file_io();
 
 	std::vector<NNRobot> robots;
+	int err;
 
-    for(uint i = 0; i < ROBO_COUNT; i++) {
-		NNRobot R;
-		R.Randomize();
-		robots.push_back(R);
-	}
-
-	int err = TestSimulator();
+	err = TestSimulator();
     if(err) {
         std::cout << "Test Case 1: Failed with " << err << std::endl;
     } else {
