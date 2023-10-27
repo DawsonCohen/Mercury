@@ -31,7 +31,9 @@ public:
     Candidate(const Candidate& src): 
         mFitness(src.mFitness),
         mParetoLayer(src.mParetoLayer),
-        mAge(src.mAge)
+        mAge(src.mAge),
+        mParentFlag(src.mParentFlag),
+        mValid(src.mValid)
     {}
 
 
@@ -40,6 +42,8 @@ public:
         swap(c1.mFitness, c2.mFitness);
         swap(c1.mParetoLayer, c2.mParetoLayer);
         swap(c1.mAge,c2.mAge);
+        swap(c1.mValid,c2.mValid);
+        swap(c1.mParentFlag,c2.mParentFlag);
     }
 
     void IncrementAge() { mAge++; };

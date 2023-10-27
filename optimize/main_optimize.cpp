@@ -1,6 +1,6 @@
 #include "Simulator.h"
 #include "optimizer.h"
-#include "util.h"
+#include "optimizer_util.h"
 #include "NNRobot.h"
 #include "VoxelRobot.h"
 #include <Eigen/Core>
@@ -20,15 +20,6 @@ std::string config_file = "configs/config.default";
 
 void handle_commandline_args(int argc, char** argv);
 int handle_file_io();
-
-#ifdef VIDEO
-GLFWwindow* GLFWsetup(bool visualize);
-void GLFWinitialize();
-void GLFWterminate(GLFWwindow*);
-
-void Render(std::vector<SoftBody>& robots);
-void Visualize(std::vector<SoftBody>& R);
-#endif
 
 template<typename T>
 std::vector<T> Solve();

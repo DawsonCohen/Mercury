@@ -71,7 +71,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cpp | $(OBJDIR)
 
 # Evolvables
 $(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cu | $(OBJDIR)
-	$(CU) $(CUFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -DDEBUG_TRACE=1 -c -o $@ $<
+	$(CU) $(CUFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -c -o $@ $<
 
 # Util
 $(OBJDIR)/%.o: $(SRCDIR)/common/util/%.cpp | $(OBJDIR)

@@ -13,15 +13,13 @@ struct Mass {
 	
 	float mass = 1.0f;
 	Eigen::Vector3f vel   = Eigen::Vector3f::Zero();
-	Eigen::Vector3f acc   = Eigen::Vector3f::Zero();
-	Eigen::Vector3f force = Eigen::Vector3f::Zero();
 
 	bool	active = false;
 
 	Mass() {}
 
-	Mass(uint id, float x, float y, float z, float mass = 1.0f) :
-	id(id), mass(mass)
+	Mass(uint id, float x, float y, float z, float mass = 1.0f, Material mat = materials::bone) :
+	id(id), material(mat), mass(mass)
 	 {
 		pos = Eigen::Vector3f(x, y, z);
 		protoPos = pos;
@@ -30,6 +28,10 @@ struct Mass {
 	Mass(uint id, Eigen::Vector3f pos, Material mat, float mass = 1.0f) :
 	id(id), pos(pos), protoPos(pos), material(mat), mass(mass)
 	{}
+
+	friend std::ostream& operator<<(std::ostream& out, const Mass& m) {
+		return out << m.id << "," << m.protoPos.x() << "," << m.protoPos.y() << "," << m.protoPos.z() << "," << m.mass << "," << (unsigned int) m.material.encoding;
+	}
 };
 
 #endif

@@ -65,8 +65,10 @@ void SoftBody::Reset() {
     for(Mass& m : masses) {
         m.pos = m.protoPos;
         m.vel = {0.0f, 0.0f, 0.0f};
-        m.acc = {0.0f, 0.0f, 0.0f};
-        m.force = {0.0f, 0.0f, 0.0f};
+    }
+    for(Spring& s : springs) {
+        s.mean_length = (masses[s.m0].protoPos - masses[s.m1].protoPos).norm();
+        s.rest_length = s.mean_length;
     }
     sim_time = 0;
     total_sim_time = 0;

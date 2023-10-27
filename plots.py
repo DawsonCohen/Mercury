@@ -11,8 +11,8 @@ def plotFitness(filepath):
     solution_hist = pd.DataFrame()
     run_count = 0
     first_eval=0
-    while(os.path.isfile(f"{filepath}/run_{run_count}/solution_history")):
-        fitness = pd.read_csv(f"{filepath}/run_{run_count}/solution_history")
+    while(os.path.isfile(f"{filepath}/run_{run_count}/solution_history.csv")):
+        fitness = pd.read_csv(f"{filepath}/run_{run_count}/solution_history.csv")
         fitness.rename(columns=lambda x: x.strip(),inplace=True)
         
         if(run_count == 0): first_eval = fitness['evaluation']
@@ -44,12 +44,11 @@ def plotComparedFitness(filepaths, stratagies):
     for filepath in filepaths:
         run_count = 0
         first_eval=0
-        while(os.path.isfile(f"{filepath}/run_{run_count}/solution_history")):
-            fitness = pd.read_csv(f"{filepath}/run_{run_count}/solution_history")
+        while(os.path.isfile(f"{filepath}/run_{run_count}/solution_history.csv")):
+            fitness = pd.read_csv(f"{filepath}/run_{run_count}/solution_history.csv")
             fitness.rename(columns=lambda x: x.strip(),inplace=True)
             
             if(run_count == 0): first_eval = fitness['evaluation']
-            # fitness['evaluation']=fitness['evaluation']
             fitness['evaluation']=first_eval
             fitness['run']=run_count
             fitness['strat'] = stratagies[strat]
@@ -76,8 +75,8 @@ def plotComparedFitness(filepaths, stratagies):
 def plotDiversity(filepath):
     div_hist = pd.DataFrame()    
     run_count = 0
-    while(os.path.isfile(f"{filepath}/run_{run_count}/diversity_history")):
-        diversity = pd.read_csv(f"{filepath}/run_{run_count}/diversity_history")
+    while(os.path.isfile(f"{filepath}/run_{run_count}/diversity_history.csv")):
+        diversity = pd.read_csv(f"{filepath}/run_{run_count}/diversity_history.csv")
         diversity.rename(columns=lambda x: x.strip(),inplace=True)
 
         organisms = diversity.columns.to_list()
@@ -108,8 +107,8 @@ def plotDiversity(filepath):
 
 if __name__ == "__main__":
     # TODO: ingest filepath so we can call from evodevo
-    filepath1 = "/home/dawson/evo-devo/z_results/2023-10-09-131429"
-    filepath2 = "/home/dawson/evo-devo/z_results/2023-10-09-114918"
+    filepath1 = "/path/to/z_results/evo_run_folder"
+    filepath2 = "/path/to/z_results/evodevo_run_folder"
     plotComparedFitness([filepath1, filepath2], ["Evo", "EvoDevo"])
     plotDiversity(filepath2)
     plotFitness(filepath2)

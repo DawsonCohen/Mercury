@@ -38,7 +38,10 @@ int TestEvaluator() {
 	for(uint i = 0; i < population.size(); i++) {
 		og_fitness[i] = evalBuf[i].fitness();
     }
+	Evaluator<NNRobot>::BatchEvaluate(evalBuf);
+	for(uint i = 0; i < population.size(); i++) {
+		if(evalBuf[i].fitness() - og_fitness[i] > 1e-4) return 1;
+    }
 
-	int successFlag = 0;
-	return successFlag;
+	return 0;
 }

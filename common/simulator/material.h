@@ -39,12 +39,12 @@ struct Color {
 // k - spring constant 
 // spring oscillation L0 = L0 + dL0*sin(wt+phi)
 struct Material {
-	u_char id;
+	uint8_t id;
 	float k;
 	float dL0;
 	float omega;
 	float phi;
-	u_char encoding;
+	uint8_t encoding;
 	Color color = {0.0f, 0.0f, 0.0f, 1.0f};
 
 	bool operator == (const Material& src) const {
@@ -146,7 +146,7 @@ class materials {
 		return matLookup(matId);
 	}
 
-	static Material decode(u_char encoding) {
+	static Material decode(uint8_t encoding) {
         static bool initialized = false;
         static Material compositeMaterials[1 << MATERIAL_COUNT];
 

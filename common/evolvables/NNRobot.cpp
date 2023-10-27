@@ -11,22 +11,20 @@
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
 
-#define EPS 0.0001
+#define EPS 1e-3
 
 
-std::ostream& operator<<(std::ostream& out, const Mass& m) {
-    return out << m.id << "-" << m.pos.x() << "-" << m.pos.y() << "-" << m.pos.z() << "-" << m.mass;
-}
+std::vector<unsigned int> NNRobot::hidden_sizes = std::vector<unsigned int>{25,25};
 
-std::ostream& operator<<(std::ostream& out, const Spring& s) {
-  return out << s.m0 << "-" << s.m1 << "-" << s.rest_length << "-" << s.mean_length << "-" << s.material.encoding;
-}
+std::vector<Mass> NNRobot::randMasses;
+bool NNRobot::randMassesFilled = false;
 
-std::vector<int> NNRobot::hidden_sizes = std::vector<int>{25,25};
 unsigned int NNRobot::num_layers = 4;
 int NNRobot::crossover_neuron_count = 5;
 int NNRobot::mutation_weight_count = 10;
 int NNRobot::springs_per_mass = 25;
+unsigned int NNRobot::maxMasses = 1728;
+unsigned int NNRobot::maxSprings = NNRobot::maxMasses * 25;
 
 void ShiftY(NNRobot& R) {
     bool setFlag = false;
@@ -58,8 +56,7 @@ void ShiftX(NNRobot& R) {
     R.translate(translation);
 }
 
-NNRobot::NNRobot(const unsigned int num_masses) :
-    maxMasses(num_masses), maxSprings(num_masses*25)
+NNRobot::NNRobot()
 {
     unsigned int hidden_layers = hidden_sizes.size();
     num_layers = hidden_layers+2;
@@ -152,35 +149,13 @@ std::string NNRobot::Encode() const {
     ss << "masses=";
     for(unsigned int i = 0; i < masses.size(); i++) {
         ss << masses[i];
-        ss << (i < masses.size()- 1 ? "," : "\n");
+        ss << (i < (masses.size()- 1) ? ";" : "\n");
     }
     ss << "springs=";
     for(unsigned int i = 0; i < springs.size(); i++) {
         ss << springs[i];
-        ss << (i < springs.size()- 1 ? "," : "\n");
+        ss << (i < springs.size()- 1 ? ";" : "\n");
     }
-    /*ss << "type=NNRobot\n";
-    ss << "architecture=";
-    for (unsigned int i = 0; i < hidden_sizes.size(); i++) {
-        ss << hidden_sizes[i];
-        ss << (i < hidden_sizes.size()- 1 ? "," : "\n");
-    }
-    ss << "fitness=" << mFitness << std::endl;
-    for (const auto& matrix : weights)
-    {
-        for (int i = 0; i < matrix.rows(); ++i)
-        {
-            for (int j = 0; j < matrix.cols(); ++j)
-            {
-                
-                ss << matrix(i, j);
-                if (j != matrix.cols() - 1)
-                    ss << ",";
-            }
-            ss << "\n";
-        }
-        ss << "\n";
-    }*/
     return ss.str();
 }
 
@@ -201,22 +176,26 @@ void NNRobot::Decode(const std::string& filename) {
             std::istringstream lineStream(value);
             std::string cell;
 
-            while (std::getline(lineStream, cell, ',')) {
+            while (std::getline(lineStream, cell, ';')) {
                 std::istringstream mass(cell);
                 std::string param;
-                float x,y,z, m;
                 uint id;
-                std::getline(mass, param, '-');
+                float x,y,z, m;
+                Material mat;
+
+                std::getline(mass, param, ',');
                 id = std::stoi(param);
-                std::getline(mass, param, '-');
+                std::getline(mass, param, ',');
                 x = std::stof(param);
-                std::getline(mass, param, '-');
+                std::getline(mass, param, ',');
                 y = std::stof(param);
-                std::getline(mass, param, '-');
+                std::getline(mass, param, ',');
                 z = std::stof(param);
-                std::getline(mass, param, '-');
+                std::getline(mass, param, ',');
                 m = std::stof(param);
-                masses.push_back(Mass(id, x, y, z, m));
+                std::getline(mass, param, ',');
+                mat = materials::decode(stoi(param));
+                masses.push_back(Mass(id, x, y, z, m, mat));
             }
         }
         std::getline(infile, line);
@@ -227,22 +206,22 @@ void NNRobot::Decode(const std::string& filename) {
             std::istringstream lineStream(value);
             std::string cell;
 
-            while (std::getline(lineStream, cell, ',')) {
+            while (std::getline(lineStream, cell, ';')) {
                 std::istringstream spring(cell);
                 std::string param;
                 uint m0, m1;
                 float rl, ml;
                 Material mat;
 
-                std::getline(spring, param, '-');
+                std::getline(spring, param, ',');
                 m0 = std::stoi(param);
-                std::getline(spring, param, '-');
+                std::getline(spring, param, ',');
                 m1 = std::stoi(param);
-                std::getline(spring, param, '-');
+                std::getline(spring, param, ',');
                 rl = std::stof(param);
-                std::getline(spring, param, '-');
+                std::getline(spring, param, ',');
                 ml = std::stof(param);
-                std::getline(spring, param, '-');
+                std::getline(spring, param, ',');
                 mat = materials::decode(std::stoi(param));
                 Spring s = {m0, m1, rl, ml, mat};
                 springs.push_back(s);
@@ -250,77 +229,6 @@ void NNRobot::Decode(const std::string& filename) {
         }
         updateBaseline();
     }
-    /*if (infile)
-    {
-        std::string line;
-        Eigen::MatrixXf matrix;
-
-        std::vector<std::vector<float>> currentMatrixData;
-
-        weights.clear();
-        hidden_sizes.clear();
-        std::getline(infile, line);
-        std::getline(infile, line);
-
-        // Split line into key-value pair
-        std::size_t pos = line.find('=');
-        std::string key = line.substr(0, pos);
-        std::string value = line.substr(pos+1);
-        if(key == "architecture") {
-            std::istringstream lineStream(value);
-            std::string cell;
-
-            while (std::getline(lineStream, cell, ',')) {
-                hidden_sizes.push_back(std::stoi(cell));
-            }
-        }
-        num_layers = hidden_sizes.size() + 2;
-
-        std::getline(infile, line);
-
-        // Split line into key-value pair
-        pos = line.find('=');
-        key = line.substr(0, pos);
-        value = line.substr(pos+1);
-        if(key == "fitness") {
-            mFitness = stof(value);
-        }
-
-        while (std::getline(infile, line)) {
-            if (line.empty()) {
-                // Blank line indicates the end of the current matrix.
-                if (!currentMatrixData.empty()) {
-                    int numRows = currentMatrixData.size();
-                    int numCols = (numRows > 0) ? currentMatrixData[0].size() : 0;
-                    Eigen::MatrixXf eigenMatrix(numRows, numCols);
-
-                    // Populate the Eigen matrix with the current matrix data.
-                    for (int i = 0; i < numRows; ++i) {
-                        for (int j = 0; j < numCols; ++j) {
-                            eigenMatrix(i, j) = currentMatrixData[i][j];
-                        }
-                    }
-
-                    weights.push_back(eigenMatrix);
-                    currentMatrixData.clear();
-                }
-            } else {
-                // Split the line into values and add to the current matrix data.
-                std::vector<float> row;
-                std::istringstream lineStream(line);
-                std::string cell;
-
-                while (std::getline(lineStream, cell, ',')) {
-                    row.push_back(std::stod(cell));
-                }
-
-                currentMatrixData.push_back(row);
-            }
-        }
-        infile.close();
-    }
-
-    Build();*/
 }
 
 void NNRobot::Build() {
@@ -351,15 +259,19 @@ void NNRobot::Build() {
     // printf("KNN IN %f SECONDS\n", execute_time);
 
     // start = std::chrono::high_resolution_clock::now();
+
     for (unsigned int i = 0; i < masses.size(); i++) {
         auto neighbors = knns[i];
-        Material mat1 = masses[i].material;
+        Material mat1 = masses[i].material,
+                 mat2, mat;
 
         for (auto neighbor : neighbors) {
-            if(neighbor.second < EPS) mValid = false;
-
-            Material mat2 = masses[neighbor.first].material;
-            Material mat = materials::decode(mat1.encoding | mat2.encoding);
+            if(neighbor.second < EPS) {
+                mat1 = materials::air;
+            } else {
+                mat2 = masses[neighbor.first].material;
+                mat = materials::decode(mat1.encoding | mat2.encoding);
+            }
 
             Spring s = {i, neighbor.first, neighbor.second, neighbor.second, mat};
             springs.push_back(s);

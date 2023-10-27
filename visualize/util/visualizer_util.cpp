@@ -49,7 +49,12 @@ VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
         if(isdigit(config_map["INTERACTIVE"][0]) && stoi(config_map["INTERACTIVE"]))
             config.objectives.interactive = true;
     }
-    
+
+    if(config_map.find("VIDEO") != config_map.end()) {
+        if(isdigit(config_map["VIDEO"][0]) && stoi(config_map["VIDEO"]))
+            config.objectives.video = true;
+    }
+
     if(config_map.find("VERIFY") != config_map.end()) {
         if(isdigit(config_map["VERIFY"][0]) && stoi(config_map["VERIFY"]))
             config.objectives.verify = true;

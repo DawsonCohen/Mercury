@@ -23,8 +23,9 @@ int main(int argc, char** argv)
 {
 	// handle_file_io();
 
-    if(TestEvaluator()) {
-        std::cout << "Test Case 1: Failed" << std::endl;
+	int err = TestEvaluator();
+    if(err) {
+        std::cout << "Test Case 1: Failed with " << err << std::endl;
     } else {
         std::cout << "Test Case 1: Passed" << std::endl;
     }

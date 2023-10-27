@@ -20,15 +20,19 @@ struct Config {
 	} simulator;
 
 	struct Devo {
-		float devo_time = 2.0f;
-		uint devo_cycles = 10;
+		float devo_time = 1.0f;
+		uint devo_cycles = 0;
 	} devo;
 
-	struct NNRobot {
-		int crossover_neuron_count = 5;
-		int mutation_weight_count = 10;
-		int springs_per_mass = 25;
-		std::vector<int> hidden_layer_sizes = {25,25};
+	struct SoftBody {
+		unsigned int massCount = 1728;
+	};
+
+	struct NNRobot : public SoftBody {
+		unsigned int crossover_neuron_count = 5;
+		unsigned int mutation_weight_count = 10;
+		unsigned int springs_per_mass = 25;
+		std::vector<unsigned int> hidden_layer_sizes = {25,25};
 	} nnrobot;
 
 	struct Hardware {

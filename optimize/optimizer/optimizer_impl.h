@@ -39,7 +39,7 @@ void Optimizer<T>::WriteSolutions(const std::vector<T>& solutions, const std::st
         std::string encoding = R.Encode();
         float fitness = R.fitness();
         std::string filename = std::string("solution_") + std::to_string(i);
-        filename = filename + "_fintess_" + std::to_string(fitness);
+        filename = filename + "_fitness_" + std::to_string(fitness);
         
         util::WriteCSV(filename,directory,encoding);
         i++;

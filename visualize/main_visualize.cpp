@@ -8,6 +8,8 @@
 #include "robot_model.h"
 #include "Renderer.h"
 
+#include "Evaluator.h"
+
 #include <opencv2/opencv.hpp>
 
 #include <filesystem>
@@ -35,6 +37,7 @@ std::string in_sol_file;
 
 Simulator sim;
 VisualizerConfig config;
+OptimizerConfig opt_config = OptimizerConfig();
 
 int main(int argc, char** argv)
 {
@@ -53,6 +56,9 @@ int main(int argc, char** argv)
 	if(config.objectives.verify) {
 		std::string filename_template = "^solution_\\w+\\.\\w+$";
 		std::regex pattern(filename_template);
+
+		std::string config_template = "^config.txt$";
+		std::regex config_pattern(config_template);
 
 		for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
 		{
@@ -73,7 +79,11 @@ int main(int argc, char** argv)
 						solution.Decode(file.path());
 						solutions.push_back(solution);
 					}
-				}
+				} 
+			} else if(std::filesystem::is_regular_file(file.path()) &&
+				std::regex_match(file.path().filename().string(), config_pattern))
+				{
+					opt_config = util::optimizer::ReadConfigFile(file.path());
 			}
 		}
 	}
@@ -98,6 +108,9 @@ int main(int argc, char** argv)
 			}
 		}
 	}
+
+	Evaluator<SoftBody>::Initialize(opt_config);
+	Evaluator<SoftBody>::BatchEvaluate(solutions);
 
 	
 	if(config.objectives.video) {
@@ -276,6 +289,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		int tabId = -1;
 		std::vector<ElementTracker> trackers;
+		std::vector<Element> results;
 		while (!glfwWindowShouldClose(window))
 		{
 			if(tabId != (int) camera.tabIdx) {
@@ -285,6 +299,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 				devo_cycles = config.devo.devo_cycles;
 
 				R = robots[tabId];
+				R.updateBaseline();
 				robot_elements[0] = {R.getMasses(),R.getSprings()};
 				trackers = sim.SetElements(robot_elements);
 
@@ -295,6 +310,9 @@ void Visualize(std::vector<SoftBody>& robots) {
 					devo_cycles--;
 					timeToDevo = devo_time;
 					sim.Devo();
+					results = sim.Collect(trackers);
+					R.Update(results[0]);
+					R.updateBaseline();
 			} else if(devo_cycles > 0) {
 				timeToDevo -= time_step;
 			}
@@ -304,9 +322,11 @@ void Visualize(std::vector<SoftBody>& robots) {
 			
 			sim.Simulate(time_step);
 
-			std::vector<Element> results = sim.Collect(trackers);
+			results = sim.Collect(trackers);
 
 			R.Update(results[0]);
+
+			// printf("Robot %i, fitness: %f\n", tabId, R.fitness());
 
 			model.Update(R);
 

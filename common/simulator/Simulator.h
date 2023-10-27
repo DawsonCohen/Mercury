@@ -29,7 +29,7 @@ public:
 	
 	std::vector<ElementTracker> SetElements(const std::vector<Element>& elements);
 	ElementTracker AllocateElement(const Element& e);
-	void Simulate(float sim_duration, bool trackStresses = false);
+	void Simulate(float sim_duration, bool trackStresses = false, bool trace = false);
 	void Devo();
 	std::vector<Element> Collect(const std::vector<ElementTracker>& trackers);
 	Element CollectElement(const ElementTracker& tracker);

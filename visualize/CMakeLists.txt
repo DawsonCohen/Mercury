@@ -34,6 +34,7 @@ set(VISUALIZE
   ../common/evolvables/knn.cu
 
   ../common/util/util.cpp
+  ../optimize/optimizer/util/optimizer_util.cpp
   util/visualizer_util.cpp
 )
 
@@ -65,6 +66,7 @@ target_include_directories(visualizer PUBLIC
   ../common/lib
   ../common/simulator
   ../optimize/optimizer
+  ../optimize/optimizer/util
   ../common/util
   ../common/evolvables
 )

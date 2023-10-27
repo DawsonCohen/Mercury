@@ -326,7 +326,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 	return trackers;
 }
 
-void Simulator::Simulate(float sim_duration, bool trackStresses) {
+void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 	float simTimeRemaining = sim_duration;
 	
 	/*
@@ -369,11 +369,8 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 	
 	uint step_count = 0;
 
-	#ifdef DEBUG_TRACE
-		std::vector<std::tuple<unsigned int, float, float, float, float, float, float, float>> massTrace;
-		static int sim_run = 0;
-	#endif
-
+	static int sim_run = 0;
+	std::vector<std::tuple<unsigned int, float, float, float, float, float, float, float>> massTrace;
 	
 	while(simTimeRemaining > 0.0f) {
 		integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
@@ -388,7 +385,7 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 			
 		std::swap(m_currentRead, m_currentWrite);
 
-		#ifdef DEBUG_TRACE
+		if(trace) {
 			if(step_count % 20 == 0) {
 				cudaMemcpy(m_hPos,m_dPos[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 				cudaMemcpy(m_hVel,m_dVel[m_currentRead],numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
@@ -403,18 +400,18 @@ void Simulator::Simulate(float sim_duration, bool trackStresses) {
 
 
 			
-		#endif
+		}
 		
 		step_count++;
 		total_time += deltaT;
 		simTimeRemaining -= deltaT;
 	}
 
-	#ifdef DEBUG_TRACE
+	if(trace) {
 		std::string massTraceCSV = DataToCSV<unsigned int, float, float, float, float, float, float, float>("id, time, x, y, z, vx, vy, vz",massTrace);
-		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "/mnt/vault/z_results", massTraceCSV);
+		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "./z_results", massTraceCSV);
 		sim_run++;
-	#endif
+	}
 }
 
 ElementTracker Simulator::AllocateElement(const Element& e) {

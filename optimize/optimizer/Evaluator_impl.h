@@ -26,7 +26,7 @@ Simulator Evaluator<T>::Sim = Simulator();
 
 
 template<typename T>
-void Evaluator<T>::Initialize(OptimizerConfig config, T prototype) {
+void Evaluator<T>::Initialize(OptimizerConfig config) {
     sim_config = config.simulator;
     baselineTime = config.evaluator.base_time;
     evaluationTime = config.evaluator.eval_time;

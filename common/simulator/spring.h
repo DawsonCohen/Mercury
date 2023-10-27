@@ -11,6 +11,10 @@ struct Spring {
 	float rest_length;
 	float mean_length;
 	Material material;
+
+	friend std::ostream& operator<<(std::ostream& out, const Spring& s) {
+		return out << s.m0 << "," << s.m1 << "," << s.rest_length << "," << s.mean_length << "," << (unsigned int) s.material.encoding;
+	}
 };
 
 #endif
