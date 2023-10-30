@@ -88,17 +88,17 @@ int TestSimulator() {
 	float maxDiff = 0;
 	for(uint i = 0; i < robots.size(); i++) {
 		printf("OG Fitness: %f, Reset Fitness: %f", og_fitness[i], reset_fitness[i]);
-		if(abs(robots[i].fitness() -  og_fitness[i]) > 1e-4) {
+		if(abs(reset_fitness[i] -  og_fitness[i]) > 1e-4) {
 			successFlag += 1; // failure
 			printf(" FAILED");
 		}
-		if(abs(robots[i].fitness() -  og_fitness[i]) > maxDiff) {
+		if(abs(reset_fitness[i] -  og_fitness[i]) > maxDiff) {
 			maxDiffId = i;
 			maxDiff = abs(robots[i].fitness() -  og_fitness[i]);
 		}
 		printf("\n");
 	}
-	printf("maxDiff %u - OG Fitness: %f, Reset Fitness: %f\n",maxDiffId,og_fitness[maxDiffId],reset_fitness[maxDiffId]);
+	printf("Robot %u maxDiff %f - OG Fitness: %f, Reset Fitness: %f\n",maxDiffId, maxDiff,og_fitness[maxDiffId],reset_fitness[maxDiffId]);
 
 	robots[maxDiffId].Reset();
 	std::vector<SoftBody> maxDiffRobot = {robots[maxDiffId]};
