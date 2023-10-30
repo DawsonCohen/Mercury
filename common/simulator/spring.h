@@ -13,7 +13,8 @@ struct Spring {
 	Material material;
 
 	friend std::ostream& operator<<(std::ostream& out, const Spring& s) {
-		return out << s.m0 << "," << s.m1 << "," << s.rest_length << "," << s.mean_length << "," << (unsigned int) s.material.encoding;
+		out << std::setprecision(9);
+		return out << s.m0 << "," << s.m1 << "," << (double) s.rest_length << "," << (double) s.mean_length << "," << (unsigned int) s.material.encoding;
 	}
 };
 

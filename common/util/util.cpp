@@ -76,12 +76,11 @@ int MakeDirectory(const std::string& directory) {
     return 0;
 }
 
-int WriteCSV(const std::string& filename, const std::string& directory, const std::string& datastring) {
+int WriteCSV(const std::string& filename, const std::string& directory, const std::string& datastring, bool append) {
     if(MakeDirectory(directory) != 0) {
         return 1;
     };
-
-    std::ofstream outfile(directory + std::string("/") + filename);
+    std::ofstream outfile(directory + std::string("/") + filename, std::ios::out | (append ? std::ios::app : std::ios::trunc));
 
     if(outfile.is_open())
         outfile << datastring;
@@ -89,6 +88,8 @@ int WriteCSV(const std::string& filename, const std::string& directory, const st
         std::cerr << "Error writing to file: " << (directory + std::string("/") + filename) << std::endl;
         return 1;
     }
+
+    outfile.close();
 
     return 0;
 }

@@ -35,7 +35,7 @@ void Evaluator<T>::Initialize(OptimizerConfig config) {
 }
 
 template<typename T>
-void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
+void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions, bool trace) {
     if(solutions.size() == 0) return;
     printf("EVALUATING %lu SOLUTIONS\n",solutions.size());
 
@@ -76,13 +76,15 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions) {
     for(uint i = 0; i < solutions.size(); i++) {
         if(robotWasAllocated[i]) {
             solutions[i].Update(results[i - skip_count]);
-            solutions[i].updateBaseline();
+            solutions[i].Reset();
         } else {
             skip_count++;
         }
     }
     
-    Sim.Simulate(evaluationTime);
+    static int trace_count = 0;
+    Sim.Simulate(evaluationTime, false, trace, std::string("sim_trace_") + std::to_string(trace_count) + std::string(".csv"));
+    if(trace) trace_count++;
     results = Sim.Collect(trackers);
 
     skip_count = 0;

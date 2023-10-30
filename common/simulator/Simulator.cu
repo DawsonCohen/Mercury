@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <map>
 #include "util.h"
 
 #include <cub/device/device_segmented_radix_sort.cuh>
@@ -22,12 +23,12 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 template <std::size_t... Is, typename... Ts>
-std::string DataToCSVImpl(const std::string& header, const std::vector<std::tuple<Ts...>>& data, std::index_sequence<Is...>)
+std::string DataToCSVImpl(const std::string& header, const std::vector<std::tuple<Ts...>>& data, std::index_sequence<Is...>, bool writeHeader)
 {
     std::ostringstream os;
 
     // Write the header
-    os << header << std::endl;
+	if(writeHeader) os << header << std::endl;
 
     // Write the data
     for (const auto& row : data)
@@ -41,9 +42,9 @@ std::string DataToCSVImpl(const std::string& header, const std::vector<std::tupl
 }
 
 template <typename... Ts>
-std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data)
+std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data, bool writeHeader=true)
 {
-    return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>());
+    return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>(), writeHeader);
 }
 
 Simulator::Simulator(Element prototype, uint maxElements) :
@@ -326,7 +327,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 	return trackers;
 }
 
-void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
+void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std::string tracefile) {
 	float simTimeRemaining = sim_duration;
 	
 	/*
@@ -369,7 +370,11 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 	
 	uint step_count = 0;
 
-	static int sim_run = 0;
+	static std::map<std::string, int> trace_hist;
+	if(trace) {
+		if(!trace_hist[tracefile]) trace_hist[tracefile] = 0;
+	}
+
 	std::vector<std::tuple<unsigned int, float, float, float, float, float, float, float>> massTrace;
 	
 	while(simTimeRemaining > 0.0f) {
@@ -415,9 +420,11 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace) {
 	}
 
 	if(trace) {
-		std::string massTraceCSV = DataToCSV<unsigned int, float, float, float, float, float, float, float>("id, time, x, y, z, vx, vy, vz",massTrace);
-		util::WriteCSV(std::string("sim_trace_") + std::to_string(sim_run) + std::string(".csv"), "/mnt/vault/evo-devo/z_results", massTraceCSV);
-		sim_run++;
+		bool firstTrace = true;
+		if(trace_hist[tracefile] > 0) firstTrace = false;
+		std::string massTraceCSV = DataToCSV<unsigned int, float, float, float, float, float, float, float>("id, time, x, y, z, vx, vy, vz",massTrace, firstTrace);
+		util::WriteCSV(tracefile, "/mnt/vault/evo-devo/z_results", massTraceCSV, !firstTrace);
+		trace_hist[tracefile]++;
 	}
 }
 

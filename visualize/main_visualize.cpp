@@ -115,8 +115,10 @@ int main(int argc, char** argv)
 		}
 	}
 
+	opt_config.evaluator.base_time = 0.0f;
+	opt_config.devo.devo_cycles = 0;
 	Evaluator<SoftBody>::Initialize(opt_config);
-	Evaluator<SoftBody>::BatchEvaluate(solutions);
+	Evaluator<SoftBody>::BatchEvaluate(solutions,true);
 
 	
 	if(config.objectives.video) {

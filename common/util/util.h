@@ -14,7 +14,7 @@ namespace util {
 
     int MakeDirectory(const std::string& directory);
 
-    int WriteCSV(const std::string& filename, const std::string& directory, const std::string& datastring);
+    int WriteCSV(const std::string& filename, const std::string& directory, const std::string& datastring, bool append = false);
 
     void RemoveOldFiles(const std::string& dir);
 

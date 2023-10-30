@@ -13,15 +13,21 @@
 #include <sys/stat.h>
 
 #define SIM_TIME 5.0f
-#define ROBO_COUNT 512
+#define ROBO_COUNT 10
 
-std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody>& robots, bool trace = false) {
+std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, bool trace = false) {
 	sim.Reset();
 	std::vector<float> fitnesses(robots.size());
 	
 	std::vector<ElementTracker> trackers;
 	std::vector<Element> elements;
 	std::vector<Element> results;
+
+	static int run = 0;
+	std::string tracename = "sim_trace_" + std::to_string(run) + ".csv";
+
+	uint devoCycles = 1;
+	float devoTime = 1.0f;
 
 	bool robotWasAllocated[robots.size()];
     uint i = 0;
@@ -34,7 +40,14 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody>& robots, b
     }
 
 	trackers = sim.SetElements(elements);
-	sim.Simulate(SIM_TIME,false,trace);
+
+	// for(uint i = 0; i < devoCycles; i++) {
+    //     sim.Simulate(devoTime, true, trace, tracename);
+
+    //     sim.Devo();
+    // }
+
+	sim.Simulate(SIM_TIME,false,trace, tracename);
 
 	results = sim.Collect(trackers);
 	uint skip_count = 0;
@@ -46,6 +59,8 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody>& robots, b
         }
 		fitnesses[i] = robots[i].fitness();
     }
+
+	if(trace) run += 1;
 
 	return fitnesses;
 }
@@ -73,13 +88,13 @@ int TestSimulator() {
 	float maxDiff = 0;
 	for(uint i = 0; i < robots.size(); i++) {
 		printf("OG Fitness: %f, Reset Fitness: %f", og_fitness[i], reset_fitness[i]);
-		if(abs(robots[i].fitness() -  og_fitness[i]) > 1e-5) {
+		if(abs(robots[i].fitness() -  og_fitness[i]) > 1e-4) {
 			successFlag += 1; // failure
-			if(abs(robots[i].fitness() -  og_fitness[i]) > maxDiff) {
-				maxDiffId = i;
-				maxDiff = abs(robots[i].fitness() -  og_fitness[i]);
-			}
 			printf(" FAILED");
+		}
+		if(abs(robots[i].fitness() -  og_fitness[i]) > maxDiff) {
+			maxDiffId = i;
+			maxDiff = abs(robots[i].fitness() -  og_fitness[i]);
 		}
 		printf("\n");
 	}

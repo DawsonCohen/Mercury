@@ -2,6 +2,10 @@
 #define __Mass_H__
 
 #include <Eigen/Core>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <numbers>
 #include "material.h"
 
 struct Mass {
@@ -30,6 +34,7 @@ struct Mass {
 	{}
 
 	friend std::ostream& operator<<(std::ostream& out, const Mass& m) {
+		out << std::setprecision(9);
 		return out << m.id << "," << m.protoPos.x() << "," << m.protoPos.y() << "," << m.protoPos.z() << "," << m.mass << "," << (unsigned int) m.material.encoding;
 	}
 };
