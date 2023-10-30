@@ -4,7 +4,7 @@
 #include <string>
 #include "util.h"
 
-#define EPS 1e-6f
+#define EPS 0
 
 int TestNNRobot() {
     Config::NNRobot nnConfig;

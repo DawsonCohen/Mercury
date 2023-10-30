@@ -1,6 +1,7 @@
 #include "Simulator.h"
 #include "test_simulator.h"
 #include "test_evolvables.h"
+#include "test_integrated.h"
 #include "NNRobot.h"
 #include "VoxelRobot.h"
 #include <Eigen/Core>
@@ -40,6 +41,13 @@ int main(int argc, char** argv)
         std::cout << "Test Case 2: Failed with " << err << std::endl;
     } else {
         std::cout << "Test Case 2: Passed" << std::endl;
+    }
+
+    err = TestIntegrated();
+    if(err) {
+        std::cout << "Test Case 3: Failed with " << err << std::endl;
+    } else {
+        std::cout << "Test Case 3: Passed" << std::endl;
     }
 
 	return 0;
