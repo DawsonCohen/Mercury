@@ -17,7 +17,7 @@
 #define SIM_TIME 10.0f
 #define ROBO_COUNT 10
 
-#define EPS 1e-4
+#define EPS 1e-6
 
 std::vector<float> runEvaluator(std::vector<NNRobot> evalBuf) {
 	std::vector<float> fitness(evalBuf.size());
@@ -34,7 +34,6 @@ std::vector<float> runEvaluator(std::vector<NNRobot> evalBuf) {
 int TestEvaluator() {
 	OptimizerConfig config;
 	config.evaluator.pop_size = ROBO_COUNT;
-	config.devo.devo_cycles = 1;
 	std::vector<NNRobot> population(ROBO_COUNT);
 	std::vector<float> og_fitness(ROBO_COUNT);
 	std::vector<float> reset_fitness(ROBO_COUNT);
