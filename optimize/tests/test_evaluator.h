@@ -17,7 +17,7 @@
 #define SIM_TIME 10.0f
 #define ROBO_COUNT 10
 
-#define EPS 1e-6
+#define EPS 0
 
 std::vector<float> runEvaluator(std::vector<NNRobot> evalBuf) {
 	std::vector<float> fitness(evalBuf.size());
@@ -54,10 +54,16 @@ int TestEvaluator() {
 	reset_fitness = runEvaluator(evalBuf);
 	
 	int successflag = 0;
+	
 	for(uint i = 0; i < ROBO_COUNT; i++) {
-		printf("%f vs %f", og_fitness[i], reset_fitness[i]);
-		if(abs(og_fitness[i] - reset_fitness[i]) > EPS) {
-			printf(" FAILED");
+		std::stringstream out;
+		out << std::setprecision(9) << og_fitness[i] << " vs " << reset_fitness[i];
+		printf("%s", out.str().c_str());
+		float diff = og_fitness[i] - reset_fitness[i];
+		if(diff > EPS || diff < -EPS) {
+			std::stringstream fail;
+			fail << std::setprecision(9) << "FAILED with diff: " << diff;
+			printf("%s", fail.str().c_str());
 			successflag += 1;
 		}
 		printf("\n");
@@ -94,9 +100,14 @@ int TestEvaluator() {
 	}
 	decode_fitness = runEvaluator(decode_evalBuf);
 	for(uint i = 0; i < ROBO_COUNT; i++) {
-		printf("%f vs %f", og_fitness[i], decode_fitness[i]);
-		if(abs(og_fitness[i] - decode_fitness[i]) > EPS) {
-			printf(" FAILED");
+		std::stringstream out;
+		out << std::setprecision(9) << og_fitness[i] << " vs " << reset_fitness[i];
+		printf("%s", out.str().c_str());
+		float diff = og_fitness[i] - reset_fitness[i];
+		if(diff > EPS || diff < -EPS) {
+			std::stringstream fail;
+			fail << std::setprecision(9) << "FAILED with diff: " << diff;
+			printf("%s", fail.str().c_str());
 			successflag += 1;
 		}
 		printf("\n");
