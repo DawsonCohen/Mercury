@@ -21,6 +21,8 @@ Config config;
 
 int main(int argc, char** argv)
 {
+	srand(75);
+	std::default_random_engine(75);
 	// handle_file_io();
 
 	int err = TestEvaluator();

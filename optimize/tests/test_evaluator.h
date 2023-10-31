@@ -32,8 +32,6 @@ std::vector<float> runEvaluator(std::vector<NNRobot> evalBuf) {
 }
 
 int TestEvaluator() {
-    srand(50);
-
 	OptimizerConfig config;
 	config.evaluator.pop_size = ROBO_COUNT;
 	std::vector<NNRobot> population(ROBO_COUNT);
@@ -76,7 +74,7 @@ int TestEvaluator() {
 		std::string encoding = evalBuf[i].Encode();
 		util::WriteCSV("test_NNBot_" + std::to_string(i) + ".csv","./z_results/",encoding);
 
-		std::string filepath = "./z_reslts/test_NNBot_" + std::to_string(i) + ".csv";
+		std::string filepath = "./z_results/test_NNBot_" + std::to_string(i) + ".csv";
 		Rdecoded.Decode(filepath);
 		decode_evalBuf[i] = Rdecoded;
 
