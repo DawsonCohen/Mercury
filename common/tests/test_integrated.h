@@ -96,7 +96,7 @@ int TestIntegrated() {
 	}
 
 	config.simulator.time_step = 1e-3;
-	sim.Initialize(robots[0], robots.size(), config.simulator);
+	sim.Initialize(config.simulator);
 
 	std::vector<float> og_fitness = runIntegrated(sim, robots);
 	int successflag = 0;
@@ -146,9 +146,9 @@ int TestIntegrated() {
 
 	robots[maxDiffId].Reset();
 	std::vector<SoftBody> maxDiffRobot = {robots[maxDiffId]};
-	og_fitness = runIntegrated(sim, maxDiffRobot, true);
+	og_fitness = runIntegrated(sim, maxDiffRobot);
 	maxDiffRobot[0].Reset();
-	reset_fitness = runIntegrated(sim, maxDiffRobot, true);
+	reset_fitness = runIntegrated(sim, maxDiffRobot);
 	printf("Second run comparison for max diff robot: %f vs %f\n",og_fitness[0], reset_fitness[0]);
 
 	return successFlag;

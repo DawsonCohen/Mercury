@@ -133,6 +133,7 @@ public:
 
 private:
     float P,p;
+    OptimizerConfig config;
 
     std::string working_directory;
 

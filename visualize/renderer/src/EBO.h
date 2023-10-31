@@ -6,6 +6,9 @@
 
 class EBO
 {
+	/**
+	 *  @name Element Buffer Object
+	 */
 	unsigned int ID;
 	unsigned int mCount;
 

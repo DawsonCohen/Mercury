@@ -35,6 +35,8 @@ template<typename T>
 void Optimizer<T>::WriteSolutions(const std::vector<T>& solutions, const std::string& directory) {
     uint i = 0;
 
+    util::WriteCSV("latest.txt",config.io.base_dir,directory);
+
     for(const T& R : solutions) {
         std::string encoding = R.Encode();
         float fitness = R.fitness();
@@ -372,6 +374,7 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 
 template<typename T>
 std::vector<T> Optimizer<T>::Solve(OptimizerConfig config) {
+    this->config = config;
     OptimizerConfig::Optimizer opt_config = config.optimizer;
     niche_count = opt_config.niche_count;
     steps_to_combine = opt_config.steps_to_combine;
@@ -381,6 +384,7 @@ std::vector<T> Optimizer<T>::Solve(OptimizerConfig config) {
     mutator = opt_config.mutation;
     crossover = opt_config.crossover;
     niche = opt_config.niche;
+
     uniform_int = std::uniform_int_distribution<>(0,pop_size-1);
 
 

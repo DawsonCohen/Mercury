@@ -23,13 +23,13 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 
 namespace KNN {
 
-void key_value_sort(float* d_keys_in, float* d_keys_out, ushort* d_values_in, ushort* d_values_out, ushort count) {
+void key_value_sort(float* d_keys_in, float* d_keys_out, uint16_t* d_values_in, uint16_t* d_values_out, uint16_t count) {
     // Determine number of segments
     int num_segments = count;
 
     // Allocate memory on device for offsets
     int* h_offsets = new int[num_segments+1];
-    for(ushort i = 0; i < num_segments+1; i++) {
+    for(uint16_t i = 0; i < num_segments+1; i++) {
         h_offsets[i] = (int) count*i;
     }
 
@@ -66,7 +66,7 @@ std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const T& mass_group, uin
     
     // CPU data
     float* h_points = new float[num_masses * 3];
-    uint16_t* h_ids = new ushort[num_masses * num_masses];
+    uint16_t* h_ids = new uint16_t[num_masses * num_masses];
     float* h_distances = new float[num_masses * num_masses];
 
     std::vector<Mass> masses = mass_group.masses;

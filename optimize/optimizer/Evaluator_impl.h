@@ -32,6 +32,7 @@ void Evaluator<T>::Initialize(OptimizerConfig config) {
     evaluationTime = config.evaluator.eval_time;
     devoTime = config.devo.devo_time;
     devoCycles = config.devo.devo_cycles;
+	Sim.Initialize(sim_config);
 }
 
 template<typename T>
@@ -39,8 +40,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions, bool trace) {
     if(solutions.size() == 0) return;
     printf("EVALUATING %lu SOLUTIONS\n",solutions.size());
 
-	Sim.Initialize(solutions[0], solutions.size(), sim_config);
-    // std::vector<T> copy_solutions;
+    Sim.Reset();
 
     std::vector<Element> elements;
     std::vector<Element> results;
@@ -73,15 +73,18 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions, bool trace) {
     results = Sim.Collect(trackers);
 
     skip_count = 0;
+    elements.clear();
     for(uint i = 0; i < solutions.size(); i++) {
         if(robotWasAllocated[i]) {
             solutions[i].Update(results[i - skip_count]);
             solutions[i].Reset();
+            elements.push_back(solutions[i]);
         } else {
             skip_count++;
         }
     }
     Sim.Reset();
+    trackers = Sim.SetElements(elements); // this can be parallelized!!
     
     static int trace_count = 0;
     Sim.Simulate(evaluationTime, false, trace, std::string("sim_trace_") + std::to_string(trace_count) + std::string(".csv"));
@@ -101,8 +104,6 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions, bool trace) {
         eval_count++;
         R.updateFitness();
     }
-
-    Sim.Reset();
 }
 
 #endif

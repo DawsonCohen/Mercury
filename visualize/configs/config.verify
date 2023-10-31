@@ -30,8 +30,9 @@ FPS=30.0
 MAX_TIME=10.0
 
 # IO
-IN_DIR=/home/dawson/evo-devo/z_results/2023-10-06-015700/run_0/generation_10_fitness_2.535734
-OUT_DIR=./z_results
+IN_DIR=
+BASE_DIR=/path/to/evo-devo/z_results
+OUT_DIR=/path/to/evo-devo/z_results
 
 # COMPUTE
 CUDA_VISIBLE_GPU=0

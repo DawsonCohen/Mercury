@@ -73,7 +73,6 @@ void VoxelBenchmark() {
 	VoxelRobot R;
 
 	uint pop_size = INIT_POP_SIZE;
-	sim.Initialize(R,pop_size);
 
 	ulong num_springs = R.getSprings().size() * (MAX_TIME / sim.getDeltaT());
 
@@ -91,7 +90,6 @@ void VoxelBenchmark() {
 
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
-		sim.Initialize(R,pop_size);
 		sim.SetElements(robots);
 
 		printf("STARTED\n");
@@ -121,7 +119,6 @@ void StressBenchmark() {
 	VoxelRobot R;
 
 	uint pop_size = INIT_POP_SIZE;
-	sim.Initialize(R,pop_size);
 
 	ulong num_springs = R.getSprings().size() * (MAX_TIME / sim.getDeltaT());
 
@@ -139,9 +136,6 @@ void StressBenchmark() {
 
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
-		Config::Simulator simConfig;
-
-		sim.Initialize(R,pop_size, simConfig);
 		sim.SetElements(robots);
 
 		printf("STARTED\n");
@@ -171,10 +165,10 @@ void DevoBenchmark() {
 	VoxelRobot R;
 
 	uint pop_size = INIT_POP_SIZE;
-	sim.Initialize(R,pop_size);
 
 	Config::Simulator simConfig;
 	ulong num_springs = simConfig.replaced_springs_per_element;
+	sim.Initialize(simConfig);
 
 	FILE* pFile = fopen((out_dir + "/devo_benchmark.csv").c_str(),"w");
 
@@ -190,7 +184,6 @@ void DevoBenchmark() {
 		printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
 
-		sim.Initialize(R,pop_size, simConfig);
 		sim.SetElements(robots);
 
 		printf("STARTED\n");
@@ -221,7 +214,6 @@ void NNBuildBenchmark() {
 	NNRobot R;
 
 	uint pop_size = INIT_POP_SIZE;
-	sim.Initialize(R, pop_size);
 
 	FILE* pFile = fopen((out_dir + "/nnbuild_benchamrk.csv").c_str(),"w");
 
@@ -256,7 +248,6 @@ void NNBenchmark() {
 	R.Build();
 
 	uint pop_size = INIT_POP_SIZE;
-	sim.Initialize(R, pop_size);
 
 	ulong num_springs = R.getSprings().size() * (MAX_TIME / sim.getDeltaT());
 	FILE* pFile = fopen((out_dir + "/nn_benchamrk.csv").c_str(),"w");
@@ -289,7 +280,6 @@ void NNBenchmark() {
 		
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
-		sim.Initialize(R,pop_size);
 		sim.SetElements(robot_elements);
 
 		printf("STARTED\n");

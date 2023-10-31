@@ -145,6 +145,10 @@ Config common::ReadConfigFile(const std::string& filename) {
         config.io.in_dir = config_map["IN_DIR"];
     }
 
+    if(config_map.find("BASE_DIR") != config_map.end()) {
+        config.io.base_dir = config_map["BASE_DIR"];
+    }
+
     if(config_map.find("TIME_STEP") != config_map.end()) {
         config.simulator.time_step = stof(config_map["TIME_STEP"]);
     }
@@ -200,35 +204,36 @@ Config common::ReadConfigFile(const std::string& filename) {
 
 RobotType ReadRobotType(const std::string& filename) {
     std::ifstream file(filename);
-    if (file) {
-        std::string line;
-        while (std::getline(file, line)) {
-            // Ignore comments and empty lines
-            if (line.empty() || line[0] == '#') {
-                continue;
-            }
-
-            // Split line into key-value pair
-            std::size_t pos = line.find('=');
-            if (pos == std::string::npos) {
-                continue;
-            }
-
-            std::string key = line.substr(0, pos);
-            std::string value = line.substr(pos+1);
-            if(key == "type") {
-                if(value == "NNRobot")
-                    return ROBOT_NN;
-                else if(value == "VoxelRobot")
-                    return ROBOT_VOXEL;
-                else
-                    break;
-            }
-        }
-        std::cerr << "ERROR: ReadRobotType could not parse config file " << filename << std::endl;
-    } else {
+    if(!file.is_open()) {
         std::cerr << "ERROR: config file " << filename << " does not exist" << std::endl;
+        exit(0);
     }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        // Ignore comments and empty lines
+        if (line.empty() || line[0] == '#') {
+            continue;
+        }
+
+        // Split line into key-value pair
+        std::size_t pos = line.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+
+        std::string key = line.substr(0, pos);
+        std::string value = line.substr(pos+1);
+        if(key == "type") {
+            if(value == "NNRobot")
+                return ROBOT_NN;
+            else if(value == "VoxelRobot")
+                return ROBOT_VOXEL;
+            else
+                break;
+        }
+    }
+    std::cerr << "ERROR: ReadRobotType could not parse config file " << filename << std::endl;
     return ROBOT_VOXEL;
 }
 

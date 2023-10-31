@@ -6,21 +6,19 @@
 #include "element.h"
 #include <map>
 
-template<typename T>
-class RobotModel : public Model {
-    T m_robot;
-    
+class RobotModel : public Element, public Model {
 public:
-    RobotModel(T& robot) : Model(), m_robot(robot) {
+    RobotModel(Element& robot) : Element(robot), Model() {
         updateMesh();
     };
     
-    RobotModel() : Model(), m_robot() {
+    RobotModel() : Element(),   Model() {
         updateMesh();
     };
 
-    void Update(T& robot) {
-        m_robot = robot;
+    void Update(Element& robot) {
+        masses = robot.masses;
+        springs = robot.springs;
 
         updateMesh();
     }
@@ -29,10 +27,10 @@ public:
         std::vector<Vertex> vertices;
         std::vector<uint> indices;
 
-        for(const Spring& s : m_robot.springs) {
+        for(const Spring& s : springs) {
             if(s.material == materials::air) continue;
-            Mass m0 = m_robot.masses[s.m0];
-            Mass m1 = m_robot.masses[s.m1];
+            Mass m0 = masses[s.m0];
+            Mass m1 = masses[s.m1];
             Vertex v0 = {glm::vec3(m0.pos.x(), m0.pos.y(), m0.pos.z()), glm::vec4(s.material.color.r, s.material.color.g, s.material.color.b, s.material.color.a)};
             Vertex v1 = {glm::vec3(m1.pos.x(), m1.pos.y(), m1.pos.z()), glm::vec4(s.material.color.r, s.material.color.g, s.material.color.b, s.material.color.a)};
             vertices.push_back(v0);
@@ -46,14 +44,9 @@ public:
 
     // // TODO
 	// void append(T src) {
-    //     VoxelRobot::append((VoxelRobot) src);
+    //     SoftBody::append((SoftBody) src);
     //     updateMesh();
     // }
-
-	friend void swap(RobotModel& s1, RobotModel& s2) {
-		swap(s1.m_robot, s2.m_robot);
-		swap((Model&) s1, (Model&) s2);
-    }
 };
 
 #endif

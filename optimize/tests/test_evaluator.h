@@ -18,6 +18,7 @@
 #define ROBO_COUNT 10
 
 #define EPS 0
+#define PRECISION 9
 
 std::vector<float> runEvaluator(std::vector<NNRobot> evalBuf) {
 	std::vector<float> fitness(evalBuf.size());
@@ -43,6 +44,7 @@ int TestEvaluator() {
 		R.Randomize();
 	}
 
+	config.evaluator.base_time = 1.0f;
 	Evaluator<NNRobot>::Initialize(config);
 	
 	std::vector<NNRobot> evalBuf(ROBO_COUNT);
@@ -57,12 +59,12 @@ int TestEvaluator() {
 	
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		std::stringstream out;
-		out << std::setprecision(9) << og_fitness[i] << " vs " << reset_fitness[i];
+		out << std::setprecision(PRECISION) << og_fitness[i] << " vs " << reset_fitness[i];
 		printf("%s", out.str().c_str());
 		float diff = og_fitness[i] - reset_fitness[i];
 		if(diff > EPS || diff < -EPS) {
 			std::stringstream fail;
-			fail << std::setprecision(9) << "    FAILED with diff: " << diff;
+			fail << std::setprecision(PRECISION) << "    FAILED with diff: " << diff;
 			printf("%s", fail.str().c_str());
 			successflag += 1;
 		}
@@ -98,15 +100,19 @@ int TestEvaluator() {
 		}
 
 	}
+
+	config.evaluator.base_time = 0.0f;
+	Evaluator<NNRobot>::Initialize(config);
+
 	decode_fitness = runEvaluator(decode_evalBuf);
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		std::stringstream out;
-		out << std::setprecision(9) << og_fitness[i] << " vs " << reset_fitness[i];
+		out << std::setprecision(PRECISION) << og_fitness[i] << " vs " << reset_fitness[i];
 		printf("%s", out.str().c_str());
 		float diff = og_fitness[i] - reset_fitness[i];
 		if(diff > EPS || diff < -EPS) {
 			std::stringstream fail;
-			fail << std::setprecision(9) << "    FAILED with diff: " << diff;
+			fail << std::setprecision(PRECISION) << "    FAILED with diff: " << diff;
 			printf("%s", fail.str().c_str());
 			successflag += 1;
 		}

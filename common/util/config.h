@@ -10,6 +10,7 @@ struct Config {
 	RobotType robot_type = ROBOT_NN;
 	struct IO {
 		std::string in_dir = "";
+		std::string base_dir = "./z_results";
 		std::string out_dir = "./z_results";
 	} io;
 	struct Simulator {

@@ -6,6 +6,10 @@
 
 class VAO
 {
+  /**
+   *  @name Vertex Array Object
+   */
+
 private:
 	unsigned int ID;
 

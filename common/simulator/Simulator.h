@@ -20,12 +20,10 @@ class Simulator {
 	void _initialize();
 
 public:
-	Simulator(Element prototype, uint maxElements);
 	Simulator() {}
 	~Simulator();
 
-	void Initialize(Element prototype, uint maxElements, Config::Simulator config = Config::Simulator());
-	void Initialize(uint massesPerElement, uint springsPerElement, uint maxElements, Config::Simulator);
+	void Initialize(Config::Simulator = Config::Simulator());
 	
 	std::vector<ElementTracker> SetElements(const std::vector<Element>& elements);
 	ElementTracker AllocateElement(const Element& e);
@@ -38,21 +36,21 @@ public:
 	// void Simulate(std::vector<Mass>& masses, const std::vector<Spring>& springs);
 
 	// Getter/setter time step in seconds
-	float getDeltaT() const { return deltaT; }
-	void setTimeStep(float dt) { deltaT = dt; }
+	float getDeltaT() const { return m_deltaT; }
+	void setTimeStep(float dt) { m_deltaT = dt; }
 
 	// Get simulated time elapsed in seconds
-	float getTotalTime() const { return total_time; }
+	float getTotalTime() const { return m_total_time; }
 
-	void Reset() { total_time = 0.0f; }
+	void Reset() { m_total_time = 0.0f; }
 
 protected:
 	bool initialized = false;
 
 	std::vector<Environment> mEnvironments;
-    float total_time = 0;
-    float deltaT = 0.001f;
-	uint replacedSpringsPerElement = 32; // recommend multiple of 32 for warp
+    float m_total_time = 0;
+    float m_deltaT = 0.001f;
+	uint m_replacedSpringsPerElement = 32; // recommend multiple of 32 for warp
 	// bool track_stresses = false;
 
 	Mass*			massBuf;
@@ -86,6 +84,11 @@ protected:
 	uint    *m_dSpringIDs;
 	uint    *m_dSpringIDs_Sorted;
 
+	uint	m_massesPerBlock = 0;
+	uint	m_springsPerBlock = 0;
+	uint	m_sharedMemSizeSim = 0;
+	uint	m_numBlocksSim = 0;
+
 	unsigned char m_currentRead,
 			 	  m_currentWrite;
 
@@ -105,7 +108,7 @@ protected:
 	uint envCount          = 0;
 	uint elementCount      = 0;
 
-	Config::Simulator config;
+	Config::Simulator m_config;
 };
 
 #endif

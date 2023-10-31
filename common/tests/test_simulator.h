@@ -78,7 +78,7 @@ int TestSimulator() {
 	}
 
 	config.simulator.time_step = 1e-3;
-	sim.Initialize(robots[0], robots.size(), config.simulator);
+	sim.Initialize(config.simulator);
 
 	std::vector<float> og_fitness = runSimulator(sim, robots);
 	std::vector<float> reset_fitness = runSimulator(sim, robots);

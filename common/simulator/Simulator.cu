@@ -47,22 +47,6 @@ std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts
     return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>(), writeHeader);
 }
 
-Simulator::Simulator(Element prototype, uint maxElements) :
-	massesPerElement(prototype.masses.size()),
-	springsPerElement(prototype.springs.size()),
-	maxElements(maxElements),
-	maxMasses(prototype.masses.size()*maxElements),
-	maxSprings(prototype.springs.size()*maxElements),
-	maxEnvs(1),
-	m_hPos(0),
-	m_hVel(0)
-{
-	m_dPos[0] = m_dPos[1] = 0;
-    m_dVel[0] = m_dVel[1] = 0;
-	
-	_initialize();
-}
-
 Simulator::~Simulator() {
 	if(!initialized) return;
 	
@@ -107,25 +91,10 @@ Simulator::~Simulator() {
 	cudaFree((void**) m_dSpringIDs_Sorted);
 }
 
-void Simulator::Initialize(Element prototype, uint maxElements, Config::Simulator config) {
-	massesPerElement = prototype.masses.size();
-	springsPerElement = prototype.springs.size();
-
-	Initialize(massesPerElement, springsPerElement, maxElements, config);
-}
-
-void Simulator::Initialize(uint massesPerElement, uint springsPerElement, uint maxElements, Config::Simulator config) {
-	massesPerElement = massesPerElement;
-	springsPerElement = springsPerElement;
-	maxMasses = massesPerElement*maxElements;
-	maxSprings = springsPerElement*maxElements;
-
-	replacedSpringsPerElement = config.replaced_springs_per_element;
-	maxReplaced = replacedSpringsPerElement * maxElements;
-	deltaT = config.time_step;
-	
-	this->maxElements = maxElements;
-	this->config = config;
+void Simulator::Initialize(Config::Simulator config) {
+	m_replacedSpringsPerElement = config.replaced_springs_per_element;
+	m_deltaT = config.time_step;
+	m_config = config;
 
 	_initialize();
 }
@@ -135,7 +104,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	maxEnvs = 1;
 	m_currentRead = 0;
 	m_currentWrite = 1;
-	total_time = 0.0f;
+	m_total_time = 0.0f;
 	
 	if(initialized) {
 		// Free CPU
@@ -179,9 +148,6 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dSpringIDs_Sorted);
 	}
 	initialized = true;
-	
-	printf("Num Masses:\t%u\n",maxMasses);
-	printf("Num Springs:\t%u\n",maxSprings);
 	
 	massBuf   = new Mass[maxMasses];
 	springBuf = new Spring[maxSprings];
@@ -245,7 +211,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dSpringIDs,  springSizeuint);
 	cudaMalloc((void**)&m_dSpringIDs_Sorted,  springSizeuint);
 
-	switch(config.env_type) {
+	switch(m_config.env_type) {
 		case ENVIRONMENT_LAND:
 			envBuf[0] = EnvironmentLand;
 		case ENVIRONMENT_WATER:
@@ -257,10 +223,40 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& elements) {
 	std::vector<ElementTracker> trackers;
 
+	maxElements = elements.size();
+	maxReplaced = m_replacedSpringsPerElement * maxElements;
+	massesPerElement = elements[0].masses.size();
+	springsPerElement = elements[0].springs.size();
+	maxMasses = massesPerElement*maxElements;
+	maxSprings = springsPerElement*maxElements;
+
+	_initialize();
+
 	numMasses = 0; numSprings = 0; numElements = 0;
 	for(uint i = 0; i < elements.size(); i++) {
 		trackers.push_back(AllocateElement(elements[i]));
 	}
+
+	/*
+	Notes on SM resources:
+	thread blocks	: 8
+	threads			: 2048
+	registers		: 65536
+	shared mem		: 49152
+	*/
+
+	uint maxSharedMemSize = 49152;
+	uint bytesPerMass = sizeof(float3) + sizeof(float3);
+	uint bytesPerMaterial = sizeof(float4);
+	// uint bytesPerElement = massesPerElement*bytesPerMass;
+	// uint elementsPerBlock = min((maxSharedMemSize - (1<<MATERIAL_COUNT)*bytesPerMaterial) / bytesPerElement, numElements);
+	uint elementsPerBlock = 1; // must equal 1
+	m_massesPerBlock = massesPerElement * elementsPerBlock;
+	m_springsPerBlock = springsPerElement * elementsPerBlock;
+	m_sharedMemSizeSim = m_massesPerBlock * bytesPerMass + (1<<MATERIAL_COUNT)*bytesPerMaterial;
+	m_numBlocksSim = (numElements + elementsPerBlock - 1) / elementsPerBlock;
+
+	assert(m_sharedMemSizeSim < maxSharedMemSize);
 
 	Eigen::Vector3f pos, vel;
 	for(uint i = 0; i < numMasses; i++) {
@@ -330,38 +326,11 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std::string tracefile) {
 	float simTimeRemaining = sim_duration;
 	
-	/*
-	Notes on SM resources:
-	thread blocks	: 8
-	threads			: 2048
-	registers		: 65536
-	shared mem		: 49152
-	*/
-
-	uint maxSharedMemSize = 49152;
-	uint bytesPerMass = sizeof(float3) + sizeof(float3);
-	uint bytesPerMaterial = sizeof(float4);
-	// uint bytesPerElement = massesPerElement*bytesPerMass;
-	// uint elementsPerBlock = min((maxSharedMemSize - (1<<MATERIAL_COUNT)*bytesPerMaterial) / bytesPerElement, numElements);
-	uint elementsPerBlock = 1; // must equal 1
-	uint massesPerBlock = massesPerElement * elementsPerBlock;
-	uint springsPerBlock = springsPerElement * elementsPerBlock;
-	uint sharedMemSize = massesPerBlock * bytesPerMass + (1<<MATERIAL_COUNT)*bytesPerMaterial;
-	uint numBlocks = (numElements + elementsPerBlock - 1) / elementsPerBlock;
-
-	assert(sharedMemSize < maxSharedMemSize);
-	// uint bytesPerBlock = elementsPerBlock * bytesPerElement;
-	// int numBlocks = (springsPerBlock + threadsPerBlock - 1) / threadsPerBlock;
-	// printf("BPE:\t%u\n", bytesPerElement);
-	// printf("Block Utilization:\t%f\n", (float) bytesPerBlock / (float) maxSharedMemSize);
-	// printf("EPB:\t%u\n", elementsPerBlock);
-	// printf("EPB:\t%u\n", elementsPerBlock);
-
 	short shiftskip = 20;
 
 	SimOptions opt = {
-		deltaT,
-		massesPerBlock, springsPerBlock,
+		m_deltaT,
+		m_massesPerBlock, m_springsPerBlock,
 		numMasses, numSprings,
 		MATERIAL_COUNT,
 		shiftskip,
@@ -379,24 +348,26 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 	
 	while(simTimeRemaining > 0.0f) {
 		if(trackStresses) {
-			integrateBodiesStresses<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
+			integrateBodiesStresses<<<m_numBlocksSim,simThreadsPerBlock,m_sharedMemSizeSim>>>(
 				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
 				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 				(float*) m_dStresses, (uint*) m_dSpringIDs, (float4*) m_dCompositeMats,
-				total_time, step_count, opt);
+				m_total_time, step_count, opt);
+			gpuErrchk( cudaPeekAtLastError() );
+			cudaDeviceSynchronize();
 		} else {
-			integrateBodies<<<numBlocks,simThreadsPerBlock,sharedMemSize>>>(
+			integrateBodies<<<m_numBlocksSim,simThreadsPerBlock,m_sharedMemSizeSim>>>(
 				(float4*) m_dPos[m_currentWrite], (float4*) m_dVel[m_currentWrite],
 				(float4*) m_dPos[m_currentRead], (float4*) m_dVel[m_currentRead],
 				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatEncodings,  (float*) m_dLbars,
 				(float4*) m_dCompositeMats,
-				total_time, step_count, opt);
+				m_total_time, step_count, opt);
+			gpuErrchk( cudaPeekAtLastError() );
+			cudaDeviceSynchronize();
 		}
 
-		gpuErrchk( cudaPeekAtLastError() );
-		cudaDeviceSynchronize();
 			
 		std::swap(m_currentRead, m_currentWrite);
 
@@ -409,14 +380,14 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 					float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
 					float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
 
-					massTrace.push_back({ i, total_time, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z });
+					massTrace.push_back({ i, m_total_time, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z });
 				}
 			}
 		}
 		
 		step_count++;
-		total_time += deltaT;
-		simTimeRemaining -= deltaT;
+		m_total_time += m_deltaT;
+		simTimeRemaining -= m_deltaT;
 	}
 
 	if(trace) {
@@ -574,7 +545,7 @@ void Simulator::Devo() {
 	static int seed = 0;
 
 	uint threadsPerBlock = 256;
-	uint numReplacedSprings = replacedSpringsPerElement * numElements;
+	uint numReplacedSprings = m_replacedSpringsPerElement * numElements;
 	uint numBlocks = (numReplacedSprings+threadsPerBlock - 1) / threadsPerBlock;
 	randomIntegerPairKernel<<<numBlocks, threadsPerBlock>>>(numReplacedSprings, (ushort2*) m_dRandomPairs,0,massesPerElement-1,seed);
 
@@ -593,7 +564,7 @@ void Simulator::Devo() {
 		numSprings,
 		springsPerElement,
 		massesPerElement,
-		replacedSpringsPerElement,
+		m_replacedSpringsPerElement,
 		MATERIAL_COUNT
 	};
 			
@@ -602,7 +573,7 @@ void Simulator::Devo() {
 			(float4*) m_dPos[m_currentRead], (float*) m_dLbars,
 			(uint8_t*) m_dSpringMatEncodings,
 			(uint*) m_dSpringIDs_Sorted, (ushort2*) m_dRandomPairs, 
-			(float4*) m_dCompositeMats, total_time,
+			(float4*) m_dCompositeMats, m_total_time,
 			opt
 		);
 	cudaDeviceSynchronize();
@@ -612,7 +583,7 @@ void Simulator::Devo() {
 	cudaMemset(m_dMinStressCount, 0, numSprings * sizeof(ushort));
 	cudaMemset(m_dMaxStressCount, 0, numSprings * sizeof(ushort));
 	
-	if(config.visual) {
+	if(m_config.visual) {
 		cudaMemcpy(m_hSpringMatEncodings, m_dSpringMatEncodings, numSprings*sizeof(uint8_t), cudaMemcpyDeviceToHost);
 		cudaMemcpy(m_hPairs, m_dPairs, numSprings*2*sizeof(ushort), cudaMemcpyDeviceToHost);
 		cudaMemcpy(m_hLbars, m_dLbars, numSprings * sizeof(float),  cudaMemcpyDeviceToHost);

@@ -43,9 +43,6 @@ void Model::Draw(Shader &shader, Camera& camera)
         mesh.Draw(shader,camera);
     }
     Unbind();
-	// for(size_t i = 0; i < mMeshes.size(); i++) {
-	// 	mMeshes[i].Draw(shader, camera);
-	// }
     shader.Unbind();
 }
 

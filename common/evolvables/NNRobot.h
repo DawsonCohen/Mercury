@@ -164,9 +164,6 @@ public:
 
     static float Distance(const CandidatePair<NNRobot>& robots);
 
-    std::string Encode() const;
-	void Decode(const std::string& filename);
-
     friend void swap(NNRobot& r1, NNRobot& r2) {
         using std::swap;
         swap(r1.weights, r2.weights);

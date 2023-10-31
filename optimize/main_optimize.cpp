@@ -89,11 +89,12 @@ int handle_file_io() {
 
 	// Create config out_dir folder
 	util::MakeDirectory(config.io.out_dir);
+	config.io.base_dir = config.io.out_dir;
 
 	// Create folder with current time as name
 	config.io.out_dir = config.io.out_dir + "/" + std::string(time_str);
 	util::MakeDirectory(config.io.out_dir);
-	
+
 	std::ifstream src(config_file, std::ios::binary);
 	if(!src) {
 		std::cerr << "Error opening config file: " << config_file << std::endl;

@@ -4,6 +4,9 @@
 #include <map>
 #include <chrono>
 #include <csignal>
+#include <limits>
+#include <sstream>
+#include <fstream>
 #include <algorithm>
 #include "SoftBody.h"
 
@@ -117,7 +120,7 @@ void SoftBody::updateLength() {
             furthest_pos = m.pos;
     }
 
-    mLength = max(abs(furthest_pos.x() - closest_pos.x()),1.0f);
+    mLength = max(fabsf(furthest_pos.x() - closest_pos.x()),1.0f);
 }
 
 void SoftBody::updateCOM() {
@@ -140,10 +143,6 @@ void SoftBody::updateFitness() {
         return;
     }
 
-    // R.mFitness = mean_pos.norm();
-    // R.mFitness = mean_pos.x() - R.mCOM.x();
-    // printf("%f - %f / %f\n", mCOM.x(), mBaseCOM.x(), mLength);
-    
     mFitness = max((mCOM.x() - mBaseCOM.x()) / mLength, 0.0f);
 
     if(mFitness > 1000) {
@@ -157,4 +156,94 @@ void SoftBody::printObjectPositions() {
 		p = m.pos; 
 		printf("%u - %f, %f, %f\n", m.id, p.x(), p.y(), p.z());
 	}
+}
+
+std::string SoftBody::Encode() const {
+    std::stringstream ss;
+    ss << "type=NNRobot\n";
+    ss << "masses=";
+    for(unsigned int i = 0; i < masses.size(); i++) {
+        ss << masses[i];
+        ss << (i < (masses.size()- 1) ? ";" : "\n");
+    }
+    ss << "springs=";
+    for(unsigned int i = 0; i < springs.size(); i++) {
+        ss << springs[i];
+        ss << (i < springs.size()- 1 ? ";" : "\n");
+    }
+    return ss.str();
+}
+
+void SoftBody::Decode(const std::string& filename) {
+    std::ifstream infile(filename);
+    if (!infile.is_open()) {
+        std::cerr << "Error decoding robot file: " << filename << std::endl;
+        exit(1);
+    }
+    
+    std::string line;
+    masses.clear();
+    springs.clear();
+
+    std::getline(infile, line);
+    std::getline(infile, line);
+    std::size_t pos = line.find('=');
+    std::string key = line.substr(0, pos);
+    std::string value = line.substr(pos+1);
+    if(key == "masses") {
+        std::istringstream lineStream(value);
+        std::string cell;
+
+        while (std::getline(lineStream, cell, ';')) {
+            std::istringstream mass(cell);
+            std::string param;
+            uint id;
+            float x,y,z, m;
+            Material mat;
+
+            std::getline(mass, param, ',');
+            id = std::stoi(param);
+            std::getline(mass, param, ',');
+            x = std::stof(param);
+            std::getline(mass, param, ',');
+            y = std::stof(param);
+            std::getline(mass, param, ',');
+            z = std::stof(param);
+            std::getline(mass, param, ',');
+            m = std::stof(param);
+            std::getline(mass, param, ',');
+            mat = materials::decode(stoi(param));
+            masses.push_back(Mass(id, x, y, z, m, mat));
+        }
+    }
+    std::getline(infile, line);
+    pos = line.find('=');
+    key = line.substr(0, pos);
+    value = line.substr(pos+1);
+    if(key == "springs") {
+        std::istringstream lineStream(value);
+        std::string cell;
+
+        while (std::getline(lineStream, cell, ';')) {
+            std::istringstream spring(cell);
+            std::string param;
+            uint16_t m0, m1;
+            float rl, ml;
+            Material mat;
+
+            std::getline(spring, param, ',');
+            m0 = std::stoi(param);
+            std::getline(spring, param, ',');
+            m1 = std::stoi(param);
+            std::getline(spring, param, ',');
+            rl = std::stof(param);
+            std::getline(spring, param, ',');
+            ml = std::stof(param);
+            std::getline(spring, param, ',');
+            mat = materials::decode(std::stoi(param));
+            Spring s = {m0, m1, rl, ml, mat};
+            springs.push_back(s);
+        }
+    }
+    updateBaseline();
 }

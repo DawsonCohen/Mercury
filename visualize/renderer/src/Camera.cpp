@@ -10,7 +10,7 @@ Camera::Camera(GLFWwindow* window, glm::vec3 position, float rotX, uint tabCount
 	glm::vec3 newOrientation = glm::rotate(Orientation, glm::radians(-rotX), glm::normalize(glm::cross(Orientation, Up)));
 
 	// Decides whether or not the next vertical Orientation is legal or not
-	if (abs(glm::angle(newOrientation, Up) - glm::radians(90.0f)) <= glm::radians(85.0f))
+	if (fabsf(glm::angle(newOrientation, Up) - glm::radians(90.0f)) <= glm::radians(85.0f))
 	{
 		Orientation = newOrientation;
 	}

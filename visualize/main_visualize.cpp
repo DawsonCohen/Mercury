@@ -54,6 +54,18 @@ int main(int argc, char** argv)
 
 	// TODO: Update for new directories
 	if(config.objectives.verify) {
+		if(config.io.in_dir == "") {
+			std::string filename = config.io.base_dir + "/latest.txt";
+			std::ifstream file(filename);
+			if(!file.is_open()) {
+				std::cerr << "ERROR: directory file " << filename << " does not exist" << std::endl;
+				exit(0);
+			}
+			std::string line;
+			std::getline(file, line);
+			config.io.in_dir = line;
+		}
+
 		std::string filename_template = "^solution_\\w+\\.\\w+$";
 		std::regex pattern(filename_template);
 
@@ -65,11 +77,11 @@ int main(int argc, char** argv)
 			if(std::filesystem::is_regular_file(file.path()) &&
 				std::regex_match(file.path().filename().string(), config_pattern))
 			{
-					opt_config = util::optimizer::ReadConfigFile(file.path());
-					NNRobot::Configure(opt_config.nnrobot);
+				opt_config = util::optimizer::ReadConfigFile(file.path());
 			}
 		}
 
+		NNRobot::Configure(opt_config.nnrobot);
 		for (const auto& file : std::filesystem::directory_iterator(config.io.in_dir))
 		{
 			if (std::filesystem::is_regular_file(file.path()) &&
@@ -92,8 +104,7 @@ int main(int argc, char** argv)
 				} 
 			}
 		}
-	}
-	if(!config.objectives.verify) {
+	} else {
 		NNRobot::Configure(config.nnrobot);
 		uint seed = std::chrono::system_clock::now().time_since_epoch().count();
 		srand(seed);
@@ -115,12 +126,13 @@ int main(int argc, char** argv)
 		}
 	}
 
+	opt_config.evaluator.pop_size = solutions.size();
 	opt_config.evaluator.base_time = 0.0f;
 	opt_config.devo.devo_cycles = 0;
 	Evaluator<SoftBody>::Initialize(opt_config);
 	Evaluator<SoftBody>::BatchEvaluate(solutions,true);
 
-	
+	printf("%u\n",config.objectives.video);
 	if(config.objectives.video) {
 		Render(solutions);
 	}
@@ -141,18 +153,17 @@ void Render(std::vector<SoftBody>& robots) {
 		Shader shader("./shaders/vert.glsl", "./shaders/frag.glsl");
 		Camera camera(window, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 
-		SoftBody R = robots[camera.tabIdx];
-		RobotModel<SoftBody> model(R);
+		RobotModel R = robots[camera.tabIdx];
 
 		// opencv video writer
 		cv::VideoWriter video;
 
-		if(config.objectives.stationary)
+		if(config.objectives.verify)
+			out_sol_video_file =  config.io.out_dir + "/solutions_0.avi";
+		else if(config.objectives.stationary)
 			out_sol_video_file =  config.io.out_dir + "/stationary_0.avi";
 		else if(config.objectives.zoo)
 			out_sol_video_file =  config.io.out_dir + "/zoo_0.avi";
-		else if(config.objectives.verify)
-			out_sol_video_file =  config.io.out_dir + "/solutions_0.avi";
 		else
 			out_sol_video_file =  config.io.out_dir + "/random_0.avi";
 		
@@ -161,10 +172,11 @@ void Render(std::vector<SoftBody>& robots) {
 
 		video.open(cv::String(out_sol_video_file),cv::VideoWriter::fourcc('M','J','P','G'), config.renderer.fps, cv::Size(config.renderer.width,config.renderer.height));
 		assert(video.isOpened());
+		printf("WRITING TO %s",out_sol_video_file.c_str());
 
 		float max_render_time = config.visualizer.showcase_time;
 		
-		sim.Initialize(robots[0], 1, config.simulator);
+		sim.Initialize(config.simulator);
 
 		float time_step = 1 / config.renderer.fps;
 		uint devo_cycles = config.devo.devo_cycles;
@@ -178,9 +190,9 @@ void Render(std::vector<SoftBody>& robots) {
 			tabId = camera.tabIdx;
 			printf("rendering %u/%lu\n",tabId+1,robots.size());
 
-			SoftBody R = robots[tabId];
+			RobotModel R = robots[tabId];
 			sim.Reset();
-			robot_elements[0] = {R.getMasses(),R.getSprings()};
+			robot_elements[0] = {R.masses,R.springs};
 			std::vector<ElementTracker> trackers = sim.SetElements(robot_elements);
 						
 			while (!glfwWindowShouldClose(window) && sim.getTotalTime() < max_render_time)
@@ -198,7 +210,6 @@ void Render(std::vector<SoftBody>& robots) {
 				std::vector<Element> results = sim.Collect(trackers);
 
 				R.Update(results[0]);
-				model.Update(R);
 
 				// Specify the color of the background
 				GLCall(glClearColor(1.0f, 1.0f, 1.0f, 1.0f));
@@ -211,7 +222,7 @@ void Render(std::vector<SoftBody>& robots) {
 				// Updates and exports the camera matrix to the Vertex Shader
 				camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-				model.Draw(shader, camera);
+				R.Draw(shader, camera);
 
 				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
 				//use fast 4-byte alignment (default anyway) if possible
@@ -267,8 +278,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 		Shader shader("./shaders/vert.glsl", "./shaders/frag.glsl");
 		Camera camera(window, glm::vec3(0.0f, 0.75f, 5.0f), 0.75f, robots.size());
 
-		SoftBody R = robots[camera.tabIdx];
-		RobotModel<SoftBody> model(R);
+		RobotModel R = robots[camera.tabIdx];
 
 		// opencv video writer
 		cv::VideoWriter video;
@@ -281,7 +291,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 
 		float prevTime = glfwGetTime();
 
-		sim.Initialize(robots[0], 1, config.simulator);
+		sim.Initialize(config.simulator);
 
 		float time_step = 1 / config.renderer.fps;
 		uint devo_cycles = config.devo.devo_cycles;
@@ -307,11 +317,8 @@ void Visualize(std::vector<SoftBody>& robots) {
 				devo_cycles = config.devo.devo_cycles;
 
 				R = robots[tabId];
-				R.updateBaseline();
-				robot_elements[0] = {R.getMasses(),R.getSprings()};
+				robot_elements[0] = {R.masses,R.springs};
 				trackers = sim.SetElements(robot_elements);
-
-				printf("Robot %i, fitness: %f\n", tabId, R.fitness());
 			}
 
 			if(devo_cycles > 0 && timeToDevo <= 0.0f) {
@@ -320,7 +327,6 @@ void Visualize(std::vector<SoftBody>& robots) {
 					sim.Devo();
 					results = sim.Collect(trackers);
 					R.Update(results[0]);
-					R.updateBaseline();
 			} else if(devo_cycles > 0) {
 				timeToDevo -= time_step;
 			}
@@ -335,8 +341,6 @@ void Visualize(std::vector<SoftBody>& robots) {
 			R.Update(results[0]);
 
 			// printf("Robot %i, fitness: %f\n", tabId, R.fitness());
-
-			model.Update(R);
 
 			while ((crntTime - prevTime) < 1 / config.renderer.fps) {
 				crntTime = glfwGetTime();
@@ -358,7 +362,7 @@ void Visualize(std::vector<SoftBody>& robots) {
 			// Updates and exports the camera matrix to the Vertex Shader
 			camera.updateMatrix(45.0f, 0.1f, 100.0f);
 
-			model.Draw(shader, camera);
+			R.Draw(shader, camera);
 
 			if(config.objectives.video) {
 				cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);

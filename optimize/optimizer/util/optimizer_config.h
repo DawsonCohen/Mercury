@@ -46,7 +46,7 @@ struct OptimizerConfig : public Config {
 	} optimizer;
 	struct Evaluator {
 		int pop_size = 512;
-		float base_time = 3.0;
+		float base_time = 0.0;
 		float eval_time = 10.0;
 	} evaluator;
 

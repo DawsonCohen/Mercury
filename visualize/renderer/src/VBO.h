@@ -16,6 +16,9 @@ struct Vertex
 
 class VBO
 {
+  /**
+   *  @name Vertex Buffer Object
+   */
 private:
 	GLuint ID;
 	

@@ -3,8 +3,8 @@
 # Objectives
 OPTIMIZE=
 VISUALIZE=
-WRITE_VIDEO=1
-VERIFY=
+VIDEO=1
+VERIFY=1
 ZOO=
 BOUNCE=
 STATIONARY=
@@ -22,9 +22,6 @@ HIDDEN_LAYER_SIZES=25,25
 BASE_TIME=3.0
 EVAL_TIME=10.0
 
-# Simulator Parameters
-TRACK_STRESSES=
-
 # Renderer Parameters
 WIDTH=1600
 HEIGHT=900
@@ -33,7 +30,8 @@ MAX_TIME=10.0
 
 # IO
 IN_DIR=
-OUT_DIR=../z_results
+BASE_DIR=/path/to/evo-devo/z_results
+OUT_DIR=/path/to/evo-devo/z_results
 
 # COMPUTE
 CUDA_VISIBLE_GPU=0
