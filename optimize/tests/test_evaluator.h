@@ -62,7 +62,7 @@ int TestEvaluator() {
 		float diff = og_fitness[i] - reset_fitness[i];
 		if(diff > EPS || diff < -EPS) {
 			std::stringstream fail;
-			fail << std::setprecision(9) << "FAILED with diff: " << diff;
+			fail << std::setprecision(9) << "    FAILED with diff: " << diff;
 			printf("%s", fail.str().c_str());
 			successflag += 1;
 		}
@@ -106,7 +106,7 @@ int TestEvaluator() {
 		float diff = og_fitness[i] - reset_fitness[i];
 		if(diff > EPS || diff < -EPS) {
 			std::stringstream fail;
-			fail << std::setprecision(9) << "FAILED with diff: " << diff;
+			fail << std::setprecision(9) << "    FAILED with diff: " << diff;
 			printf("%s", fail.str().c_str());
 			successflag += 1;
 		}
