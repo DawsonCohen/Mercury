@@ -81,6 +81,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions, bool trace) {
             skip_count++;
         }
     }
+    Sim.Reset();
     
     static int trace_count = 0;
     Sim.Simulate(evaluationTime, false, trace, std::string("sim_trace_") + std::to_string(trace_count) + std::string(".csv"));
