@@ -16,7 +16,7 @@ struct Config {
 	struct Simulator {
 		bool visual = false;
 		uint replaced_springs_per_element = 128;
-		float time_step = 0.001f;
+		float time_step = 0.01f;
 		EnvironmentType env_type = ENVIRONMENT_WATER;
 	} simulator;
 

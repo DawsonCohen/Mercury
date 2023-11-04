@@ -3,7 +3,6 @@
 #include "NNRobot.h"
 #include "VoxelRobot.h"
 
-#include <filesystem>
 #include <regex>
 #include <thread>
 #include <chrono>

@@ -5,7 +5,6 @@
 #include <Eigen/Core>
 #include "SoftBody.h"
 
-#include <filesystem>
 #include <regex>
 #include <thread>
 #include <chrono>
