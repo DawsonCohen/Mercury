@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
-#include <numbers>
 #include "material.h"
 
 struct Mass {
