@@ -6,7 +6,6 @@
 #include "VoxelRobot.h"
 #include <Eigen/Core>
 
-#include <filesystem>
 #include <regex>
 #include <thread>
 #include <chrono>
