@@ -67,7 +67,7 @@ NNRobot::NNRobot()
     
     weights[num_layers-2] = Eigen::MatrixXf::Random(output_size, hidden_sizes[hidden_sizes.size() - 1]);
 
-    Build();
+    // Build();
 }
 
 void NNRobot::Randomize() {
