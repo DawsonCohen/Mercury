@@ -4,6 +4,8 @@
 #include <string>
 #include "util.h"
 
+#include "tests.h"
+
 #define EPS 0
 
 int TestNNRobot() {

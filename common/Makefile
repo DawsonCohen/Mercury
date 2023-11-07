@@ -17,7 +17,7 @@ OBJDIR := obj
 BINDIR := .
 
 # Source directories
-CXX_SRCDIRS := common/simulator common/evolvables optimize/optimizer common/util
+CXX_SRCDIRS := common/simulator common/evolvables optimize/optimizer common/util common/tests
 CUDA_SRCDIRS := common/simulator common/evolvables
 
 INCLUDE_ALL := $(foreach dir,$(CXX_SRCDIRS),-I$(wildcard $(SRCDIR)/$(dir)))
@@ -42,7 +42,7 @@ CXXFLAGS += $(INCLUDE_DIRS)
 CUFLAGS += $(INCLUDE_DIRS)
 
 # Define target executable
-MAIN_SRC := tests/test_common.cpp
+MAIN_SRC := test_common.cpp
 EXECUTABLE = $(BINDIR)/runtests
 
 .PHONY: all clean vars
@@ -53,6 +53,10 @@ all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/common/$(MAIN_SRC)
 	$(CU) $(CUFLAGS) $(LIB_DIRS) $(INCLUDE_ALL) $^ -o $@ $(LIB_NAMES)
+
+# Tests
+$(OBJDIR)/%.o: $(SRCDIR)/common/tests/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_ALL) -c -o $@ $<
 
 # Simulator
 $(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cpp | $(OBJDIR)

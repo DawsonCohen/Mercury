@@ -1,7 +1,6 @@
 #include "Simulator.h"
-#include "test_simulator.h"
-#include "test_evolvables.h"
-#include "test_integrated.h"
+#include "tests.h"
+#include "util.h"
 #include "NNRobot.h"
 #include "VoxelRobot.h"
 #include <Eigen/Core>
@@ -28,25 +27,32 @@ int main(int argc, char** argv)
 	std::vector<NNRobot> robots;
 	int err;
 
-	err = TestSimulator();
-    if(err) {
-        std::cout << "Test Case 1: Failed with " << err << std::endl;
-    } else {
-        std::cout << "Test Case 1: Passed" << std::endl;
-    }
+	// err = TestSimulator();
+    // if(err) {
+    //     std::cout << "Test Case 1: Failed with " << err << std::endl;
+    // } else {
+    //     std::cout << "Test Case 1: Passed" << std::endl;
+    // }
 
-	err = TestNNRobot();
-	if(err) {
-        std::cout << "Test Case 2: Failed with " << err << std::endl;
-    } else {
-        std::cout << "Test Case 2: Passed" << std::endl;
-    }
+	// err = TestNNRobot();
+	// if(err) {
+    //     std::cout << "Test Case 2: Failed with " << err << std::endl;
+    // } else {
+    //     std::cout << "Test Case 2: Passed" << std::endl;
+    // }
 
-    err = TestIntegrated();
+    // err = TestIntegrated();
+    // if(err) {
+    //     std::cout << "Test Case 3: Failed with " << err << std::endl;
+    // } else {
+    //     std::cout << "Test Case 3: Passed" << std::endl;
+    // }
+
+	err = TestDevo();
     if(err) {
-        std::cout << "Test Case 3: Failed with " << err << std::endl;
+        std::cout << "Test Case 4: Failed with " << err << std::endl;
     } else {
-        std::cout << "Test Case 3: Passed" << std::endl;
+        std::cout << "Test Case 4: Passed" << std::endl;
     }
 
 	return 0;

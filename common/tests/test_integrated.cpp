@@ -3,6 +3,7 @@
 #include "NNRobot.h"
 #include "VoxelRobot.h"
 #include <Eigen/Core>
+#include "SoftBody.h"
 
 #include <regex>
 #include <thread>
@@ -11,10 +12,12 @@
 #include <string>
 #include <sys/stat.h>
 
+#include "tests.h"
+
 #define SIM_TIME 5.0f
 #define ROBO_COUNT 10
 
-std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, bool trace = false) {
+std::vector<float> runIntegrated(Simulator& sim, std::vector<SoftBody> robots, bool trace = false) {
 	sim.Reset();
 	std::vector<float> fitnesses(robots.size());
 	
@@ -28,7 +31,7 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, bo
 	uint devoCycles = 1;
 	float devoTime = 1.0f;
 
-	bool robotWasAllocated[robots.size()];
+	std::vector<bool> robotWasAllocated(robots.size());
     uint i = 0;
     for(auto& R : robots) {
         R.Reset();
@@ -40,11 +43,11 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, bo
 
 	trackers = sim.SetElements(elements);
 
-	// for(uint i = 0; i < devoCycles; i++) {
-    //     sim.Simulate(devoTime, true, trace, tracename);
+	for(uint i = 0; i < devoCycles; i++) {
+        sim.Simulate(devoTime, true, trace, tracename);
 
-    //     sim.Devo();
-    // }
+        sim.Devo();
+    }
 
 	sim.Simulate(SIM_TIME,false,trace, tracename);
 
@@ -64,11 +67,28 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, bo
 	return fitnesses;
 }
 
-int TestSimulator() {
+std::string IntegratedEncode(SoftBody S) {
+    std::stringstream ss;
+    ss << "type=NNRobot\n";
+    ss << "masses=";
+    for(unsigned int i = 0; i < S.masses.size(); i++) {
+        ss << S.masses[i];
+        ss << (i < (S.masses.size()- 1) ? ";" : "\n");
+    }
+    ss << "springs=";
+    for(unsigned int i = 0; i < S.springs.size(); i++) {
+        ss << S.springs[i];
+        ss << (i < S.springs.size()- 1 ? ";" : "\n");
+    }
+    return ss.str();
+}
+
+int TestIntegrated() {
 	Config config;
 	Simulator sim;
 
 	std::vector<SoftBody> robots;
+	std::vector<SoftBody> robots2;
 
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		NNRobot R;
@@ -79,8 +99,34 @@ int TestSimulator() {
 	config.simulator.time_step = 1e-3;
 	sim.Initialize(config.simulator);
 
-	std::vector<float> og_fitness = runSimulator(sim, robots);
-	std::vector<float> reset_fitness = runSimulator(sim, robots);
+	std::vector<float> og_fitness = runIntegrated(sim, robots);
+	int successflag = 0;
+
+	for(uint i = 0; i < ROBO_COUNT; i++){
+		SoftBody R = robots[i];
+		std::string encoding = IntegratedEncode(robots[i]);
+
+	    util::WriteCSV("test_NNBot.csv","./z_results/",encoding);
+
+	    NNRobot Rdecoded;
+	    Rdecoded.Decode("./z_results/test_NNBot.csv");
+	    robots2.push_back(Rdecoded);
+	    for(size_t i = 0; i < Rdecoded.masses.size(); i++) {
+			if((R.masses[i].pos - Rdecoded.masses[i].pos).norm() > 0) {
+				Eigen::Vector3f pos1 = R.masses[i].pos;
+				Eigen::Vector3f pos2 = Rdecoded.masses[i].pos;
+				printf("(%f,%f,%f) vs (%f,%f,%f)\n",pos1[0],pos1[1],pos1[2],pos2[0],pos2[1],pos2[2]);
+				successflag += 1;
+			}
+			if(R.masses[i].material != Rdecoded.masses[i].material) {
+				printf("%lu: %u vs %u\n",i, R.masses[i].material.encoding, Rdecoded.masses[i].material.encoding);
+				successflag += 1;
+			}
+		}
+	}
+	printf("successflag: %u\n", successflag);
+
+	std::vector<float> reset_fitness = runIntegrated(sim, robots2);
 
 	int successFlag = 0; // default passed
 	unsigned int maxDiffId = 0;
@@ -93,7 +139,7 @@ int TestSimulator() {
 		}
 		if(abs(reset_fitness[i] -  og_fitness[i]) > maxDiff) {
 			maxDiffId = i;
-			maxDiff = abs(robots[i].fitness() -  og_fitness[i]);
+			maxDiff = abs(robots2[i].fitness() -  og_fitness[i]);
 		}
 		printf("\n");
 	}
@@ -101,9 +147,9 @@ int TestSimulator() {
 
 	robots[maxDiffId].Reset();
 	std::vector<SoftBody> maxDiffRobot = {robots[maxDiffId]};
-	og_fitness = runSimulator(sim, maxDiffRobot, true);
+	og_fitness = runIntegrated(sim, maxDiffRobot);
 	maxDiffRobot[0].Reset();
-	reset_fitness = runSimulator(sim, maxDiffRobot, true);
+	reset_fitness = runIntegrated(sim, maxDiffRobot);
 	printf("Second run comparison for max diff robot: %f vs %f\n",og_fitness[0], reset_fitness[0]);
 
 	return successFlag;
