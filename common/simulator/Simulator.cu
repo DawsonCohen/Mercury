@@ -78,6 +78,9 @@ Simulator::~Simulator() {
 	delete[] m_hMaxStressCount;
 	delete[] m_hMinStressCount;
 
+	delete[] m_hStresses;
+	delete[] m_hSpringIDs;
+
 	// Free GPU
 	cudaFree((void**) m_dPos[0]);
 	cudaFree((void**) m_dPos[1]);
@@ -117,8 +120,10 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	
 	if(initialized) {
 		// Free CPU
-		delete[] m_hPos;
-		delete[] m_hVel;
+		delete[] massBuf;
+		delete[] springBuf;
+		delete[] envBuf;
+		delete[] offsetBuf;
 
 		delete[] m_hLbars;
 		delete[] m_hPairs;
@@ -127,13 +132,14 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		delete[] m_hSpringMatEncodings;
 		delete[] m_hCompositeMats;
 
-		delete[] massBuf;
-		delete[] springBuf;
-		delete[] envBuf;
-		delete[] offsetBuf;
+		delete[] m_hPos;
+		delete[] m_hVel;
 
 		delete[] m_hMaxStressCount;
 		delete[] m_hMinStressCount;
+
+		delete[] m_hStresses;
+		delete[] m_hSpringIDs;
 
 		// Free GPU
 		cudaFree((void**) m_dPos[0]);
@@ -141,9 +147,9 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dVel[0]);
 		cudaFree((void**) m_dVel[1]);
 
-		cudaFree((void**) m_dLbars);
 		cudaFree((void**) m_dPairs);
 		cudaFree((void**) m_dRandomPairs);
+		cudaFree((void**) m_dLbars);
 		
 		cudaFree((void**) m_dMassMatEncodings);
 		cudaFree((void**) m_dSpringMatEncodings);
@@ -152,6 +158,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 		cudaFree((void**) m_dMaxStressCount);
 		cudaFree((void**) m_dMinStressCount);
 		cudaFree((void**) m_dMinStressCount_Sorted);
+		
 		cudaFree((void**) m_dStresses);
 		cudaFree((void**) m_dSpringIDs);
 		cudaFree((void**) m_dSpringIDs_Sorted);
@@ -161,7 +168,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	massBuf   = new Mass[maxMasses];
 	springBuf = new Spring[maxSprings];
 	offsetBuf = new uint[maxSprings];
-	envBuf 	  =	new Environment[1];
+	envBuf 	  = new Environment[1];
 
 	m_hLbars  = new float[maxSprings];
 	m_hPairs  = new ushort[maxSprings*2];
@@ -198,11 +205,10 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
     unsigned int matSizefloat4     	= sizeof(float)  * 4 * (1 << MATERIAL_COUNT);
     unsigned int replaceSizeushort2 = sizeof(ushort) * 2 * maxReplaced;
 
-	cudaMalloc((void**)&m_dVel[0], massSizefloat4);
-	cudaMalloc((void**)&m_dVel[1], massSizefloat4);
-
 	cudaMalloc((void**)&m_dPos[0], massSizefloat4);
 	cudaMalloc((void**)&m_dPos[1], massSizefloat4);
+	cudaMalloc((void**)&m_dVel[0], massSizefloat4);
+	cudaMalloc((void**)&m_dVel[1], massSizefloat4);
 
 	cudaMalloc((void**)&m_dPairs,  springSizeushort2);
 	cudaMalloc((void**)&m_dRandomPairs,  replaceSizeushort2);
