@@ -1,4 +1,4 @@
-#include "tests.h"
+#include "common_tests.h"
 #include "NNRobot.h"
 
 #define SIM_TIME 0.0f

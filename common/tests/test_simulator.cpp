@@ -7,11 +7,11 @@
 #include <regex>
 #include <thread>
 #include <chrono>
-#include <iostream>
+// #include <iostream>
 #include <string>
 #include <sys/stat.h>
 
-#include "tests.h"
+#include "common_tests.h"
 
 #define SIM_TIME 5.0f
 #define ROBO_COUNT 10
@@ -23,7 +23,7 @@ int TestSimulator() {
 	std::vector<SoftBody> robots;
 
 	for(uint i = 0; i < ROBO_COUNT; i++) {
-		NNRobot R;
+		VoxelRobot R;
 		R.Randomize();
 		robots.push_back(R);
 	}

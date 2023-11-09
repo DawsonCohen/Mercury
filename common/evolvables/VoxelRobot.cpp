@@ -491,27 +491,28 @@ std::string VoxelRobot::Encode() const {
 
 std::vector<float> VoxelRobot::findDiversity(std::vector<VoxelRobot> pop) {
     size_t pop_size = pop.size();
-    size_t v_size = pop[0].getVoxels().size();
     std::vector<float> diversity(pop_size, 0);
+    // size_t v_size = pop[0].getVoxels().size();
     
-    std::map<Material, float> mat_count;
+    // TODO: Produces valgrind error
+    // std::map<Material, float> mat_count;
 
     // TODO
-    for(size_t i = 0; i < v_size; i ++) {
-        mat_count.clear();
-        for(size_t j  = 0; j < pop_size; j++){
-            Material mat = pop[j].getVoxels()[i].mat;
-            if(mat_count.count(mat) == 0) mat_count[mat] = 0;
-            mat_count[mat]++;
-        }
-        for(auto& count : mat_count) {
-            mat_count[count.first] = count.second / pop_size;
-        }
-        for(size_t j = 0; j < pop_size; j++) {
-            Voxel v = pop[j].getVoxels()[i];
-            diversity[j] += 1 - mat_count[v.mat];
-        }
-    }
+    // for(size_t i = 0; i < v_size; i ++) {
+    //     mat_count.clear();
+    //     for(size_t j  = 0; j < pop_size; j++){
+    //         Material mat = pop[j].getVoxels()[i].mat;
+    //         if(mat_count.count(mat) == 0) mat_count[mat] = 0;
+    //         // mat_count[mat]++;
+    //     }
+    // //     for(auto& count : mat_count) {
+    // //         mat_count[count.first] = count.second / pop_size;
+    // //     }
+    // //     for(size_t j = 0; j < pop_size; j++) {
+    // //         Voxel v = pop[j].getVoxels()[i];
+    // //         diversity[j] += 1 - mat_count[v.mat];
+    // //     }
+    // }
     return diversity;
 }
 

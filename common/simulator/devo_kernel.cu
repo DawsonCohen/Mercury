@@ -37,11 +37,17 @@ struct DevoOptions {
 };
 
 __global__ void
-inline replaceSprings(ushort2 *__restrict__ pairs, uint8_t *__restrict__ massMatEncodings, 
-            float4 *__restrict__ massPos, float *__restrict__ Lbars,
-            uint8_t *__restrict__ springMatEncodings, uint *__restrict__ sortedSpringIds,
-            ushort2* newPairs, float4 *__restrict__ compositeMats,
-            float time, DevoOptions opt) {
+inline replaceSprings(
+    ushort2 *__restrict__ pairs,
+    uint8_t *__restrict__ massMatEncodings, 
+    float4 *__restrict__ massPos,
+    float *__restrict__ Lbars,
+    uint8_t *__restrict__ springMatEncodings,
+    uint *__restrict__ sortedSpringIds,
+    ushort2* newPairs,
+    float4 *__restrict__ compositeMats,
+    float time, DevoOptions opt
+) {
 	extern __shared__ float4 s_devo[];
 	float4	*s_compositeMats = s_devo;
 
@@ -67,7 +73,7 @@ inline replaceSprings(ushort2 *__restrict__ pairs, uint8_t *__restrict__ massMat
 	uint8_t	matEncodingLeft, matEncodingRight, newMatEncoding;
 
 	for(uint i = tid; 
-        i < opt.maxReplacedSprings && (i / opt.replacedSpringsPerElement) * opt.springsPerElement < opt.maxSprings; 
+        i < opt.maxReplacedSprings && (i / opt.replacedSpringsPerElement) * opt.springsPerElement + i < opt.maxSprings; 
         i+=stride)
     {
         elementId = (i / opt.replacedSpringsPerElement);

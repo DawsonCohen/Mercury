@@ -100,12 +100,6 @@ inline void springForce(float3 bl, float3 br, float4 mat,
 					float mean_length, float time,
 					float3& force, float& magF)
 {
-	if(mat.x == 0.0f) {
-		force = {0.0f, 0.0f, 0.0f};
-		magF = 0.0f;
-		return;
-	}
-
 	float3	dir, diff;
 
 	float	relative_change,
@@ -134,6 +128,7 @@ inline void springForce(float3 bl, float3 br, float4 mat,
 	if(isnan(dir.x) || isnan(dir.y) || isnan(dir.z)) {
 		magF = 0.0f;
 		force = {0.0f, 0.0f, 0.0f};
+		assert(0);
 	} else {
 		magF = min(mat.x*(rest_length-L), MAX_FORCE);
 		force = magF * dir;
@@ -193,13 +188,15 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	ushort2	pair;
 	uint8_t	matEncoding;
 	float	Lbar,
-			magF;
+			magF = 0x0f;
 	ushort	left, right;
 	
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
-		pair = __ldg(&pairs[i+springOffset]);
 		matEncoding = __ldg(&matEncodings[i+springOffset]);
+		if (matEncoding == 0x01) continue;
+
+		pair = __ldg(&pairs[i+springOffset]);
 		left  = pair.x;
 		right = pair.y;
 		bl = s_pos[left];
@@ -291,7 +288,7 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	ushort2	pair;
 	uint8_t	matEncoding;
 	float	Lbar,
-			magF;
+			magF = 0x0f;
 	ushort	left, right;
 
 	float	minNormalizedStress = 0.0f,
@@ -305,8 +302,10 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
-		pair = __ldg(&pairs[i+springOffset]);
 		matEncoding = __ldg(&matEncodings[i+springOffset]);
+		if(matEncoding == 0x01u) continue;
+
+		pair = __ldg(&pairs[i+springOffset]);
 		left  = pair.x;
 		right = pair.y;
 		bl = s_pos[left];
@@ -332,7 +331,7 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 				maxNormalizedStress = __fdiv_rn(fabsf(magF), Lbar);
 				maxSpringIdx = i;
 			}
-			if(((fabsf(magF) < minNormalizedStress) || (minNormalizedStress == 0.0f)) && fabsf(magF) > 0.0f) {
+			if(((fabsf(magF) < minNormalizedStress) || (minNormalizedStress == 0.0f))) {
 				if(i > tid) {
 					nextMinStress = minNormalizedStress;
 					nextMinSpringIdx = minSpringIdx;

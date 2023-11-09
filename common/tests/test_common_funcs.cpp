@@ -1,4 +1,4 @@
-#include "tests.h"
+#include "common_tests.h"
 #include <array>
 
 std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, float simTime, bool trace) {

@@ -5,7 +5,7 @@
 #include <vector>
 #include <math.h>
 
-#define OMEGA (float) 2.0f * (2.0f*M_PI) // rad/sec
+#define OMEGA (float) 0.1f * (2.0f*M_PI) // rad/sec
 #define AMPLITUDE .14f
 
 struct Color {
@@ -113,11 +113,11 @@ enum MaterialOption {
 
 class materials {
 	public:
-	static constexpr Material air               = {0, 0    , 0        , 0    , 0   , 0x01u, Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f ,  0.0f)};
-	static constexpr Material adductor_muscle   = {1, 50 , AMPLITUDE, OMEGA, 0   , 0x02u, Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-	static constexpr Material abductor_muscle   = {2, 50 , AMPLITUDE, OMEGA, M_PI, 0x04u, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-	static constexpr Material tissue            = {3, 40 , 0        , OMEGA, 0   , 0x08u, Color(217.0f/255.0f , 102.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-	static constexpr Material bone              = {4, 100, 0        , OMEGA, 0   , 0x10u, Color(240.0f/255.0f , 209.0f/255.0f ,  98.0f/255.0f , 0.00f)};
+	static constexpr Material air               = {0, 0   , 0        , 0    , 0   , 0x01u, Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f ,  0.0f)};
+	static constexpr Material adductor_muscle   = {1, 50  , AMPLITUDE, OMEGA, 0   , 0x02u, Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
+	static constexpr Material abductor_muscle   = {2, 50  , AMPLITUDE, OMEGA, M_PI, 0x04u, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
+	static constexpr Material tissue            = {3, 40  , 0        , OMEGA, 0   , 0x08u, Color(217.0f/255.0f , 102.0f/255.0f ,  78.0f/255.0f , 0.00f)};
+	static constexpr Material bone              = {4, 1000, 0        , OMEGA, 0   , 0x10u, Color(240.0f/255.0f , 209.0f/255.0f ,  98.0f/255.0f , 0.00f)};
 
 	static Material materialCombos[1 << MATERIAL_COUNT];
 

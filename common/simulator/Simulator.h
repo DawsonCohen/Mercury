@@ -20,7 +20,7 @@ class Simulator {
 	void _initialize();
 
 public:
-	Simulator() {}
+	Simulator();
 	~Simulator();
 
 	void Initialize(Config::Simulator = Config::Simulator());
@@ -92,7 +92,7 @@ protected:
 	unsigned char m_currentRead,
 			 	  m_currentWrite;
 
-	const uint  simThreadsPerBlock = 1024;
+	uint  simThreadsPerBlock = 1024; // TODO: Remove
 	const uint  devoThreadsPerBlock = 256;
 
 	uint springsPerElement = 0;

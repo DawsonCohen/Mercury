@@ -3,9 +3,6 @@
 #include "devo_kernel.cu"
 #include <math.h>
 #include <algorithm>
-#include <functional>
-#include <fstream>
-#include <iostream>
 #include <random>
 #include <map>
 #include "util.h"
@@ -45,6 +42,18 @@ template <typename... Ts>
 std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts...>>& data, bool writeHeader=true)
 {
     return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>(), writeHeader);
+}
+
+Simulator::Simulator() {
+	cudaFuncAttributes attr;
+	cudaFuncGetAttributes(&attr, integrateBodiesStresses);
+	simThreadsPerBlock = attr.maxThreadsPerBlock;
+	assert( attr.numRegs <= 32768 );
+	cudaFuncGetAttributes(&attr, integrateBodies);
+	if(attr.maxThreadsPerBlock < simThreadsPerBlock)
+		simThreadsPerBlock = attr.maxThreadsPerBlock;
+	
+	assert( attr.numRegs <= 32768 );
 }
 
 Simulator::~Simulator() {
@@ -598,68 +607,3 @@ void Simulator::Devo() {
 
 	seed++;
 }
-
-/*
-uint partition(ushort *minStressCount, ushort *spring_ids, uint start, uint end) {
-	uint pivot = minStressCount[start];
-    uint count = 0, pivot_index, i = start, j = end;
-
-    for (int i = start + 1; i <= end; i++) {
-        if (arr[i] <= pivot)
-            count++;
-    }
- 
-    pivot_index = start + count;
-    std::swap(minStressCount[pivot_index], minStressCount[start]);
-	std::swap(spring_ids[pivot_index], spring_ids[start]);
- 
-    while (i < pivot_index && j > pivot_index) {
-        while (minStressCount[i] <= pivot) {
-            i++;
-        }
-        while (minStressCount[j] > pivot) {
-            j--;
-        }
-        if (i < pivot_index && j > pivot_index) {
-            std::swap(minStressCount[i++], minStressCount[j--]);
-			std::swap(spring_ids[i++], spring_ids[j--]);
-        }
-    }
- 
-    return pivot_index;
-}
-
-void quickSort(ushort *minStressCount, ushort *spring_ids, uint start, uint end) {
-    if (start >= end)
-        return;
- 
-    uint partition = partition(minStressCount, spring_ids, start, end);
-    quickSort(minStressCount, spring_ids, partition-1);
-    quickSort(minStressCount, spring_ids, partition+1, end);
-}
-
-void linkedSort(ushort minStressCount, ushort *spring_ids, uint num_springs) {
-	quicksort(ushort2 minStressCount, ushort *spring_ids, 0, num_springs-1)
-}
-
-void Simulator::replaceSprings(ushort2 *__restrict__ pairs, ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount) {
-	ushort2 rand1, rand2;
-	//TODO: Properly alloc memory for this
-	//TODO: Find and pass num_springs
-	ushort spring_ids[num_springs];
-	for(uint i = 0; i < num_springs; i++){
-		spring_ids[i] = i;
-	}
-	
-	linkedSort(minStressCount, spring_ids, num_springs);
-
-	for(uint i = 0; i < replace_amount; i++) {
-		rand1 = rand() % num_springs;
-		do {
-			rand2 = rand() % num_springs;
-		} while(rand1 == rand2)
-		pairs[spring_ids[i]].x = rand1;
-		pairs[spring_ids[i]].y = rand2;
-		//TODO: Calculate New Rest Length - Might need to pass in masses for that
-	}
-}*/

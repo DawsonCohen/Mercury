@@ -46,7 +46,7 @@ void Evaluator<T>::BatchEvaluate(std::vector<T>& solutions, bool trace) {
     std::vector<Element> results;
     uint skip_count;
 
-    bool robotWasAllocated[solutions.size()];
+    std::vector<bool> robotWasAllocated(solutions.size());
 
     uint i = 0;
     for(auto& R : solutions) {

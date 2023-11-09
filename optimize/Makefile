@@ -5,6 +5,9 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3
 CU := nvcc
 CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3
 
+CUDEBUG := -g -G -lineinfo -Xptxas -dlcm=cg
+DEBUG := -g
+
 ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20050
 	CUFLAGS += -Xcudafe --diag_suppress=20015
@@ -46,15 +49,15 @@ ifdef BENCHMARK
 MAIN_SRC := benchmark.cpp
 EXECUTABLE = $(BINDIR)/benchmark
 else ifdef TESTS
-MAIN_SRC := tests/test_optimize.cpp
+MAIN_SRC := test_optimize.cpp
+CXX_SRCDIRS += optimize/tests
 EXECUTABLE = $(BINDIR)/runtests
-
 else
 MAIN_SRC := main_optimize.cpp
 EXECUTABLE = $(BINDIR)/evodevo
 endif
 
-.PHONY: all clean vars
+.PHONY: all clean vars debug
 
 all: $(EXECUTABLE)
 
@@ -62,6 +65,12 @@ all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(CXX_OBJS) $(CUDA_OBJS) $(SRCDIR)/optimize/$(MAIN_SRC)
 	$(CU) $(CUFLAGS) $(LIB_DIRS) $(INCLUDE_ALL) $^ -o $@ $(LIB_NAMES)
+
+ifdef TESTS
+# Tests
+$(OBJDIR)/%.o: $(SRCDIR)/optimize/tests/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_ALL) -c -o $@ $<
+endif
 
 # Simulator
 $(OBJDIR)/%.o: $(SRCDIR)/common/simulator/%.cpp | $(OBJDIR)
@@ -92,6 +101,11 @@ $(OBJDIR)/%.o: $(SRCDIR)/common/util/%.cpp | $(OBJDIR)
 
 $(OBJDIR):
 	mkdir -p $@
+
+# Target: Debug
+debug: CXXFLAGS += $(DEBUG)
+debug: CUFLAGS += $(CUDEBUG)
+debug: clean all
 
 vars:
 	$(info CXX_SRCS is $(CXX_SRCS))

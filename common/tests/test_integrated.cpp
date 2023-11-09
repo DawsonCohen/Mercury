@@ -12,7 +12,7 @@
 #include <string>
 #include <sys/stat.h>
 
-#include "tests.h"
+#include "common_tests.h"
 
 #define SIM_TIME 5.0f
 #define ROBO_COUNT 10

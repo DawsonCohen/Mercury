@@ -1,5 +1,5 @@
-#ifndef __TESTS_H__
-#define __TESTS_H__
+#ifndef __COMMON_TESTS_H__
+#define __COMMON_TESTS_H__
 
 #include <vector>
 #include "Simulator.h"
@@ -12,6 +12,5 @@ int TestSimulator();
 int TestNNRobot();
 int TestIntegrated();
 int TestDevo();
-
 
 #endif

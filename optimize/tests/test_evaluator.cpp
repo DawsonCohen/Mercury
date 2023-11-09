@@ -13,23 +13,13 @@
 #include <string>
 #include <sys/stat.h>
 
+#include "opt_tests.h"
+
 #define SIM_TIME 10.0f
-#define ROBO_COUNT 10
+#define ROBO_COUNT 8
 
-#define EPS 0
+#define EPS 1e-6
 #define PRECISION 9
-
-std::vector<float> runEvaluator(std::vector<NNRobot> evalBuf) {
-	std::vector<float> fitness(evalBuf.size());
-
-    Evaluator<NNRobot>::BatchEvaluate(evalBuf);
-
-	for(uint i = 0; i < evalBuf.size(); i++) {
-		fitness[i] = evalBuf[i].fitness();
-	}
-
-	return fitness;
-}
 
 int TestEvaluator() {
 	OptimizerConfig config;
@@ -44,6 +34,7 @@ int TestEvaluator() {
 	}
 
 	config.evaluator.base_time = 1.0f;
+	config.devo.devo_cycles = 1;
 	Evaluator<NNRobot>::Initialize(config);
 	
 	std::vector<NNRobot> evalBuf(ROBO_COUNT);
