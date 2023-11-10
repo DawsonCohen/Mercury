@@ -12,5 +12,6 @@ int TestSimulator();
 int TestNNRobot();
 int TestIntegrated();
 int TestDevo();
+int TestTransfer();
 
 #endif

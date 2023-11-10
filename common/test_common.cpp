@@ -47,5 +47,12 @@ int main(int argc, char** argv)
         std::cout << "Test Case 4: Passed" << std::endl;
     }
 
+    err = TestTransfer();
+    if(err) {
+        std::cout << "Test Case 5: Failed with " << err << std::endl;
+    } else {
+        std::cout << "Test Case 5: Passed" << std::endl;
+    }
+
 	return 0;
 }
