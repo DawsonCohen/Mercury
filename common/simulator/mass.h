@@ -12,10 +12,10 @@ struct Mass {
 
 	Eigen::Vector3f 	pos;
 	Eigen::Vector3f 	protoPos;
+	Eigen::Vector3f		vel = Eigen::Vector3f::Zero();
 	Material material = materials::bone;
 	
 	float mass = 1.0f;
-	Eigen::Vector3f vel   = Eigen::Vector3f::Zero();
 
 	bool	active = false;
 

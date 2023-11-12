@@ -59,22 +59,20 @@ void key_value_sort(float* d_keys_in, float* d_keys_out, uint16_t* d_values_in, 
     cudaFree(d_temp_storage);
 }
 
-template<typename T>
-std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const T& mass_group, uint16_t K)
+std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const std::vector<Mass>& masses, uint16_t K)
 {
-    unsigned int num_masses = mass_group.masses.size();
+    unsigned int num_masses = masses.size();
     
     // CPU data
     float* h_points = new float[num_masses * 3];
     uint16_t* h_ids = new uint16_t[num_masses * num_masses];
     float* h_distances = new float[num_masses * num_masses];
 
-    std::vector<Mass> masses = mass_group.masses;
     for (unsigned int i = 0; i < num_masses; i++)
     {
-        h_points[3*i]   = masses[i].pos[0];
-        h_points[3*i+1] = masses[i].pos[1];
-        h_points[3*i+2] = masses[i].pos[2];
+        h_points[3*i]   = masses[i].protoPos[0];
+        h_points[3*i+1] = masses[i].protoPos[1];
+        h_points[3*i+2] = masses[i].protoPos[2];
     }
 
     // GPU data 
@@ -133,12 +131,9 @@ std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const T& mass_group, uin
 }
 
 
-template<typename T>
-std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU(const T& mass_group, uint16_t K)
+std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU(const std::vector<Mass>& masses, uint16_t K)
 {
-    unsigned int num_masses = mass_group.masses.size();
-
-    std::vector<Mass> masses = mass_group.masses;
+    unsigned int num_masses = masses.size();
 
     std::vector<std::vector<float>> distances(num_masses, std::vector<float>(num_masses));
     for(size_t i = 0; i < num_masses; i++) {
@@ -170,9 +165,5 @@ std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU(const T& mass_group,
 
     return KNN;
 }
-
-// Explicit instantiation of bar for NNRobot
-template std::vector<std::vector<std::pair<uint16_t,float>>> KNN<NNRobot>(const NNRobot& mass_group, uint16_t K);
-template std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU<NNRobot>(const NNRobot& mass_group, uint16_t K);
 
 }

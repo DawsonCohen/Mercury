@@ -1,9 +1,12 @@
 
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3
+CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3 -pg
 
 CU := nvcc
-CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3
+CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3 -pg
+
+# CUPROF := -pg
+# PROF := -pg
 
 CUDEBUG := -g -G -lineinfo -Xptxas -dlcm=cg
 DEBUG := -g
@@ -22,6 +25,18 @@ BINDIR := .
 # Source directories
 CXX_SRCDIRS := common/simulator common/evolvables optimize/optimizer optimize/optimizer/util common/util
 CUDA_SRCDIRS := common/simulator common/evolvables
+
+MAIN_SRC := main_optimize.cpp
+EXECUTABLE = $(BINDIR)/evodevo
+# Define target executable
+ifdef BENCHMARK
+MAIN_SRC := benchmark.cpp
+EXECUTABLE = $(BINDIR)/benchmark
+else ifdef TESTS
+MAIN_SRC := test_optimize.cpp
+CXX_SRCDIRS += optimize/tests
+EXECUTABLE = $(BINDIR)/runtests
+endif
 
 INCLUDE_ALL := $(foreach dir,$(CXX_SRCDIRS),-I$(wildcard $(SRCDIR)/$(dir)))
 
@@ -43,19 +58,6 @@ LIB_NAMES := -l$(EIGEN_LIB_NAME)
 
 CXXFLAGS += $(INCLUDE_DIRS)
 CUFLAGS += $(INCLUDE_DIRS)
-
-# Define target executable
-ifdef BENCHMARK
-MAIN_SRC := benchmark.cpp
-EXECUTABLE = $(BINDIR)/benchmark
-else ifdef TESTS
-MAIN_SRC := test_optimize.cpp
-CXX_SRCDIRS += optimize/tests
-EXECUTABLE = $(BINDIR)/runtests
-else
-MAIN_SRC := main_optimize.cpp
-EXECUTABLE = $(BINDIR)/evodevo
-endif
 
 .PHONY: all clean vars debug
 

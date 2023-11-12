@@ -130,13 +130,13 @@ std::vector<float> NNRobot::findDiversity(std::vector<NNRobot> pop) {
     size_t pop_size = pop.size();
     std::vector<float> diversity(pop_size, 0);
     
-    // TODO
-    for(size_t i = 0; i < pop_size; i++) {
-        for(size_t j  = 0; j < pop_size; j++){
-            CandidatePair<NNRobot> pair = {pop[i], pop[j]};
-            diversity[i] += NNRobot::Distance(pair);
-        }
-    }
+    // // TODO
+    // for(size_t i = 0; i < pop_size; i++) {
+    //     for(size_t j  = 0; j < pop_size; j++){
+    //         CandidatePair<NNRobot> pair = {pop[i], pop[j]};
+    //         diversity[i] += NNRobot::Distance(pair);
+    //     }
+    // }
     return diversity;
 }
 
@@ -146,19 +146,19 @@ void NNRobot::Build() {
     // auto start = std::chrono::high_resolution_clock::now();
     forward();
 
-    std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
-    for (size_t i = 0; i < masses.size(); i++) {
-        for (size_t j = i + 1; j < masses.size(); j++) {
-            dists[i][j] = dists[j][i] = (masses[i].pos - masses[j].pos).norm();
-        }
-    }
+    // std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
+    // for (size_t i = 0; i < masses.size(); i++) {
+    //     for (size_t j = i + 1; j < masses.size(); j++) {
+    //         dists[i][j] = dists[j][i] = (masses[i].protoPos - masses[j].protoPos).norm();
+    //     }
+    // }
     // auto end = std::chrono::high_resolution_clock::now();
     // auto execute_time = std::chrono::duration<float>(end - start).count();
     // printf("INFERENCE IN %f SECONDS\n", execute_time);
 
     // start = std::chrono::high_resolution_clock::now();
     
-    auto knns = KNN::KNN(*this, springs_per_mass);
+    auto knns = KNN::KNN(this->masses, springs_per_mass);
     
     // end = std::chrono::high_resolution_clock::now();
     // execute_time = std::chrono::duration<float>(end - start).count();

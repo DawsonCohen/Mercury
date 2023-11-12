@@ -20,7 +20,7 @@ class Simulator {
 	void _initialize();
 
 public:
-	Simulator();
+	Simulator() {};
 	~Simulator();
 
 	void Initialize(Config::Simulator = Config::Simulator());

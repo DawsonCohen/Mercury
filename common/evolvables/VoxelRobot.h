@@ -77,8 +77,6 @@ enum Encoding {
     ENCODE_SHAPE_ACT = 3
 };
 
-    float mLength = 1.0f;
-
     static float Distance(const CandidatePair<VoxelRobot>& robots);
 
     static CandidatePair<VoxelRobot> TwoPointChildren(const CandidatePair<VoxelRobot>& parents);
@@ -198,7 +196,6 @@ public:
 
     friend void swap(VoxelRobot& r1, VoxelRobot& r2) {
         using std::swap;
-        swap(r1.mLength, r2.mLength);
         swap(r1.voxels, r2.voxels);
         swap(r1.circles, r2.circles);
         swap(r1.xSize, r2.xSize);

@@ -5,7 +5,7 @@
 #include <vector>
 #include <math.h>
 
-#define OMEGA (float) 0.1f * (2.0f*M_PI) // rad/sec
+#define OMEGA (float) 2.0f * (2.0f*M_PI) // rad/sec
 #define AMPLITUDE .14f
 
 struct Color {

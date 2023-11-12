@@ -44,18 +44,6 @@ std::string DataToCSV(const std::string& header, const std::vector<std::tuple<Ts
     return DataToCSVImpl(header, data, std::index_sequence_for<Ts...>(), writeHeader);
 }
 
-Simulator::Simulator() {
-	cudaFuncAttributes attr;
-	cudaFuncGetAttributes(&attr, integrateBodiesStresses);
-	simThreadsPerBlock = attr.maxThreadsPerBlock;
-	assert( attr.numRegs <= 32768 );
-	cudaFuncGetAttributes(&attr, integrateBodies);
-	if(attr.maxThreadsPerBlock < simThreadsPerBlock)
-		simThreadsPerBlock = attr.maxThreadsPerBlock;
-	
-	assert( attr.numRegs <= 32768 );
-}
-
 Simulator::~Simulator() {
 	if(!initialized) return;
 	
@@ -117,6 +105,16 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	m_currentRead = 0;
 	m_currentWrite = 1;
 	m_total_time = 0.0f;
+
+	cudaFuncAttributes attr;
+	cudaFuncGetAttributes(&attr, integrateBodiesStresses);
+	simThreadsPerBlock = attr.maxThreadsPerBlock;
+	assert( attr.numRegs <= 32768 );
+	cudaFuncGetAttributes(&attr, integrateBodies);
+	if(attr.maxThreadsPerBlock < simThreadsPerBlock)
+		simThreadsPerBlock = attr.maxThreadsPerBlock;
+	
+	assert( attr.numRegs <= 32768 );
 	
 	if(initialized) {
 		// Free CPU
@@ -463,13 +461,15 @@ std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& track
 	cudaMemcpy(m_hSpringIDs,   m_dSpringIDs,   numSprings*sizeof(uint), cudaMemcpyDeviceToHost);
 	#endif
 
+	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
+
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
 		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
-		massBuf[i].pos = Eigen::Vector3f(pos.x,pos.y,pos.z);
-
 		assert(!isnan(pos.x) && !isnan(pos.y) && !isnan(pos.z));
 
+		massBuf[i].pos = Eigen::Vector3f(pos.x,pos.y,pos.z);
 		massBuf[i].vel = Eigen::Vector3f(vel.x,vel.y,vel.z);
 	}
 
@@ -483,8 +483,6 @@ std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& track
 	util::WriteCSV("stress.csv","../z_results/", stressHistoryCSV);
 	#endif
 
-	cudaMemcpy(m_dVel[m_currentRead], m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dPos[m_currentRead], m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 
 	std::vector<Element> elements;
 	for(const ElementTracker& tracker : trackers) {

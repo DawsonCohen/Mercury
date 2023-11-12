@@ -22,8 +22,6 @@ struct RadiiSoftBodyEncoding {
 
 class SoftBody : public Element, public Candidate {
 protected:
-	std::vector<Material> mDirectEncoding;
-	std::vector<MaterialRadii> mRadiiEncoding;
 	static unsigned seed;
     static std::default_random_engine gen;
     static std::uniform_real_distribution<> uniform;
@@ -40,7 +38,6 @@ public:
 
 	SoftBody(const SoftBody& src) :
 	Element{src.masses, src.springs}, Candidate(src),
-	mDirectEncoding(src.mDirectEncoding), mRadiiEncoding(src.mRadiiEncoding),
 	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
 	{}
 
@@ -54,8 +51,9 @@ public:
 		swap((Candidate&) s1, (Candidate&) s2);
 		swap(s1.masses, s2.masses);
 		swap(s1.springs, s2.springs);
-		swap(s1.mDirectEncoding, s2.mDirectEncoding);
-		swap(s1.mRadiiEncoding, s2.mRadiiEncoding);
+		swap(s1.mVolume, s2.mVolume);
+        swap(s1.mBaseCOM, s2.mBaseCOM);
+        swap(s1.mLength, s2.mLength);
 	}
 
 	void rotate(float deg, Eigen::Vector3f& axis);

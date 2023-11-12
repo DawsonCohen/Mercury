@@ -175,9 +175,6 @@ public:
         using std::swap;
         swap(r1.weights, r2.weights);
         swap(r1.num_layers, r2.num_layers);
-        swap(r1.mVolume, r2.mVolume);
-        swap(r1.mBaseCOM, r2.mBaseCOM);
-        swap(r1.mLength, r2.mLength);
 
         swap((SoftBody&) r1, (SoftBody&) r2);
     }

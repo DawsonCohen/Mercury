@@ -62,14 +62,6 @@ inline void dragForce(const float4& vel, float3& force,
 		+ __fmul_rn(vel.z,vel.z);
 	float mag_vel = __fsqrt_rn(mag_vel_squared);
 
-	// if(mag_vel < EPS) return;
-
-	// float magFd = min(0.5*rho*mag_vel_squared, MAX_FORCE);
-
-	// force.x += -magFd * __fdiv_rn(vel.x, mag_vel);
-	// force.y += -magFd * __fdiv_rn(vel.y, mag_vel);
-	// force.z += -magFd * __fdiv_rn(vel.z, mag_vel);
-
 	force.x += -0.5*rho*mag_vel*vel.x;
 	force.y += -0.5*rho*mag_vel*vel.y;
 	force.z += -0.5*rho*mag_vel*vel.z;
@@ -82,8 +74,10 @@ inline void environmentForce(float3 pos, const float4& vel, float3& force,
 		case ENVIRONMENT_LAND:
 			gravityForce(force, env.g);
 			collisionForce(pos,vel,force,env.floor_stiffness,env.friction);
+			break;
 		case ENVIRONMENT_WATER:
 			dragForce(vel,force,env.drag);
+			break;
 	}
 }
 
