@@ -3,7 +3,7 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3
 
 CU := nvcc
-CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3
+CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3 -maxrregcount=32
 
 ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20050

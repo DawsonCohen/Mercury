@@ -3,7 +3,7 @@ CXX := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3 -pg
 
 CU := nvcc
-CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3 -pg
+CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3 -pg -use_fast_math -maxrregcount=32
 
 # CUPROF := -pg
 # PROF := -pg

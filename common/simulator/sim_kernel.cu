@@ -140,7 +140,6 @@ struct SimOptions {
 	Environment env;
 };
 
-// TODO: test with single spring
 __global__ void
 inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
@@ -168,7 +167,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
-		environmentForce(s_pos[i],__ldg(&oldVel[i+massOffset]),s_force[i],opt.env);
 	}
 
 	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
@@ -188,7 +186,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
 		matEncoding = __ldg(&matEncodings[i+springOffset]);
-		if (matEncoding == 0x01) continue;
+		if(matEncoding == 0x01u) continue;
 
 		pair = __ldg(&pairs[i+springOffset]);
 		left  = pair.x;
@@ -215,7 +213,8 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	float4 vel;
 	float3 pos3;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		vel = oldVel[i+massOffset];
+		vel = __ldg(&oldVel[i+massOffset]);
+		environmentForce(s_pos[i],vel,s_force[i],opt.env);
 
 		vel.x += (s_force[i].x * opt.dt)*opt.env.damping;
 		vel.y += (s_force[i].y * opt.dt)*opt.env.damping;
@@ -227,7 +226,6 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		s_pos[i].z += vel.z * opt.dt;
 
 		// store new position and velocity
-		// assert(!isnan(pos3.x) && !isnan(pos3.y) && !isnan(pos3.z));
 		pos3 = s_pos[i];
 		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
 		newVel[i+massOffset] = vel;
@@ -267,7 +265,6 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
-		environmentForce(s_pos[i],__ldg(&oldVel[i+massOffset]),s_force[i],opt.env);
 	}
 
 	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
@@ -393,8 +390,9 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	}
 	__syncthreads();
 
-	int tid_next = (tid+1) % blockDim.x;
+	int tid_next;
 	if(step % (opt.shiftskip+1) == 0) {
+		tid_next = (tid+1) % blockDim.x;
 		// shift current index to next spring
 		nextGroup_MaxSpringIdx  = maxStressedSprings[tid_next];
 		nextGroup_MinSpringIdx = minStressedSprings[tid_next];
@@ -424,7 +422,8 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	float4 vel;
 	float3 pos3;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		vel = oldVel[i+massOffset];
+		vel = __ldg(&oldVel[i+massOffset]);
+		environmentForce(s_pos[i],vel,s_force[i],opt.env);
 
 		vel.x += (s_force[i].x * opt.dt)*opt.env.damping;
 		vel.y += (s_force[i].y * opt.dt)*opt.env.damping;
