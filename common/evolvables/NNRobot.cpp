@@ -75,6 +75,8 @@ void NNRobot::Randomize() {
         weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
     }
 
+    mAge = 0;
+
     Build();
 }
 

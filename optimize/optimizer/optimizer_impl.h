@@ -129,8 +129,8 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
             parents.first   = &subpop[first];
             parents.second  = &subpop[second];
 
-            subpop[first].setParent(1);
-            subpop[second].setParent(1);
+            subpop[first].setIsParent(true);
+            subpop[second].setIsParent(true);
 
             children = T::Crossover({*parents.first, *parents.second});
             
@@ -142,13 +142,13 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
 
             switch(mutator){
                 case MUTATE_RANDOM:
-                    subpop[working_index].setParent(1);
+                    subpop[working_index].setIsParent(true);
                     RandomizeSolution(&new_sol);
                     break;
                 case MUTATE:
                 default:
                 {
-                    subpop[working_index].setParent(1);
+                    subpop[working_index].setIsParent(true);
                     MutateSolution(&new_sol);
                 }
             }
@@ -296,12 +296,12 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         for(uint i = 0; i < population.size(); i++) {
             if(full_pop[i].isParent()){
                 population[i].IncrementAge();
-                full_pop[i].setParent(0);
+                full_pop[i].setIsParent(false);
             }
         }
         Evaluator<T>::pareto_sort(population.begin(),population.end());
 
-        if(generation%injection_rate == 0){
+        if(generation % injection_rate == 0){
             RandomizeSolution(&population[population.size()-1]);
             Evaluator<T>::pareto_sort(population.begin(),population.end());
         }
@@ -355,7 +355,8 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         printf("----------------------\n");
 
         std::string gen_directory = working_directory + "/generation_" + std::to_string(generation) + "_fitness_" + std::to_string(best_fitness);
-        WriteSolutions(pareto_solutions,gen_directory);
+        if(generation % config.optimizer.save_skip == 0 || eval_count > max_evals)
+            WriteSolutions(pareto_solutions,gen_directory);
         generation++;
     }
 

@@ -19,7 +19,7 @@ friend class Evaluator;
 protected:
     float   mFitness = 0;
     uint    mParetoLayer = 0;
-    uint    mAge;
+    uint    mAge = 0;
     bool    mParentFlag = 0;
     bool    mValid = true;
 
@@ -55,7 +55,7 @@ public:
     uint paretoLayer() const { return mParetoLayer; }
 
     void setFitness(float fit) { mFitness = fit; }
-    void setParent(bool on) { mParentFlag = on; }
+    void setIsParent(bool on) { mParentFlag = on; }
 
 
     // void Randomize();

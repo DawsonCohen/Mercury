@@ -37,6 +37,7 @@ struct OptimizerConfig : public Config {
 		int niche_count = 4;
 		int steps_to_combine = 100;
 		int steps_to_exchange = 5000;
+		int save_skip = 10;
 		MutationStrat mutation = MUTATE;
 		CrossoverStrat crossover = CROSS_SWAP;
 		NichingStrat niche = NICHE_NONE;

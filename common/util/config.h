@@ -39,11 +39,6 @@ struct Config {
 	struct Hardware {
 		std::vector<int> cuda_device_ids; // TODO
 	} hardware;
-
-	/* TODO
-	replaced_springs_per_element
-	
-	*/
 };
 
 #endif

@@ -398,6 +398,7 @@ void VoxelRobot::Randomize() {
         }
         Build();
     }
+    mAge = 0;
 }
 
 CandidatePair<VoxelRobot> VoxelRobot::TwoPointChildren(const CandidatePair<VoxelRobot>& parents) {

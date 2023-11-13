@@ -111,6 +111,10 @@ OptimizerConfig optimizer::ReadConfigFile(const std::string& filename) {
         config.optimizer.steps_to_exchange = stoi(config_map["STEPS_TO_EXCHANGE"]);
     }
 
+    if(config_map.find("SAVE_SKIP") != config_map.end()) {
+        config.optimizer.save_skip = stoi(config_map["SAVE_SKIP"]);
+    }
+
     if(config_map.find("MUTATION") != config_map.end()) {
         if(config_map["MUTATION"] == "mutate") {
             config.optimizer.mutation = MUTATE;
