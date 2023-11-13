@@ -171,87 +171,106 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
 
     Evaluator<T>::BatchEvaluate(evalBuf);
 
+
     for(auto i = subpop.begin(); i < subpop.end(); i++) {
         evalBuf.push_back(*i);
     }
 
-    Evaluator<T>::pareto_classify(evalBuf.begin(),evalBuf.end());
+    switch(replacement){
+        case PARETO:
+        {
+            Evaluator<T>::pareto_sort(evalBuf.begin(),evalBuf.end());
 
-    uint count = 0;
-    for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
-        fam.child = evalBuf[count++];
-    }
-
-    for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
-        fam.children.first = evalBuf[count++];
-        fam.children.second = evalBuf[count++];
-    }
-
-    for(auto i = subpop.begin(); i < subpop.end(); i++) {
-        *i = evalBuf[count++];
-    }
-
-    //STEP 3: Compare Children to Parents
-    int max_elite = elitism * subpop.size();
-
-    for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
-        uint r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-        Solution<T> random_solution  = &subpop[r_idx];
-        // while(random_solution->paretoLayer() == 0) {
-        //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
-        //     random_solution  = &subpop[r_idx];
-        // }
-        if(max_elite > 0) assert(r_idx != 0);
-        if(*random_solution < fam.child) {
-            // swap(*(fam.parent), fam.child);
-            swap(*(random_solution), fam.child);
+            uint count = 0;
+            for(auto i = subpop.begin(); i < subpop.end(); i++) {
+                swap(*i, evalBuf[count]);
+                count++;
+            }
         }
-    }
-    subpop.mutationFamilyBuffer.clear();
+        break;
+        case REPLACE_STANDARD:
+        {
+            Evaluator<T>::pareto_classify(evalBuf.begin(),evalBuf.end());
 
-    for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
-        switch(crossover) {
-            case CROSS_DC: 
-            {
-                float D00, D11, D01, D10;
-                CandidatePair<T> P0 = {fam.children.first, *fam.parents.first},
-                              P1 = {fam.children.second, *fam.parents.second},
-                              P2 = {fam.children.first,  *fam.parents.second},
-                              P3 = {fam.children.second, *fam.parents.first };
+            uint count = 0;
+            for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
+                fam.child = evalBuf[count++];
+            }
 
+            for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
+                fam.children.first = evalBuf[count++];
+                fam.children.second = evalBuf[count++];
+            }
 
-                D00 = T::Distance(P0);
-                D11 = T::Distance(P1);
-                D01 = T::Distance(P2);
-                D10 = T::Distance(P3);
+            for(auto i = subpop.begin(); i < subpop.end(); i++) {
+                *i = evalBuf[count++];
+            }
 
-                if(D00 + D11 < D01 + D10) {
-                    if(fam.children.first >= *fam.parents.first) swap(fam.children.first,*fam.parents.first);
-                    if(fam.children.second >= *fam.parents.second) swap(fam.children.second,*fam.parents.second);
-                } else {
-                    if(fam.children.first >= *fam.parents.second) swap(fam.children.first,*fam.parents.second);
-                    if(fam.children.second >= *fam.parents.first) swap(fam.children.second,*fam.parents.first);
+            //STEP 3: Compare Children to Parents
+            int max_elite = elitism * subpop.size();
+
+            for(AsexualFamily<T>& fam : subpop.mutationFamilyBuffer) {
+                uint r_idx = max_elite + (rand() % (subpop.size()-max_elite));
+                Solution<T> random_solution  = &subpop[r_idx];
+                // while(random_solution->paretoLayer() == 0) {
+                //     r_idx = max_elite + (rand() % (subpop.size()-max_elite));
+                //     random_solution  = &subpop[r_idx];
+                // }
+                if(max_elite > 0) assert(r_idx != 0);
+                if(*random_solution < fam.child) {
+                    // swap(*(fam.parent), fam.child);
+                    swap(*(random_solution), fam.child);
                 }
             }
-            break;
-            case CROSS_SWAP:
-            default:
-            {
-                SolutionPair<T> random;
-                uint r1 = max_elite + (rand() % (subpop.size()-max_elite));
-                uint r2 = max_elite + (rand() % (subpop.size()-max_elite));
-                
-                random.first  = &subpop[r1];
-                random.second = &subpop[r2];
 
-                if(fam.children.first  >= *random.first) swap(fam.children.first,  *random.first);
-                if(fam.children.second >= *random.first) swap(fam.children.second, *random.first);
+            for(SexualFamily<T>& fam : subpop.crossoverFamilyBuffer) {
+                switch(crossover) {
+                    case CROSS_DC: 
+                    {
+                        float D00, D11, D01, D10;
+                        CandidatePair<T> P0 = {fam.children.first, *fam.parents.first},
+                                      P1 = {fam.children.second, *fam.parents.second},
+                                      P2 = {fam.children.first,  *fam.parents.second},
+                                      P3 = {fam.children.second, *fam.parents.first };
 
-                if(fam.children.first  >= *random.second) swap(fam.children.first,  *random.second);
-                if(fam.children.second >= *random.second) swap(fam.children.second, *random.second);
+
+                        D00 = T::Distance(P0);
+                        D11 = T::Distance(P1);
+                        D01 = T::Distance(P2);
+                        D10 = T::Distance(P3);
+
+                        if(D00 + D11 < D01 + D10) {
+                            if(fam.children.first >= *fam.parents.first) swap(fam.children.first,*fam.parents.first);
+                            if(fam.children.second >= *fam.parents.second) swap(fam.children.second,*fam.parents.second);
+                        } else {
+                            if(fam.children.first >= *fam.parents.second) swap(fam.children.first,*fam.parents.second);
+                            if(fam.children.second >= *fam.parents.first) swap(fam.children.second,*fam.parents.first);
+                        }
+                    }
+                    break;
+                    case CROSS_SWAP:
+                    default:
+                    {
+                        SolutionPair<T> random;
+                        uint r1 = max_elite + (rand() % (subpop.size()-max_elite));
+                        uint r2 = max_elite + (rand() % (subpop.size()-max_elite));
+                        
+                        random.first  = &subpop[r1];
+                        random.second = &subpop[r2];
+
+                        if(fam.children.first  >= *random.first) swap(fam.children.first,  *random.first);
+                        if(fam.children.second >= *random.first) swap(fam.children.second, *random.first);
+
+                        if(fam.children.first  >= *random.second) swap(fam.children.first,  *random.second);
+                        if(fam.children.second >= *random.second) swap(fam.children.second, *random.second);
+                    }
+                }
             }
         }
+        break;
     }
+
+    subpop.mutationFamilyBuffer.clear();
     subpop.crossoverFamilyBuffer.clear();
 }
 
@@ -384,6 +403,7 @@ std::vector<T> Optimizer<T>::Solve(OptimizerConfig config) {
     pop_size = opt_config.pop_size;
     mutator = opt_config.mutation;
     crossover = opt_config.crossover;
+    replacement = opt_config.replacement;
     niche = opt_config.niche;
 
     uniform_int = std::uniform_int_distribution<>(0,pop_size-1);

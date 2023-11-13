@@ -139,6 +139,16 @@ OptimizerConfig optimizer::ReadConfigFile(const std::string& filename) {
         }
     }
 
+    if(config_map.find("REPLACEMENT") != config_map.end()) {
+        if(config_map["REPLACEMENT"] == "pareto") {
+            config.optimizer.replacement = PARETO;
+        } else if(config_map["REPLACEMENT"] == "standard") {
+            config.optimizer.replacement = REPLACE_STANDARD;
+        } else {
+            std::cerr << "Replacement type " << config_map["REPLACEMENT"] << " not supported" << std::endl;
+        }
+    }
+
     if(config_map.find("NICHE") != config_map.end()) {
         if(config_map["NICHE"] == "alps") {
             config.optimizer.niche = NICHE_ALPS;

@@ -188,6 +188,26 @@ Config common::ReadConfigFile(const std::string& filename) {
         }
     }
 
+    if(config_map.find("CROSSOVER_DISTRIBUTION") != config_map.end()) {
+        if(config_map["CROSSOVER_DISTRIBUTION"] == "none") {
+            config.nnrobot.crossover_distribution = CROSS_DIST_NONE;
+        } else if(config_map["CROSSOVER_DISTRIBUTION"] == "binomial") {
+            config.nnrobot.crossover_distribution = CROSS_DIST_BINOMIAL;
+        } else {
+            std::cerr << "Crossover distribution " << config_map["CROSSOVER_DISTRIBUTION"] << " not supported" << std::endl;
+        }
+    }
+
+    if(config_map.find("CROSSOVER_TYPE") != config_map.end()) {
+        if(config_map["CROSSOVER_TYPE"] == "individual") {
+            config.nnrobot.crossover_type = CROSS_INDIVIDUAL;
+        } else if(config_map["CROSSOVER_TYPE"] == "contiguous") {
+            config.nnrobot.crossover_type = CROSS_CONTIGUOUS;
+        } else {
+            std::cerr << "Crossover type " << config_map["CROSSOVER_TYPE"] << " not supported" << std::endl;
+        }
+    }
+
     if(config_map.find("CUDA_VISIBLE_DEVICES") != config_map.end()) {
         config.hardware.cuda_device_ids.clear();
         

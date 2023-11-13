@@ -34,6 +34,8 @@ struct Config {
 		unsigned int mutation_weight_count = 10;
 		unsigned int springs_per_mass = 25;
 		std::vector<unsigned int> hidden_layer_sizes = {25,25};
+		CrossoverDistribution crossover_distribution = CROSS_DIST_BINOMIAL;
+		CrossoverType crossover_type = CROSS_CONTIGUOUS;
 	} nnrobot;
 
 	struct Hardware {

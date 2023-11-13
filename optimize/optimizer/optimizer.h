@@ -119,6 +119,7 @@ public:
 
     MutationStrat mutator = MUTATE;
     CrossoverStrat crossover = CROSS_DC;
+    ReplacementStrat replacement = PARETO;
     NichingStrat niche = NICHE_ALPS;
 
     unsigned seed;

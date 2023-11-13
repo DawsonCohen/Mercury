@@ -23,6 +23,11 @@ enum CrossoverStrat {
 	CROSS_DC = 2
 };
 
+enum ReplacementStrat {
+	REPLACE_STANDARD = 0,
+	PARETO = 1
+};
+
 enum NichingStrat {
 	NICHE_NONE = 0,
 	NICHE_HFC = 1,
@@ -40,6 +45,7 @@ struct OptimizerConfig : public Config {
 		int save_skip = 10;
 		MutationStrat mutation = MUTATE;
 		CrossoverStrat crossover = CROSS_SWAP;
+		ReplacementStrat replacement = PARETO;
 		NichingStrat niche = NICHE_NONE;
 		float mutation_rate=0.6f;
 		float crossover_rate=0.7f;

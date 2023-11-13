@@ -100,6 +100,8 @@ protected:
     static int crossover_neuron_count;
     static int mutation_weight_count;
     static int springs_per_mass;
+    static CrossoverDistribution crossover_distribution;
+    static CrossoverType crossover_type;
 
     static bool randMassesFilled;
     static std::vector<Mass> randMasses;
@@ -136,6 +138,9 @@ public:
         
         NNRobot::num_layers = config.hidden_layer_sizes.size()+2;
         NNRobot::hidden_sizes = config.hidden_layer_sizes;
+
+        //NNRobot::crossover_distribution = config.crossover_distribution;
+        //NNRobot::crossover_type = config.crossover_type;
 
         NNRobot::maxMasses = config.massCount;
         NNRobot::maxSprings = config.massCount * config.springs_per_mass;

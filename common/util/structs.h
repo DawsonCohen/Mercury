@@ -11,4 +11,14 @@ enum EnvironmentType {
     ENVIRONMENT_WATER
 };
 
+enum CrossoverDistribution {
+	CROSS_DIST_NONE = 0,
+	CROSS_DIST_BINOMIAL = 1
+};
+
+enum CrossoverType {
+	CROSS_INDIVIDUAL = 0,
+	CROSS_CONTIGUOUS = 1
+};
+
 #endif

@@ -94,15 +94,51 @@ void NNRobot::Mutate() {
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
     CandidatePair<NNRobot> children;
+    int crossover_count;
+
+    //switch(crossover_distribution) {
+    switch(CROSS_DIST_BINOMIAL) {
+        case CROSS_DIST_NONE:
+        {
+            crossover_count = crossover_neuron_count;
+        }
+        break;
+        case CROSS_DIST_BINOMIAL:
+        {
+            std::default_random_engine generator;
+            std::binomial_distribution cross_dist(crossover_neuron_count, crossover_neuron_count/3.0);
+            crossover_count = cross_dist(generator);
+        }
+        break;
+    }
     
-    for(int i = 0; i < crossover_neuron_count; i++) {
-        int layer = rand() % parents.first.weights.size();
-        int nodeIdx = rand() % parents.first.weights[layer].rows();
+    //switch(crossover_type) {
+    switch(CROSS_CONTIGUOUS) { 
+        case CROSS_INDIVIDUAL:
+            for(int i = 0; i < crossover_count; i++) {
+                int layer = rand() % parents.first.weights.size();
+                int nodeIdx = rand() % parents.first.weights[layer].rows();
 
-        auto row1 = children.first.weights[layer].row(nodeIdx);
-        auto row2 = children.second.weights[layer].row(nodeIdx);
+                auto row1 = children.first.weights[layer].row(nodeIdx);
+                auto row2 = children.second.weights[layer].row(nodeIdx);
 
-        row1.swap(row2);
+                row1.swap(row2);
+            }
+            break;
+        case CROSS_CONTIGUOUS:
+            int layer = rand() % parents.first.weights.size();
+            if(crossover_count > parents.first.weights[layer].rows()) {
+                crossover_count = parents.first.weights[layer].rows();
+            }
+            int nodeIdx = rand() % (parents.first.weights[layer].rows()-(2*crossover_count));
+
+            for(int i = nodeIdx; i < crossover_count+nodeIdx; i++) {
+
+                auto row1 = children.first.weights[layer].row(i);
+                auto row2 = children.second.weights[layer].row(i);
+
+                row1.swap(row2);
+            }
     }
 
     children.first.Build();
