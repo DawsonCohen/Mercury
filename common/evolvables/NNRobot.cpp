@@ -22,6 +22,8 @@ int NNRobot::mutation_weight_count = 10;
 int NNRobot::springs_per_mass = 25;
 unsigned int NNRobot::maxMasses = 1728;
 unsigned int NNRobot::maxSprings = NNRobot::maxMasses * NNRobot::springs_per_mass;
+CrossoverDistribution NNRobot::crossover_distribution = CROSS_DIST_BINOMIAL;
+CrossoverType NNRobot::crossover_type = CROSS_CONTIGUOUS;
 
 void ShiftY(NNRobot& R) {
     bool setFlag = false;
@@ -94,10 +96,10 @@ void NNRobot::Mutate() {
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
     CandidatePair<NNRobot> children;
-    int crossover_count;
+    int crossover_count = 0;
 
     //switch(crossover_distribution) {
-    switch(CROSS_DIST_BINOMIAL) {
+    switch(crossover_distribution) {
         case CROSS_DIST_NONE:
         {
             crossover_count = crossover_neuron_count;
@@ -105,15 +107,14 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
         break;
         case CROSS_DIST_BINOMIAL:
         {
-            std::default_random_engine generator;
             std::binomial_distribution cross_dist(crossover_neuron_count, crossover_neuron_count/3.0);
-            crossover_count = cross_dist(generator);
+            crossover_count = cross_dist(gen);
         }
         break;
     }
     
     //switch(crossover_type) {
-    switch(CROSS_CONTIGUOUS) { 
+    switch(crossover_type) { 
         case CROSS_INDIVIDUAL:
             for(int i = 0; i < crossover_count; i++) {
                 int layer = rand() % parents.first.weights.size();
@@ -184,12 +185,6 @@ void NNRobot::Build() {
     // auto start = std::chrono::high_resolution_clock::now();
     forward();
 
-    // std::vector<std::vector<float>> dists(masses.size(), std::vector<float>(masses.size()));
-    // for (size_t i = 0; i < masses.size(); i++) {
-    //     for (size_t j = i + 1; j < masses.size(); j++) {
-    //         dists[i][j] = dists[j][i] = (masses[i].protoPos - masses[j].protoPos).norm();
-    //     }
-    // }
     // auto end = std::chrono::high_resolution_clock::now();
     // auto execute_time = std::chrono::duration<float>(end - start).count();
     // printf("INFERENCE IN %f SECONDS\n", execute_time);

@@ -139,8 +139,8 @@ public:
         NNRobot::num_layers = config.hidden_layer_sizes.size()+2;
         NNRobot::hidden_sizes = config.hidden_layer_sizes;
 
-        //NNRobot::crossover_distribution = config.crossover_distribution;
-        //NNRobot::crossover_type = config.crossover_type;
+        NNRobot::crossover_distribution = config.crossover_distribution;
+        NNRobot::crossover_type = config.crossover_type;
 
         NNRobot::maxMasses = config.massCount;
         NNRobot::maxSprings = config.massCount * config.springs_per_mass;
