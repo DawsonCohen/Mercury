@@ -14,7 +14,7 @@ Application::Application(std::vector<SoftBody> robots, VisualizerConfig config) 
 
     camera = Camera(config.renderer.width, config.renderer.height);
     renderer = Renderer("./shaders/vert.glsl", "./shaders/frag.glsl");
-    videoWriter = VideoWriter(config.io.out_dir + "/solutions_0.avi",config.renderer.width, config.renderer.height, 30);
+    videoWriter = VideoWriter(config.io.out_dir + "/solutions_0.avi", config.renderer.fps, config.renderer.width, config.renderer.height);
 
     std::vector<RobotModel> assets;
     for(Element& R : robots) {
@@ -28,7 +28,7 @@ Application::Application(std::vector<SoftBody> robots, VisualizerConfig config) 
     });
 
     eventSystem.subscribe(EVENT_I_PRESSED, [this] {
-        dragVis = !dragVis;
+        dragVis = (DragVisState) (((int) dragVis + 1) % 3);
     });
 
     eventSystem.subscribe(EVENT_UP_PRESSED, [this] {
@@ -37,7 +37,10 @@ Application::Application(std::vector<SoftBody> robots, VisualizerConfig config) 
     });
 
     eventSystem.subscribe(EVENT_DOWN_PRESSED, [this] {
-        sim_speed = max(pow(2,-15), sim_speed / 2.0f);
+        sim_speed = max(pow(2,-32), sim_speed / 2.0f);
+        if(sim.getDeltaT() > sim_speed / this->config.renderer.fps) {
+            sim.setTimeStep(sim_speed / this->config.renderer.fps);
+        }
         printf("%f\n",sim_speed);
     });
 }
@@ -50,7 +53,6 @@ void Application::run()
     inputManager.setWindow(window);
     inputManager.startInputThread();
 
-    Simulator sim;
     sim.Initialize(config.simulator);
     sim.Reset();
 
@@ -67,8 +69,6 @@ void Application::run()
     trackers = sim.SetElements(robot_elements);
     float prevTime = glfwGetTime();
     
-    cv::Mat frame(windowHeight, windowWidth, CV_8UC3);
-    int frame_period = 1.0 / config.renderer.fps;
     std::vector<RobotModel::RobotMeshGroup> drawgroups = {RobotModel::MESH_GROUP_BODY};
     while (!glfwWindowShouldClose(window)) {
         InputState state = inputManager.getState();
@@ -76,10 +76,15 @@ void Application::run()
 
         handleAssetChange(assetManager, R, sim, robot_elements, trackers);
 
-        if(dragVis) {
-            drawgroups = { RobotModel::MESH_GROUP_BODY, RobotModel::MESH_GROUP_DRAG };
-        } else {
-            drawgroups = { RobotModel::MESH_GROUP_BODY };
+        switch(dragVis) {
+            case DRAG_VIS_ALL:
+                drawgroups = { RobotModel::MESH_GROUP_BODY, RobotModel::MESH_GROUP_DRAG };
+                break;
+            case DRAG_VIS_ONE:
+                drawgroups = { RobotModel::MESH_GROUP_BODY, RobotModel::MESH_GROUP_DRAG_ONE };
+                break;
+            case DRAG_VIS_NONE:
+                drawgroups = { RobotModel::MESH_GROUP_BODY };
         }
         
         if(devo_cycles > 0 && timeToDevo <= 0.0f) {
@@ -97,7 +102,7 @@ void Application::run()
         results = sim.Collect(trackers);
         R.Update(results[0], drawgroups);
 
-        while ((crntTime - prevTime) < frame_period) {
+        while ((crntTime - prevTime) < time_step) {
             crntTime = glfwGetTime();
         }
         prevTime = crntTime;
@@ -110,12 +115,19 @@ void Application::run()
         renderer.Render(camera, &R);
 
         if(config.visualizer.writeVideo) {
-            captureFrame(frame);
+            cv::Mat frame(windowHeight, windowWidth, CV_8UC3);
+            // cv::Mat frame(config.renderer.height,config.renderer.width,CV_8UC3);
+            glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
+            glPixelStorei(GL_PACK_ROW_LENGTH, frame.step / frame.elemSize());
+            glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
+            cv::flip(frame, frame, 0);
             videoWriter.writeFrame(frame);
         }
 
         glfwSwapBuffers(window);
     }
+
+    GLFWterminate(window);
 }
 
 void Application::createWindow(int width, int height) {
@@ -131,7 +143,7 @@ void Application::createWindow(int width, int height) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_VISIBLE, interactive ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_VISIBLE, headless ? GLFW_FALSE : GLFW_TRUE);
 
     window = glfwCreateWindow(width, height, "Evo Devo", NULL, NULL);
     if (!window) {

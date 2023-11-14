@@ -78,6 +78,8 @@ void Camera::UpdateCameraPosition(const InputState& state)
 	if (state.isLeftShiftPressed || state.isRightShiftPressed)
 	{
 		speed = 0.4f;
+	} else if(state.isLeftAltPressed) {
+		speed = 0.01f;
 	} else {
 		speed = 0.1f;
 	}

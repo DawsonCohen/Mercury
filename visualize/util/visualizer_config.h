@@ -10,14 +10,13 @@ struct VisualizerConfig : public Config {
 		bool verify = false;
 		bool zoo = false;
 		bool stationary = false;
-		bool video = false;
 	} objectives;
 	struct Visualizer {
 		unsigned int rand_count = 100;
 		float showcase_time = 15.0f;
 		bool dragVis = false;
 		bool writeVideo = false;
-		bool interactive = false;
+		bool headless = false;
 	} visualizer;
 
 	struct Renderer {

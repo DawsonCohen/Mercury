@@ -65,6 +65,7 @@ void InputManager::inputLoop() {
             state.isDPressed = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
             state.isSpacePressed = (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS);
             state.isLeftCtrlPressed = (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS);
+            state.isLeftAltPressed = (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS);
             state.isLeftShiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
             state.isRightShiftPressed = (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
 
@@ -75,8 +76,9 @@ void InputManager::inputLoop() {
                 // Prevents camera from jumping on the first click
                 if (firstClick)
                 {
-                    glfwSetCursorPos(window, (windowWidth / 2), (windowHeight / 2));
                     firstClick = false;
+                    glfwGetCursorPos(window, &clickedMousePosX, &clickedMousePosY);
+                    glfwSetCursorPos(window, (windowWidth / 2), (windowHeight / 2));
                 }
 
                 // Stores the coordinates of the cursor
@@ -89,12 +91,11 @@ void InputManager::inputLoop() {
                 state.mouseY = mouseY;
 
                 // Sets mouse cursor to the middle of the screen so that it doesn't end up roaming around
-                glfwSetCursorPos(window, (windowWidth / 2), (windowHeight / 2));
-            } else {
-                firstClick = true;
+                // glfwSetCursorPos(window, (windowWidth / 2), (windowHeight / 2));
             }
             if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
             {
+                firstClick = true;
                 // Unhides cursor since camera is not looking around anymore
                 glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             }

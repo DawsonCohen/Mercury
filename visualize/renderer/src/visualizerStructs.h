@@ -16,6 +16,7 @@ struct InputState {
     bool isSPressed = false;
     bool isDPressed = false;
     bool isSpacePressed = false;
+    bool isLeftAltPressed = false;
     bool isLeftCtrlPressed = false;
     bool isLeftShiftPressed = false;
     bool isRightShiftPressed = false;

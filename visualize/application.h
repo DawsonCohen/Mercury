@@ -11,6 +11,12 @@
 #include "Simulator.h"
 
 class Application {
+    enum DragVisState {
+        DRAG_VIS_NONE = 0,
+        DRAG_VIS_ONE = 1,
+        DRAG_VIS_ALL = 2,
+    };
+    
 public:
     enum class State {
         Playing,
@@ -20,10 +26,10 @@ public:
     Application(std::vector<SoftBody> robots, VisualizerConfig config = VisualizerConfig());
 
     void Configure(VisualizerConfig config) {
-        dragVis = config.visualizer.dragVis;
+        if(config.visualizer.dragVis) dragVis = DRAG_VIS_ALL;
         writeVideo = config.visualizer.writeVideo;
         showcaseTime = config.visualizer.showcase_time;
-        interactive = config.visualizer.interactive;
+        headless = config.visualizer.headless;
     }
 
 
@@ -31,9 +37,10 @@ public:
 
 private:
     State currentState;
-    bool interactive;
+    bool headless;
     VisualizerConfig config;
 
+    Simulator sim;
     EventSystem eventSystem;
     Camera camera;
     Renderer renderer;
@@ -44,7 +51,7 @@ private:
 
     int windowWidth, windowHeight;
     bool writeVideo = false;
-    bool dragVis = false;
+    DragVisState dragVis = DRAG_VIS_NONE;
     float showcaseTime = 5.0f;
     float sim_speed = 1.0f;
 
@@ -55,6 +62,7 @@ private:
         glPixelStorei(GL_PACK_ALIGNMENT, (frame.step & 3) ? 1 : 4);
         glPixelStorei(GL_PACK_ROW_LENGTH, frame.step / frame.elemSize());
         glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
+        cv::flip(frame, frame, 0);
     }
     void handleAssetChange(AssetManager& assetManager, RobotModel& R, Simulator& sim, std::vector<Element>& robot_elements, std::vector<ElementTracker>& trackers) {
         if (assetManager.hasAssetChanged()) {

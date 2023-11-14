@@ -45,14 +45,14 @@ VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
         config_map[key] = value;
     }
     
-    if(config_map.find("INTERACTIVE") != config_map.end()) {
-        if(isdigit(config_map["INTERACTIVE"][0]) && stoi(config_map["INTERACTIVE"]))
-            config.visualizer.interactive = true;
+    if(config_map.find("HEADLESS") != config_map.end()) {
+        if(isdigit(config_map["HEADLESS"][0]) && stoi(config_map["HEADLESS"]))
+            config.visualizer.headless = true;
     }
 
     if(config_map.find("WRITE_VIDEO") != config_map.end()) {
         if(isdigit(config_map["WRITE_VIDEO"][0]) && stoi(config_map["WRITE_VIDEO"]))
-            config.objectives.video = true;
+            config.visualizer.writeVideo = true;
     }
 
     if(config_map.find("VERIFY") != config_map.end()) {

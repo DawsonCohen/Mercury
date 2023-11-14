@@ -13,10 +13,11 @@
 
 class VideoWriter {
 public:
-    VideoWriter(const std::string& filename, int width, int height, int fps) {
+    VideoWriter(const std::string& filename, float fps, int width, int height) {
         video.open(filename, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, cv::Size(width, height));
         if (!video.isOpened()) {
             std::cerr << "ERROR: VideoWriter Could not open file " << filename << std::endl;
+            exit(1);
         }
     }
 
@@ -25,14 +26,14 @@ public:
     ~VideoWriter() {
         video.release();
     }
-
+    
     void writeFrame(const cv::Mat& frame) {
         if (!video.isOpened()) {
             std::cerr << "ERROR: VideoWriter could not write to file " << std::endl;
-            return;
+            exit(1);
         }
 
-        video.write(frame);
+        video << frame;
     }
 
 private:

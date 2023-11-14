@@ -48,6 +48,7 @@ private:
     std::thread inputThread;
 
     bool firstClick = false;
+    double clickedMousePosX, clickedMousePosY;
 
     InputState state;
 
