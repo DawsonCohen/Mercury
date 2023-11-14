@@ -3,14 +3,11 @@
 
 Model::Model()
 {
-    mMeshes.push_back(Mesh());
-
     mObjectModel = glm::mat4(1.0f);
     mColor = glm::vec4(0.1f,0.1f,0.1f, 1.0f);
 }
 
 Model::Model(const Model& src):
-    mDirectory(src.mDirectory), mPath(src.mPath),
     mObjectModel(src.mObjectModel), mColor(src.mColor),
     mMeshes(src.mMeshes) {}
 
@@ -33,14 +30,34 @@ void Model::Unbind() {
     }
 }
 
-void Model::Draw(Shader &shader, Camera& camera)
+void Model::Draw(Shader& shader, const Camera& camera)
 {
     shader.Bind();
-    Bind();
     shader.SetUniformMatrix4fv("model", mObjectModel);
 
     for(Mesh& mesh : mMeshes) {
+        mesh.Bind();
         mesh.Draw(shader,camera);
+    }
+    Unbind();
+    shader.Unbind();
+}
+
+void Model::DrawGroup(Shader& shader, const Camera& camera, int group)
+{
+    shader.Bind();
+    shader.SetUniformMatrix4fv("model", mObjectModel);
+
+    for(Mesh& mesh : mMeshes) {
+        if(mesh.getGroup() == group) {
+            mesh.Bind();
+            mesh.Draw(shader,camera);
+        }
+    }
+    for(Mesh& mesh : mMeshes) {
+        if(mesh.getGroup() == group) {
+            mesh.Unbind();
+        }
     }
     Unbind();
     shader.Unbind();

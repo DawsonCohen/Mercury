@@ -10,11 +10,17 @@
 #include<glm/gtx/vector_angle.hpp>
 
 #include "Shader.h"
+#include "visualizerStructs.h"
 
 class Camera
 {
 private:
-	GLFWwindow* window;
+	int screenWidth, screenHeight;
+	
+	// Camera 
+	float FOV = 45.0;
+	float nearPlane = 0.1f;
+	float farPlane = 100.0f;
 	
 public:
 	// Stores the main vectors of the camera
@@ -35,7 +41,8 @@ public:
 	float sensitivity = 5.0f;
 
 	// Camera constructor to set up initial values
-	Camera(GLFWwindow* window, glm::vec3 position, float rotX = 0.0f, uint tabCount = 1);
+	Camera(int screenWidth, int screenHeight, glm::vec3 position = glm::vec3(0.0f, 0.75f, 5.0f), float rotX = 0.0f, uint tabCount = 1);
+	Camera() {}
 
 	// Updates the camera matrix to the Vertex Shader
 	void updateMatrix(float FOVdeg, float nearPlane, float farPlane);
@@ -48,6 +55,6 @@ public:
 	// Exports the camera matrix to a shader
 	void SetUniforms(Shader& shader) const;
 	// Handles camera inputs
-	void Update();
+	void UpdateCameraPosition(const InputState& inputState);
 };
 #endif

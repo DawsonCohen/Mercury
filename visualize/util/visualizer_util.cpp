@@ -47,11 +47,11 @@ VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
     
     if(config_map.find("INTERACTIVE") != config_map.end()) {
         if(isdigit(config_map["INTERACTIVE"][0]) && stoi(config_map["INTERACTIVE"]))
-            config.objectives.interactive = true;
+            config.visualizer.interactive = true;
     }
 
-    if(config_map.find("VIDEO") != config_map.end()) {
-        if(isdigit(config_map["VIDEO"][0]) && stoi(config_map["VIDEO"]))
+    if(config_map.find("WRITE_VIDEO") != config_map.end()) {
+        if(isdigit(config_map["WRITE_VIDEO"][0]) && stoi(config_map["WRITE_VIDEO"]))
             config.objectives.video = true;
     }
 
@@ -64,10 +64,16 @@ VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
         if(isdigit(config_map["ZOO"][0]) && stoi(config_map["ZOO"]))
             config.objectives.zoo = true;
     }
+
     
     if(config_map.find("STATIONARY") != config_map.end()) {
         if(isdigit(config_map["STATIONARY"][0]) && stoi(config_map["STATIONARY"]))
             config.objectives.stationary = true;
+    }
+    
+    if(config_map.find("RAND_COUNT") != config_map.end()) {
+        if(isdigit(config_map["RAND_COUNT"][0]) && stoi(config_map["RAND_COUNT"]))
+            config.objectives.zoo = true;
     }
 
     if(config_map.find("SHOWCASE_TIME") != config_map.end()) {

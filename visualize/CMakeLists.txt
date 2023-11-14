@@ -36,6 +36,7 @@ set(VISUALIZE
   ../common/util/util.cpp
   ../optimize/optimizer/util/optimizer_util.cpp
   util/visualizer_util.cpp
+  application.cpp
 )
 
 set(RENDER
@@ -43,6 +44,7 @@ set(RENDER
   renderer/src/Shader.cpp
   renderer/src/Mesh.cpp
   renderer/src/Renderer.cpp
+  renderer/src/InputManager.cpp
   renderer/src/VAO.cpp
   renderer/src/VBO.cpp
   renderer/src/EBO.cpp

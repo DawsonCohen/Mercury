@@ -3,10 +3,10 @@
 
 #include <glad/glad.h>
 #include <csignal>
-#include "VAO.h"
-#include "VBO.h"
-#include "EBO.h"
 #include "Camera.h"
+#include "Model.h"
+
+#include <opencv2/opencv.hpp>
 
 #define ASSERT(x) if (!(x)) std::raise(SIGINT);
 #define GLCall(x) GLClearError();\
@@ -17,10 +17,18 @@ void GLClearError();
 bool GLLogCall(const char* function, const char* file, int line);
 
 class Renderer {
+public:
+	Renderer(const std::string& vertexShaderPath, const std::string& fragmentShaderPath);
+	Renderer() {}
+
 	void Clear() const;
-	
-	void Draw(const VAO& VAO, const EBO& EBO, const Shader& shader) const;
-	void DrawLines(const VAO& VAO, const EBO& EBO, const Shader& shader) const;
+	void Initialize();
+
+	void Render(const Camera& camera, Model* model);
+
+private:
+	cv::VideoWriter video;
+	Shader shader;
 };
 
 #endif

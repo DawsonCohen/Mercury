@@ -8,7 +8,8 @@ Mesh::Mesh(std::vector<Vertex>& vertices, std::vector<unsigned int>& indices) :
 
 Mesh::Mesh(const Mesh& src) :
 	mVertices(src.mVertices), mIndices(src.mIndices),
-    mVAO(src.mVAO), mVBO(src.mVBO), mEBO(src.mEBO) { }
+    mVAO(src.mVAO), mVBO(src.mVBO), mEBO(src.mEBO), mLineWidth(src.mLineWidth), mGroupID(src.mGroupID)
+	 { }
 
 void Mesh::Bind() {
     setupMesh();
@@ -36,7 +37,7 @@ void Mesh::setupMesh() {
 	mVAO.Unbind();
 }
 
-void Mesh::Draw(Shader& shader, Camera& camera) const {
+void Mesh::Draw(Shader& shader, const Camera& camera) {
     shader.Bind();
 	mVAO.Bind();
 	mVBO.Bind(mVertices);
@@ -50,6 +51,7 @@ void Mesh::Draw(Shader& shader, Camera& camera) const {
 	// }
 
 	// Draw the mesh
+	GLCall(glLineWidth((GLfloat) mLineWidth));
 	GLCall(glDrawElements(GL_LINES, mIndices.size(), GL_UNSIGNED_INT, 0));
 
 	mVAO.Unbind();

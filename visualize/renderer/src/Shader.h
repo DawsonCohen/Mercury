@@ -18,9 +18,11 @@ private:
     
 public:
     unsigned int ID;
-    Shader(const char* vertexFile, const char* fragmentFile);
+    Shader(const std::string& vertexFile, const std::string& fragmentFile);
+    Shader() : ID(0) {};
     ~Shader();
 
+    void LoadShader(const std::string& vertexFile, const std::string& fragmentFile);
     void Bind() const;
     void Unbind() const;
 

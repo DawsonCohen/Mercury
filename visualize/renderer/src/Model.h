@@ -9,9 +9,6 @@
 #include "glm/glm.hpp"
 
 class Model {
-    std::string mDirectory;
-    std::string mPath;
-
 protected:
 	glm::mat4 mObjectModel = glm::mat4(1.0f);
 	glm::vec4 mColor;
@@ -27,8 +24,6 @@ public:
 
     friend void swap(Model& m1, Model& m2) {
         using std::swap;
-        swap(m1.mDirectory, m2.mDirectory);
-        swap(m1.mPath, m2.mPath);
         swap(m1.mObjectModel, m2.mObjectModel);
         swap(m1.mColor, m2.mColor);
         swap(m1.mMeshes, m2.mMeshes);
@@ -39,11 +34,16 @@ public:
     void rotate(float deg, glm::vec3 axis);
     void translate(glm::vec3 translation);
     void scale(float scale);
-    void Draw(Shader& shader, Camera& camera);
+    virtual void Draw(Shader& shader, const Camera& camera);
+    void DrawGroup(Shader& shader, const Camera& camera, int group);
 
     void updateVertices();
 
-    void printMesh() const { mMeshes[0].print(); }
+    void printMesh() const { 
+        for(size_t i = 0; i < mMeshes.size(); i++) {
+            mMeshes[i].print();
+        }
+    }
 
     Model& operator=(Model src)
 	{

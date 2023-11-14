@@ -52,20 +52,6 @@ void PlaneModel::translate(glm::vec3 translation) {
     mObjectModel = glm::translate(mObjectModel, translation);
 }
 
-// void PlaneModel::Draw(Shader& shader, Camera& camera)
-// {
-// 	// Bind shader to be able to access uniforms
-// 	shader.Bind();
-// 	VAO.Bind();
-
-// 	// Take care of the camera Matrix
-// 	shader.SetUniformMatrix4fv("model", glm::value_ptr(mObjectModel));
-// 	camera.SetUniforms(shader);
-
-// 	// Draw the actual mesh
-// 	glDrawElements(GL_TRIANGLES, mIndices.size(), GL_UNSIGNED_INT, 0);
-// }
-
 void PlaneModel::Draw(Shader& shader, Camera& camera)
 {
 	// Bind shader to be able to access uniforms

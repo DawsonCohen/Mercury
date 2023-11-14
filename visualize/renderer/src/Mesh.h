@@ -7,6 +7,7 @@
 
 #include "glm/glm.hpp"
 
+
 class Mesh
 {
     std::vector<Vertex> mVertices;
@@ -14,9 +15,11 @@ class Mesh
     VAO mVAO;
     VBO mVBO;
     EBO mEBO;
+    float mLineWidth = 3.0;
+    int mGroupID;
 
 public:
-    Mesh() {}
+    Mesh(int group = 0) : mGroupID(group) {}
     Mesh(std::vector<Vertex>& vertices, std::vector<unsigned int>& indices);
     Mesh(const Mesh& src);
 
@@ -28,6 +31,8 @@ public:
       swap(first.mVAO, second.mVAO);
       swap(first.mVBO, second.mVBO);
       swap(first.mEBO, second.mEBO);
+      swap(first.mLineWidth, second.mLineWidth);
+      swap(first.mGroupID, second.mGroupID);
     }
 
     Mesh& operator=(Mesh src)
@@ -38,7 +43,7 @@ public:
 
     void Bind();
     void Unbind();
-    void Draw(Shader& shader, Camera& camera) const;
+    void Draw(Shader& shader, const Camera& camera);
     void updateVertex(size_t index, Vertex v);
     void addVertex(Vertex v) { mVertices.push_back(v); }
     void addIndex(unsigned int i) { mIndices.push_back(i); }
@@ -49,6 +54,8 @@ public:
 
     void rotate(float deg, glm::vec3 axis);
 
+    void setLineWidth(float lw) { mLineWidth = lw; }
+
     void print() const {
         printf("Mesh Print\n");
         for(const Vertex& v : mVertices) {
@@ -56,6 +63,8 @@ public:
             printf("%f,%f,%f\n",pos.x,pos.y,pos.z);
         }
     }
+
+    int getGroup() const { return mGroupID; }
 
 private:
     void setupMesh();

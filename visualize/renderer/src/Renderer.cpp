@@ -2,6 +2,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include "Renderer.h"
+
 void GLClearError() {
     while(glGetError());
 }
@@ -22,13 +24,12 @@ void Renderer::Clear() const {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void Renderer::DrawLines(const VAO& VAO, const EBO& EBO, const Shader& shader) const {
-    // Bind shader to be able to access uniforms
-	shader.Bind();
-	VAO.Bind();
-	EBO.Bind();
+Renderer::Renderer(const std::string& vertexShaderPath, const std::string& fragmentShaderPath) { 
+	shader.LoadShader(vertexShaderPath, fragmentShaderPath);
+}
 
-	glDrawElements(GL_LINES, EBO.getCount(), GL_UNSIGNED_INT, 0);
+void Renderer::Render(const Camera& camera, Model* model) {
+	model->Draw(shader, camera);
 }
 
 // void Renderer::Draw(const VAO& VAO, const EBO& EBO, const Shader& shader, const Camera& camera) const {
@@ -52,3 +53,14 @@ void Renderer::DrawLines(const VAO& VAO, const EBO& EBO, const Shader& shader) c
 
 // 	// // Draw the actual mesh
 // }
+
+void GLFWterminate(GLFWwindow* window) {
+	// Delete all the objects we've created
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_LINE_SMOOTH);
+
+	// Delete window before ending the program
+	glfwDestroyWindow(window);
+	// Terminate GLFW before ending the program
+	glfwTerminate();
+}

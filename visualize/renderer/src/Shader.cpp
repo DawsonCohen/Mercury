@@ -43,10 +43,9 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
     return id;
 }
 
-Shader::Shader(const char* vertexFile, const char* fragmentFile) :
-    mVertexFilePath(vertexFile), mFragmentFilePath(fragmentFile) {
-    std::string vertexSource = get_file_contents(vertexFile);
-    std::string fragmentSource = get_file_contents(fragmentFile);
+void Shader::LoadShader(const std::string& vertexFile, const std::string& fragmentFile) {
+    std::string vertexSource = get_file_contents(vertexFile.c_str());
+    std::string fragmentSource = get_file_contents(fragmentFile.c_str());
 
     unsigned int vertexShader = CompileShader(GL_VERTEX_SHADER, vertexSource);
     unsigned int fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentSource);
@@ -73,7 +72,8 @@ Shader::Shader(const char* vertexFile, const char* fragmentFile) :
 }
 
 Shader::~Shader() {
-    GLCall(glDeleteProgram(ID));
+    // TODO: Figure out a solution for sharing shaders between renderers
+    // GLCall(glDeleteProgram(ID));
 }
 
 void Shader::Bind() const {

@@ -7,15 +7,17 @@
 
 struct VisualizerConfig : public Config {
 	struct Objectives {
-		bool interactive = false;
 		bool verify = false;
 		bool zoo = false;
 		bool stationary = false;
 		bool video = false;
 	} objectives;
 	struct Visualizer {
-		uint rand_count = 100;
+		unsigned int rand_count = 100;
 		float showcase_time = 15.0f;
+		bool dragVis = false;
+		bool writeVideo = false;
+		bool interactive = false;
 	} visualizer;
 
 	struct Renderer {

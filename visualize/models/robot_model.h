@@ -4,26 +4,49 @@
 // Evolvable Soft Body
 #include "Model.h"
 #include "element.h"
+#include "environment.h"
 #include <map>
+
 
 class RobotModel : public Element, public Model {
 public:
+    enum RobotMeshGroup : int {
+        MESH_GROUP_BODY = 0,
+        MESH_GROUP_DRAG = 1
+    };
+
     RobotModel(Element& robot) : Element(robot), Model() {
-        updateMesh();
+        mMeshes.push_back(Mesh((int) MESH_GROUP_BODY));
+        mMeshes.push_back(Mesh((int) MESH_GROUP_DRAG));
+        mMeshes[1].setLineWidth(1.0f);
     };
     
     RobotModel() : Element(),   Model() {
-        updateMesh();
+        mMeshes.push_back(Mesh((int) MESH_GROUP_BODY));
+        mMeshes.push_back(Mesh((int) MESH_GROUP_DRAG));
+        mMeshes[1].setLineWidth(1.0f);
     };
 
-    void Update(Element& robot) {
+    void Update(Element& robot, const std::vector<RobotMeshGroup>& groups) {
         masses = robot.masses;
         springs = robot.springs;
+        drawgroups = groups;
 
-        updateMesh();
+        for(size_t i = 0; i < groups.size(); i++) {
+            switch(groups[i]) {
+                case MESH_GROUP_BODY:
+                    updateBodyMesh();
+                    break;
+                case MESH_GROUP_DRAG:
+                    updateDragMesh();
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 
-    void updateMesh() {
+    void updateBodyMesh() {
         std::vector<Vertex> vertices;
         std::vector<uint> indices;
 
@@ -42,11 +65,49 @@ public:
         mMeshes[0].updateIndices(indices);
     }
 
-    // // TODO
-	// void append(T src) {
-    //     SoftBody::append((SoftBody) src);
-    //     updateMesh();
-    // }
+    void updateDragMesh() {
+        std::vector<Vertex> vertices;
+        std::vector<uint> indices;
+        for(const Mass& m : masses) {
+            if(m.material == materials::air) continue;
+            glm::vec3 pos0 = glm::vec3(m.pos.x(), m.pos.y(), m.pos.z());
+
+            float rho = EnvironmentWater.drag;
+
+            //Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
+            float mag_vel_squared = 
+                fmul(m.vel.x(),m.vel.x())
+                + fmul(m.vel.y(),m.vel.y())
+                + fmul(m.vel.z(),m.vel.z());
+            float mag_vel = fsqrt(mag_vel_squared);
+
+            glm::vec3 pos1 = pos0 + glm::vec3(
+                -0.5*rho*mag_vel*m.vel.x(),
+                -0.5*rho*mag_vel*m.vel.y(),
+                -0.5*rho*mag_vel*m.vel.z()
+                );
+
+            Vertex v0 = {pos0, glm::vec4(1,0,0,1)};
+            Vertex v1 = {pos1, glm::vec4(1,0,0,1)};
+
+            
+            vertices.push_back(v0);
+            indices.push_back(vertices.size()-1);
+            vertices.push_back(v1);
+            indices.push_back(vertices.size()-1);
+        }
+        mMeshes[1].updateVertices(vertices);
+        mMeshes[1].updateIndices(indices);
+    }
+
+    void Draw(Shader& shader, const Camera& camera) override {
+        for(size_t i = 0; i < drawgroups.size(); i++) {
+            DrawGroup(shader, camera, (int) drawgroups[i]);
+        }
+    }
+
+private:
+    std::vector<RobotMeshGroup> drawgroups = {MESH_GROUP_BODY};
 };
 
 #endif
