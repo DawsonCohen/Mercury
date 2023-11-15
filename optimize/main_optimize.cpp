@@ -2,7 +2,6 @@
 #include "optimizer.h"
 #include "optimizer_util.h"
 #include "NNRobot.h"
-#include "VoxelRobot.h"
 #include <Eigen/Core>
 
 #include <regex>
@@ -40,9 +39,9 @@ int main(int argc, char** argv)
 	
 	switch(config.robot_type) 
 	{
-		case ROBOT_VOXEL:
+		/*case ROBOT_VOXEL:
 			Evaluator<VoxelRobot>::Initialize(config);
-			break;
+			break;*/
 		case ROBOT_NN:
 		default:
 			Evaluator<NNRobot>::Initialize(config);
@@ -51,14 +50,14 @@ int main(int argc, char** argv)
 
 	switch(config.robot_type)
 	{
-		case ROBOT_VOXEL:
+		/*case ROBOT_VOXEL:
 		{
 			std::vector<VoxelRobot> v_solutions = Solve<VoxelRobot>();
 			for(VoxelRobot R : v_solutions) {
 				solutions.push_back(R);
 			}
-			break;
 		}
+		break;*/
 		case ROBOT_NN:
 		default:
 		{

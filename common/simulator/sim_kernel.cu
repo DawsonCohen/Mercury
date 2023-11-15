@@ -135,7 +135,7 @@ struct SimOptions {
 	uint springsPerBlock;
 	uint maxMasses;
 	uint maxSprings;
-	uint materialCount;
+	uint compositeCount;
 	short shiftskip;
 	Environment env;
 };
@@ -169,7 +169,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		s_force[i] = {0.0f, 0.0f, 0.0f};
 	}
 
-	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
+	for(uint i = tid; i < opt.compositeCount; i += stride) {
 		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
 	__syncthreads();
@@ -267,7 +267,7 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 		s_force[i] = {0.0f, 0.0f, 0.0f};
 	}
 
-	for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
+	for(uint i = tid; i < opt.compositeCount; i += stride) {
 		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
 

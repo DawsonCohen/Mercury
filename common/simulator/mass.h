@@ -34,7 +34,7 @@ struct Mass {
 
 	friend std::ostream& operator<<(std::ostream& out, const Mass& m) {
 		out << std::setprecision(9);
-		return out << m.id << "," << m.protoPos.x() << "," << m.protoPos.y() << "," << m.protoPos.z() << "," << m.mass << "," << (unsigned int) m.material.encoding;
+		return out << m.id << "," << m.protoPos.x() << "," << m.protoPos.y() << "," << m.protoPos.z() << "," << m.mass << "," << (unsigned int) m.material.id;
 	}
 };
 

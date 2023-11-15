@@ -33,7 +33,7 @@ struct DevoOptions {
     uint springsPerElement;
     uint massesPerElement;
     uint replacedSpringsPerElement;
-    uint materialCount;
+    uint compositeCount;
 };
 
 __global__ void
@@ -55,7 +55,7 @@ inline replaceSprings(
 	int stride = blockDim.x;
 
 
-    for(uint i = tid; i < (1 << opt.materialCount); i += stride) {
+    for(uint i = tid; i < opt.compositeCount; i += stride) {
 		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
 

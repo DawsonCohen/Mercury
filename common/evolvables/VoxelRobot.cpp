@@ -4,7 +4,7 @@
 #include <sstream>
 #include "VoxelRobot.h"
 
-VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
+/*VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
@@ -583,4 +583,4 @@ void VoxelRobot::Decode(const std::string& filename) {
         Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
         voxels.push_back(v);
     }
-}
+}*/

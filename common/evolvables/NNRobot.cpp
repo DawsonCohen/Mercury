@@ -222,7 +222,7 @@ void NNRobot::Build() {
                 mat = materials::air;
             } else {
                 mat2 = masses[neighbor.first].material;
-                mat = materials::decode(mat1.encoding | mat2.encoding);
+                mat = materials::decode(materials::get_encoding(mat1.id, mat2.id));
             }
 
             Spring s = {(uint16_t)i, neighbor.first, neighbor.second, neighbor.second, mat};

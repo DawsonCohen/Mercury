@@ -173,7 +173,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	
 	m_hMassMatEncodings		= new uint8_t[maxMasses];
 	m_hSpringMatEncodings	= new uint8_t[maxSprings];
-	m_hCompositeMats		= new float[(1<<MATERIAL_COUNT)*4];
+	m_hCompositeMats		= new float[COMPOSITE_COUNT*4];
 
 	m_hPos 	  = new float[maxMasses*4];
     m_hVel 	  = new float[maxMasses*4];
@@ -200,7 +200,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
     unsigned int springSizefloat    = sizeof(float)  * 1 * maxSprings;
     unsigned int springSizeushort2  = sizeof(ushort) * 2 * maxSprings;
     unsigned int springSizeuint     = sizeof(uint)   * 1 * maxSprings;
-    unsigned int matSizefloat4     	= sizeof(float)  * 4 * (1 << MATERIAL_COUNT);
+    unsigned int matSizefloat4     	= sizeof(float)  * 4 * COMPOSITE_COUNT;
     unsigned int replaceSizeushort2 = sizeof(ushort) * 2 * maxReplaced;
 
 	cudaMalloc((void**)&m_dPos[0], massSizefloat4);
@@ -266,7 +266,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 	uint elementsPerBlock = 1; // must equal 1
 	m_massesPerBlock = massesPerElement * elementsPerBlock;
 	m_springsPerBlock = springsPerElement * elementsPerBlock;
-	m_sharedMemSizeSim = m_massesPerBlock * bytesPerMass + (1<<MATERIAL_COUNT)*bytesPerMaterial;
+	m_sharedMemSizeSim = m_massesPerBlock * bytesPerMass + COMPOSITE_COUNT*bytesPerMaterial;
 	m_numBlocksSim = (numElements + elementsPerBlock - 1) / elementsPerBlock;
 
 	assert(m_sharedMemSizeSim < maxSharedMemSize);
@@ -277,7 +277,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 		vel  = massBuf[i].vel;
 		pos = massBuf[i].pos;
 
-		m_hMassMatEncodings[i] = massBuf[i].material.encoding;
+		m_hMassMatEncodings[i] = massBuf[i].material.id;
 
 		m_hPos[4*i]   = pos.x();
 		m_hPos[4*i+1] = pos.y();
@@ -289,7 +289,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 		m_hVel[4*i+2] = vel.z();
 	}
 
-	for(uint i = 0; i < (1 << MATERIAL_COUNT); i++) {
+	for(uint i = 0; i < COMPOSITE_COUNT; i++) {
 		Material mat = materials::decode(i);
 		m_hCompositeMats[4*i] = mat.k;
 		m_hCompositeMats[4*i+1] = mat.dL0;
@@ -301,7 +301,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 		float    lbar     	 = springBuf[i].mean_length;
 		ushort	 left     	 = springBuf[i].m0,
 			     right	  	 = springBuf[i].m1;
-		uint8_t	 matEncoding = springBuf[i].material.encoding;
+		uint8_t	 matEncoding = springBuf[i].material.id;
 
 		m_hSpringIDs[i] = i;
 		m_hPairs[2*i]   = left;
@@ -322,7 +322,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 	
 	cudaMemcpy(m_dMassMatEncodings,		m_hMassMatEncodings,   	 numMasses  * sizeof(uint8_t), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dSpringMatEncodings,   m_hSpringMatEncodings,   numSprings * sizeof(uint8_t), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dCompositeMats,   m_hCompositeMats,   (1<<MATERIAL_COUNT) *4*sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dCompositeMats,   m_hCompositeMats,   COMPOSITE_COUNT*4*sizeof(float), cudaMemcpyHostToDevice);
 
 	#ifdef FULL_STRESS
 	cudaMemcpy(m_dStresses,   m_hStresses,   numSprings*sizeof(float), cudaMemcpyHostToDevice);
@@ -345,7 +345,7 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 		m_deltaT,
 		m_massesPerBlock, m_springsPerBlock,
 		numMasses, numSprings,
-		MATERIAL_COUNT,
+		COMPOSITE_COUNT,
 		shiftskip,
 		envBuf[0]
 	};
@@ -569,7 +569,7 @@ void Simulator::Devo() {
 	gpuErrchk( cudaPeekAtLastError() );
 
 	uint bytesPerMaterial = sizeof(float4);
-	uint sharedMemSize = (1<<MATERIAL_COUNT)*bytesPerMaterial;
+	uint sharedMemSize = COMPOSITE_COUNT*bytesPerMaterial;
 	numBlocks = (numReplacedSprings + threadsPerBlock - 1) / threadsPerBlock;
 	
 	DevoOptions opt = {
@@ -578,7 +578,7 @@ void Simulator::Devo() {
 		springsPerElement,
 		massesPerElement,
 		m_replacedSpringsPerElement,
-		MATERIAL_COUNT
+		COMPOSITE_COUNT
 	};
 			
 	replaceSprings<<<numBlocks, devoThreadsPerBlock, sharedMemSize>>>(
