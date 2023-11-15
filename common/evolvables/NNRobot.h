@@ -97,7 +97,7 @@ protected:
     static std::vector<unsigned int> hidden_sizes;
     static unsigned int num_layers;
 
-    static int crossover_neuron_count;
+    static float crossover_neuron_count;
     static int mutation_weight_count;
     static int springs_per_mass;
     static CrossoverDistribution crossover_distribution;

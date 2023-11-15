@@ -17,7 +17,7 @@ std::vector<Mass> NNRobot::randMasses;
 bool NNRobot::randMassesFilled = false;
 
 unsigned int NNRobot::num_layers = 4;
-int NNRobot::crossover_neuron_count = 5;
+float NNRobot::crossover_neuron_count = .2;
 int NNRobot::mutation_weight_count = 10;
 int NNRobot::springs_per_mass = 25;
 unsigned int NNRobot::maxMasses = 1728;
@@ -96,29 +96,35 @@ void NNRobot::Mutate() {
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
     CandidatePair<NNRobot> children;
-    int crossover_count;
+    int crossover_count, layer;
 
-    //switch(crossover_distribution) {
-    switch(crossover_distribution) {
-        case CROSS_DIST_NONE:
+    switch(crossover_type)
+    { 
+        case CROSS_INDIVIDUAL:
         {
-            crossover_count = crossover_neuron_count;
+            layer = 0;
         }
         break;
-        case CROSS_DIST_BINOMIAL:
+        case CROSS_CONTIGUOUS:
         {
-            float dev = crossover_neuron_count/3.0;
-            std::normal_distribution<> cross_dist(crossover_neuron_count, dev);
-            crossover_count = (int)cross_dist(gen);
+            layer = rand() % parents.first.weights.size();
         }
         break;
     }
-    
-    //switch(crossover_type) {
-    switch(crossover_type) { 
+
+    crossover_count = crossover_neuron_count*parents.first.weights[layer].rows();
+
+    if (crossover_distribution == CROSS_DIST_BINOMIAL) {
+        std::normal_distribution<> cross_dist(crossover_count, crossover_count/3.0);
+        crossover_count = (int)cross_dist(gen);
+    }
+
+    switch(crossover_type)
+    { 
         case CROSS_INDIVIDUAL:
+        {
             for(int i = 0; i < crossover_count; i++) {
-                int layer = rand() % parents.first.weights.size();
+                layer = rand() % parents.first.weights.size();
                 int nodeIdx = rand() % parents.first.weights[layer].rows();
 
                 auto row1 = children.first.weights[layer].row(nodeIdx);
@@ -126,9 +132,10 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
 
                 row1.swap(row2);
             }
-            break;
+        }
+        break;
         case CROSS_CONTIGUOUS:
-            int layer = rand() % parents.first.weights.size();
+        {
             int nodeIdx;
             if(crossover_count >= parents.first.weights[layer].rows()) {
                 crossover_count = parents.first.weights[layer].rows();
@@ -144,6 +151,8 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
 
                 row1.swap(row2);
             }
+        }
+        break;
     }
 
     children.first.Build();

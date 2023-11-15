@@ -38,7 +38,8 @@ int main(int argc, char** argv)
 
 	std::vector<SoftBody> solutions;
 	
-	switch(config.robot_type){
+	switch(config.robot_type) 
+	{
 		case ROBOT_VOXEL:
 			Evaluator<VoxelRobot>::Initialize(config);
 			break;
@@ -48,7 +49,8 @@ int main(int argc, char** argv)
 			NNRobot::Configure(config.nnrobot);
 	}
 
-	switch(config.robot_type) {
+	switch(config.robot_type)
+	{
 		case ROBOT_VOXEL:
 		{
 			std::vector<VoxelRobot> v_solutions = Solve<VoxelRobot>();

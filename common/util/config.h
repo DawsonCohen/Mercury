@@ -30,7 +30,7 @@ struct Config {
 	};
 
 	struct NNRobot : public SoftBody {
-		unsigned int crossover_neuron_count = 5;
+		float crossover_neuron_count = .2;
 		unsigned int mutation_weight_count = 10;
 		unsigned int springs_per_mass = 25;
 		std::vector<unsigned int> hidden_layer_sizes = {25,25};

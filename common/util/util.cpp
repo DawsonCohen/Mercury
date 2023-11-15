@@ -166,7 +166,7 @@ Config common::ReadConfigFile(const std::string& filename) {
     }
 
     if(config_map.find("CROSSOVER_NEURONS") != config_map.end()) {
-        config.nnrobot.crossover_neuron_count = stoi(config_map["CROSSOVER_NEURONS"]);
+        config.nnrobot.crossover_neuron_count = stof(config_map["CROSSOVER_NEURONS"]);
     }
 
     if(config_map.find("MUTATION_WEIGHTS") != config_map.end()) {
