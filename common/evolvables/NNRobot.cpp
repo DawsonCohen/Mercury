@@ -20,7 +20,7 @@ unsigned int NNRobot::num_layers = 4;
 float NNRobot::crossover_neuron_count = .2;
 int NNRobot::mutation_weight_count = 10;
 int NNRobot::springs_per_mass = 25;
-unsigned int NNRobot::maxMasses = 1728;
+unsigned int NNRobot::maxMasses = 1708;
 unsigned int NNRobot::maxSprings = NNRobot::maxMasses * NNRobot::springs_per_mass;
 CrossoverDistribution NNRobot::crossover_distribution = CROSS_DIST_BINOMIAL;
 CrossoverType NNRobot::crossover_type = CROSS_CONTIGUOUS;
@@ -96,7 +96,7 @@ void NNRobot::Mutate() {
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
     CandidatePair<NNRobot> children;
-    int crossover_count, layer;
+    int crossover_count, layer = 0;
 
     switch(crossover_type)
     { 
@@ -222,7 +222,8 @@ void NNRobot::Build() {
                 mat = materials::air;
             } else {
                 mat2 = masses[neighbor.first].material;
-                mat = materials::decode(materials::get_encoding(mat1.id, mat2.id));
+                // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
+                mat = materials::decode(mat1.encoding | mat2.encoding);
             }
 
             Spring s = {(uint16_t)i, neighbor.first, neighbor.second, neighbor.second, mat};

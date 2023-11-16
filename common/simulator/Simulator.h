@@ -18,6 +18,7 @@ struct ElementTracker {
 
 class Simulator {
 	void _initialize();
+	void freeMemory();
 
 public:
 	Simulator() {};
@@ -59,38 +60,38 @@ protected:
 	Environment*	envBuf;
 
 	// CPU data
-	ushort  *m_hPairs;
-	uint8_t *m_hMassMatEncodings;
-	uint8_t *m_hSpringMatEncodings;
-	float   *m_hCompositeMats;
-	float   *m_hLbars;
-	float   *m_hPos;
-	float   *m_hVel;
-	ushort  *m_hMaxStressCount, *m_hMinStressCount;
-	float   *m_hStresses;
-	uint    *m_hSpringIDs;
+	float    *m_hPos, *m_hVel;
+	uint32_t *m_hMassMatEncodings;
+	uint32_t *m_hSpringMatEncodings;
+	uint8_t  *m_hSpringMatIds;
+	float    *m_hCompositeMats_id;
+	float    *m_hCompositeMats_encoding;
+	ushort   *m_hPairs;
+	float    *m_hLbars;
+	ushort   *m_hMaxStressCount, *m_hMinStressCount;
+	float    *m_hStresses;
+	uint     *m_hSpringIDs;
 
 	// GPU data
-	float   *m_dPos[2], *m_dVel[2];
-	uint8_t *m_dMassMatEncodings;
-	uint8_t *m_dSpringMatEncodings;
-	float   *m_dCompositeMats;
-	ushort	*m_dPairs;
-	ushort  *m_dRandomPairs;
-	float	*m_dLbars;
-	ushort  *m_dMaxStressCount, *m_dMinStressCount;
-	ushort  *m_dMinStressCount_Sorted;
-	float	*m_dStresses;
-	uint    *m_dSpringIDs;
-	uint    *m_dSpringIDs_Sorted;
+	float    *m_dPos, *m_dVel;
+	uint32_t *m_dMassMatEncodings;
+	uint32_t *m_dSpringMatEncodings;
+	uint8_t  *m_dSpringMatIds;
+	float    *m_dCompositeMats_encoding;
+	float    *m_dCompositeMats_id;
+	ushort	 *m_dPairs;
+	ushort   *m_dRandomPairs;
+	float	 *m_dLbars;
+	ushort   *m_dMaxStressCount, *m_dMinStressCount;
+	ushort   *m_dMinStressCount_Sorted;
+	float	 *m_dStresses;
+	uint     *m_dSpringIDs;
+	uint     *m_dSpringIDs_Sorted;
 
-	uint	m_massesPerBlock = 0;
-	uint	m_springsPerBlock = 0;
-	uint	m_sharedMemSizeSim = 0;
-	uint	m_numBlocksSim = 0;
-
-	unsigned char m_currentRead,
-			 	  m_currentWrite;
+	uint	 m_massesPerBlock = 0;
+	uint	 m_springsPerBlock = 0;
+	uint	 m_sharedMemSizeSim = 0;
+	uint	 m_numBlocksSim = 0;
 
 	uint  simThreadsPerBlock = 1024; // TODO: Remove
 	const uint  devoThreadsPerBlock = 256;

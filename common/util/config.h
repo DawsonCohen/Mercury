@@ -26,7 +26,7 @@ struct Config {
 	} devo;
 
 	struct SoftBody {
-		unsigned int massCount = 1728;
+		unsigned int massCount = 1708;
 	};
 
 	struct NNRobot : public SoftBody {

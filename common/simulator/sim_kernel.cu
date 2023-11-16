@@ -11,47 +11,6 @@
 #define EPS (float) 0.000001
 #define MAX_FORCE (float) 200000
 
-// Explicity assumes each mass is of unit 1 mass
-__device__
-inline void gravityForce(float3& force, float g) {
-	force.y += -g;
-}
-
-__device__
-inline void collisionForce(float3 pos, float4 vel, float3& force,
-					float floor_stiffness, float friction) {
-	if(pos.y > 0.0f) return;
-	
-	float3 Fc = {0.0f, 0.0f, 0.0f}; // force due to collision
-	float3 Ff = {0.0f, 0.0f, 0.0f}; // force due to friction
-	float magFc, magFf;
-
-	Fc.y = floor_stiffness * (0.0f - pos.y);
-
-	magFc = l2norm(force);
-	magFf = friction * Fc.y;
-
-	//Static Friction
-	if(fabsf(vel.x) < EPS && fabsf(vel.z) < EPS) {
-		//Check if object has acceleration
-		if(fabsf(magFc) > EPS) {
-			if(magFc < magFf) {
-				Ff = {-force.x, 0.0f, -force.y};
-			} else {
-				//Calculate direction of force and apply friction opposite based on magnitude
-				Ff = magFf*normalize(force);
-			}
-		}
-	} else {
-		// Kinetic Friction
-		Ff = magFf * normalize(make_float3(-vel.x, 0.0f, -vel.z));
-	}
-
-	force.x = Fc.x + Ff.x;
-	force.y = Fc.y;
-	force.z = Fc.z + Ff.z;
-}
-
 __device__
 inline void dragForce(const float4& vel, float3& force,
 					float rho) {	
@@ -70,15 +29,7 @@ inline void dragForce(const float4& vel, float3& force,
 __device__
 inline void environmentForce(float3 pos, const float4& vel, float3& force,
 						const Environment& env) {
-	switch(env.type) {
-		case ENVIRONMENT_LAND:
-			gravityForce(force, env.g);
-			collisionForce(pos,vel,force,env.floor_stiffness,env.friction);
-			break;
-		case ENVIRONMENT_WATER:
-			dragForce(vel,force,env.drag);
-			break;
-	}
+	dragForce(vel,force,env.drag);
 }
 
 
@@ -90,7 +41,7 @@ inline void environmentForce(float3 pos, const float4& vel, float3& force,
 		w - phi		phase
 */
 __device__
-inline void springForce(float3 bl, float3 br, float4 mat, 
+inline void springForce(const float3& bl, const float3& br, const float4& mat, 
 					float mean_length, float time,
 					float3& force, float& magF)
 {
@@ -98,35 +49,27 @@ inline void springForce(float3 bl, float3 br, float4 mat,
 
 	float	relative_change,
 			rest_length,
-			L;
-
-	// b0pos = {bl.x, bl.y, bl.z};
-	// b1pos = {br.x, br.y, br.z};
+			Lsqr, rL, L;
 
 	// rest_length = mean_length * (1 + relative_change);
 	relative_change = mat.y * sinf(mat.z*time+mat.w);
 	rest_length = __fmaf_rn(mean_length, relative_change, mean_length);
 	
-	// rest_length = __fmaf_rn(mean_length*mat.y, sinf(mat.z*time+mat.w), mean_length);
-	
 	diff.x = bl.x - br.x;
 	diff.y = bl.y - br.y;
 	diff.z = bl.z - br.z;
 
-	L = l2norm(diff);
+	Lsqr = dot(diff,diff);
+	L = __fsqrt_rn(Lsqr);
+	rL = rsqrtf(Lsqr + 1.0f);
+
 	dir = {
-		__fdiv_rn(diff.x,L),
-		__fdiv_rn(diff.y,L),
-		__fdiv_rn(diff.z,L)
+		__fmul_rn(diff.x,rL),
+		__fmul_rn(diff.y,rL),
+		__fmul_rn(diff.z,rL)
 	};
-	if(isnan(dir.x) || isnan(dir.y) || isnan(dir.z)) {
-		magF = 0.0f;
-		force = {0.0f, 0.0f, 0.0f};
-		assert(0);
-	} else {
-		magF = min(mat.x*(rest_length-L), MAX_FORCE);
-		force = magF * dir;
-	}
+	magF = mat.x*(rest_length-L);
+	force = magF * dir;
 }
 
 struct SimOptions {
@@ -141,9 +84,8 @@ struct SimOptions {
 };
 
 __global__ void
-inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
-				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
-				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matEncodings, float *__restrict__ Lbars,
+inline integrateBodies(float4 *__restrict__ pos, float4 *__restrict__ vel,
+				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
 				float4 *__restrict__ compositeMats,
 				float time, uint step, SimOptions opt)
 {
@@ -161,7 +103,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	// Initialize and compute environment forces
 	float4 pos4;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		pos4 = __ldg(&oldPos[i+massOffset]);
+		pos4 = __ldg(&pos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
@@ -178,15 +120,15 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	float3	bl, br;
 	float3	force;
 	ushort2	pair;
-	uint8_t	matEncoding;
+	uint8_t	matId;
 	float	Lbar,
 			magF = 0x0f;
 	ushort	left, right;
 	
 	uint i;
 	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
-		matEncoding = __ldg(&matEncodings[i+springOffset]);
-		if(matEncoding == 0x01u) continue;
+		matId = __ldg(&matIds[i+springOffset]);
+		if(matId == materials::air.id) continue;
 
 		pair = __ldg(&pairs[i+springOffset]);
 		left  = pair.x;
@@ -194,7 +136,7 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 		bl = s_pos[left];
 		br = s_pos[right];
 
-		mat = s_compositeMats[ matEncoding ];
+		mat = s_compositeMats[ matId ];
 
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
@@ -210,32 +152,31 @@ inline integrateBodies(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
 	__syncthreads();
 
 	// Calculate and store new mass states
-	float4 vel;
+	float4 velocity;
 	float3 pos3;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		vel = __ldg(&oldVel[i+massOffset]);
-		environmentForce(s_pos[i],vel,s_force[i],opt.env);
+		velocity = __ldg(&vel[i+massOffset]);
+		environmentForce(s_pos[i],velocity,s_force[i],opt.env);
 
-		vel.x += (s_force[i].x * opt.dt)*opt.env.damping;
-		vel.y += (s_force[i].y * opt.dt)*opt.env.damping;
-		vel.z += (s_force[i].z * opt.dt)*opt.env.damping;
+		velocity.x += (s_force[i].x * opt.dt)*opt.env.damping;
+		velocity.y += (s_force[i].y * opt.dt)*opt.env.damping;
+		velocity.z += (s_force[i].z * opt.dt)*opt.env.damping;
 
 		// new position = old position + velocity * deltaTime
-		s_pos[i].x += vel.x * opt.dt;
-		s_pos[i].y += vel.y * opt.dt;
-		s_pos[i].z += vel.z * opt.dt;
+		s_pos[i].x += velocity.x * opt.dt;
+		s_pos[i].y += velocity.y * opt.dt;
+		s_pos[i].z += velocity.z * opt.dt;
 
 		// store new position and velocity
 		pos3 = s_pos[i];
-		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
-		newVel[i+massOffset] = vel;
+		pos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
+		vel[i+massOffset] = velocity;
 	}
 }
 
 
 __global__ void
-inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__ newVel,
-				float4 *__restrict__ oldPos, float4 *__restrict__ oldVel,
+inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ vel,
 				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matEncodings, float *__restrict__ Lbars,
 				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
 				float *__restrict__ stresses, uint *__restrict__ ids,
@@ -259,7 +200,7 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	// Initialize and compute environment forces
 	float4 pos4;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		pos4 = __ldg(&oldPos[i+massOffset]);
+		pos4 = __ldg(&pos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
@@ -419,25 +360,25 @@ inline integrateBodiesStresses(float4 *__restrict__ newPos, float4 *__restrict__
 	}
 
 	// Calculate and store new mass states
-	float4 vel;
+	float4 velocity;
 	float3 pos3;
 	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
-		vel = __ldg(&oldVel[i+massOffset]);
-		environmentForce(s_pos[i],vel,s_force[i],opt.env);
+		velocity = __ldg(&vel[i+massOffset]);
+		environmentForce(s_pos[i],velocity,s_force[i],opt.env);
 
-		vel.x += (s_force[i].x * opt.dt)*opt.env.damping;
-		vel.y += (s_force[i].y * opt.dt)*opt.env.damping;
-		vel.z += (s_force[i].z * opt.dt)*opt.env.damping;
+		velocity.x += (s_force[i].x * opt.dt)*opt.env.damping;
+		velocity.y += (s_force[i].y * opt.dt)*opt.env.damping;
+		velocity.z += (s_force[i].z * opt.dt)*opt.env.damping;
 
 		// new position = old position + velocity * deltaTime
-		s_pos[i].x += vel.x * opt.dt;
-		s_pos[i].y += vel.y * opt.dt;
-		s_pos[i].z += vel.z * opt.dt;
+		s_pos[i].x += velocity.x * opt.dt;
+		s_pos[i].y += velocity.y * opt.dt;
+		s_pos[i].z += velocity.z * opt.dt;
 
 		// store new position and velocity
 		pos3 = s_pos[i];
-		newPos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
-		newVel[i+massOffset] = vel;
+		pos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
+		vel[i+massOffset] = velocity;
 	}
 }
 

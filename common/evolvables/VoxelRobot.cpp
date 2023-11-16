@@ -4,7 +4,7 @@
 #include <sstream>
 #include "VoxelRobot.h"
 
-/*VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
+VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
@@ -330,10 +330,10 @@ void VoxelRobot::Initialize() {
     circles.push_back({materials::bone});
     circles.push_back({materials::tissue});
     circles.push_back({materials::tissue});
-    circles.push_back({materials::adductor_muscle});
-    circles.push_back({materials::adductor_muscle});
-    circles.push_back({materials::abductor_muscle});
-    circles.push_back({materials::abductor_muscle});
+    circles.push_back({materials::adductor_muscle0});
+    circles.push_back({materials::adductor_muscle0});
+    circles.push_back({materials::abductor_muscle0});
+    circles.push_back({materials::abductor_muscle0});
 
     xCount = resolution*xSize;
     yCount = resolution*ySize;
@@ -583,4 +583,4 @@ void VoxelRobot::Decode(const std::string& filename) {
         Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
         voxels.push_back(v);
     }
-}*/
+}

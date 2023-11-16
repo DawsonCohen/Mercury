@@ -212,7 +212,7 @@ void SoftBody::Decode(const std::string& filename) {
             std::getline(mass, param, ',');
             m = std::stof(param);
             std::getline(mass, param, ',');
-            mat = materials::decode(stoi(param));
+            mat = materials::id_lookup(stoi(param));
             masses.push_back(Mass(id, x, y, z, m, mat));
         }
     }
@@ -240,7 +240,7 @@ void SoftBody::Decode(const std::string& filename) {
             std::getline(spring, param, ',');
             ml = std::stof(param);
             std::getline(spring, param, ',');
-            mat = materials::decode(std::stoi(param));
+            mat = materials::id_lookup(std::stoi(param));
             Spring s = {m0, m1, rl, ml, mat};
             springs.push_back(s);
         }
