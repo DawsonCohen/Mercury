@@ -338,11 +338,6 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
 
         solution_history.push_back({Evaluator<T>::eval_count, archived_solution});
         fitness_history.push_back({Evaluator<T>::eval_count, archived_solution.fitness()});
-        diversity_history.push_back({Evaluator<T>::eval_count, diversity[0]});
-
-        for(i = 0; i < population.size(); i++)
-            generation_history[i] = population[i].fitness();
-        population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
 
         printf("Generation: %lu, Evlauation: %lu\t%s\n",
             generation,
@@ -374,8 +369,13 @@ std::vector<T> Optimizer<T>::NoNicheSolve() {
         printf("----------------------\n");
 
         std::string gen_directory = working_directory + "/generation_" + std::to_string(generation) + "_fitness_" + std::to_string(best_fitness);
-        if(generation % config.optimizer.save_skip == 0 || eval_count > max_evals)
+        if(generation % config.optimizer.save_skip == 0 || eval_count > max_evals) {
             WriteSolutions(pareto_solutions,gen_directory);
+            diversity_history.push_back({Evaluator<T>::eval_count, diversity[0]});
+            for(i = 0; i < population.size(); i++)
+                generation_history[i] = population[i].fitness();
+            population_history.push_back({Evaluator<T>::eval_count, generation_history, diversity});
+        }
         generation++;
     }
 
