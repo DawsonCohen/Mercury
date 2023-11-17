@@ -61,7 +61,7 @@ inline void springForce(const float3& bl, const float3& br, const float4& mat,
 
 	Lsqr = dot(diff,diff);
 	L = __fsqrt_rn(Lsqr);
-	rL = rsqrtf(Lsqr + 1.0f);
+	rL = rsqrtf(Lsqr);
 
 	dir = {
 		__fmul_rn(diff.x,rL),
