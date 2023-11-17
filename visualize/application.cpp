@@ -14,13 +14,18 @@ Application::Application(std::vector<SoftBody> robots, VisualizerConfig config) 
 
     camera = Camera(config.renderer.width, config.renderer.height);
     renderer = Renderer("./shaders/vert.glsl", "./shaders/frag.glsl");
-    videoWriter = VideoWriter(config.io.out_dir + "/solutions_0.avi", config.renderer.fps, config.renderer.width, config.renderer.height);
+
+    if(config.visualizer.writeVideo) {
+        videoWriter = VideoWriter(config.io.out_dir + "/solutions_0.avi", config.renderer.fps, config.renderer.width, config.renderer.height);
+    }
 
     std::vector<RobotModel> assets;
-    for(Element& R : robots) {
-        assets.push_back(RobotModel(R));
+    for(SoftBody& R : robots) {
+        assets.push_back(R);
     }
     assetManager.loadAssets(assets);
+
+    if(headless) return;
 
     // Handle triggered events
     eventSystem.subscribe(EVENT_TAB_PRESSED, [this] {
@@ -57,16 +62,15 @@ void Application::run()
     sim.Reset();
 
     float time_step = 1 / config.renderer.fps;
-    uint devo_cycles = config.devo.devo_cycles;
-    float devo_time = config.devo.devo_time;
-    float timeToDevo = devo_time;
-    
-    std::vector<Element> robot_elements(1);
-    std::vector<ElementTracker> trackers;
+    devo_cycles = config.devo.devo_cycles;
+    devo_time = config.devo.devo_time;
+    timeToDevo = devo_time;
+
+    ElementTracker tracker;
     std::vector<Element> results;
     RobotModel R = assetManager.getCurrentAsset();
-    robot_elements[0] = R;
-    trackers = sim.SetElements(robot_elements);
+    Element Relement;
+    tracker = sim.SetElement(R);
     float prevTime = glfwGetTime();
     
     std::vector<RobotModel::RobotMeshGroup> drawgroups = {RobotModel::MESH_GROUP_BODY};
@@ -74,7 +78,17 @@ void Application::run()
         InputState state = inputManager.getState();
         camera.UpdateCameraPosition(state);
 
-        handleAssetChange(assetManager, R, sim, robot_elements, trackers);
+        if(headless) {
+            if(sim.getTotalTime() > config.visualizer.showcase_time) {
+                assetManager.switchToNextAsset();
+                if(assetManager.hasWrapped()) {
+                    glfwWindowShouldClose(window);
+                    break;
+                }
+            }
+        }
+
+        handleAssetChange(assetManager, R, sim, tracker);
 
         switch(dragVis) {
             case DRAG_VIS_ALL:
@@ -91,19 +105,21 @@ void Application::run()
             devo_cycles--;
             timeToDevo = devo_time;
             sim.Devo();
-            results = sim.Collect(trackers);
-            R.Update(results[0], drawgroups);
+            Relement = sim.Collect(tracker);
+            R.Update(Relement, drawgroups);
         } else if(devo_cycles > 0) {
             timeToDevo -= time_step;
         }
 
         float crntTime = glfwGetTime();
         sim.Simulate(sim_speed * time_step);
-        results = sim.Collect(trackers);
-        R.Update(results[0], drawgroups);
+        Relement = sim.Collect(tracker);
+        R.Update(Relement, drawgroups);
 
-        while ((crntTime - prevTime) < time_step) {
-            crntTime = glfwGetTime();
+        if(!headless) {
+            while ((crntTime - prevTime) < time_step) {
+                crntTime = glfwGetTime();
+            }
         }
         prevTime = crntTime;
 

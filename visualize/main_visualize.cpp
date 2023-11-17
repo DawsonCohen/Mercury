@@ -41,13 +41,11 @@ int main(int argc, char** argv)
 	config = util::visualizer::ReadConfigFile(config_file);
 	handle_file_io();
 	printf("--------------\n");
-	std::cout << "Ouput directory: " << config.io.out_dir << std::endl;
-	std::cout << "Input directory: " << config.io.in_dir << std::endl;
 
 	std::vector<SoftBody> solutions;
 
-	// TODO: Update for new directories
 	if(config.objectives.verify) {
+		printf("IN_DIR: %s\n", config.io.in_dir.c_str());
 		if(config.io.in_dir == "") {
 			std::string filename = config.io.base_dir + "/latest.txt";
 			std::ifstream file(filename);
@@ -58,6 +56,9 @@ int main(int argc, char** argv)
 			std::string line;
 			std::getline(file, line);
 			config.io.in_dir = line;
+		}
+		if(config.io.out_dir == "") {
+			config.io.out_dir = config.io.in_dir;
 		}
 
 		std::string filename_template = "^solution_\\w+\\.\\w+$";
@@ -119,6 +120,8 @@ int main(int argc, char** argv)
 			}
 		}
 	}
+	std::cout << "Ouput directory: " << config.io.out_dir << std::endl;
+	std::cout << "Input directory: " << config.io.in_dir << std::endl;
 
 	opt_config.evaluator.pop_size = solutions.size();
 	opt_config.evaluator.base_time = 0.0f;

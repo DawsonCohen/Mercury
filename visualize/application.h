@@ -53,7 +53,11 @@ private:
     bool writeVideo = false;
     DragVisState dragVis = DRAG_VIS_NONE;
     float showcaseTime = 5.0f;
-    float sim_speed = 1.0f;
+    float sim_speed = 2.0f;
+
+    uint devo_cycles;
+    float devo_time;
+    float timeToDevo;
 
     void createWindow(int width, int height);
     void GLFWinitialize(int width, int height);
@@ -64,13 +68,16 @@ private:
         glReadPixels(0, 0, frame.cols, frame.rows, GL_BGR, GL_UNSIGNED_BYTE, frame.data);
         cv::flip(frame, frame, 0);
     }
-    void handleAssetChange(AssetManager& assetManager, RobotModel& R, Simulator& sim, std::vector<Element>& robot_elements, std::vector<ElementTracker>& trackers) {
+    void handleAssetChange(AssetManager& assetManager, RobotModel& R, Simulator& sim, ElementTracker& tracker) {
         if (assetManager.hasAssetChanged()) {
             assetManager.clearAssetChangedFlag();
             R = assetManager.getCurrentAsset();
-            robot_elements[0] = {R.masses, R.springs};
             sim.Reset();
-            trackers = sim.SetElements(robot_elements);
+            tracker = sim.SetElement(R);
+
+            devo_cycles = config.devo.devo_cycles;
+            devo_time = config.devo.devo_time;
+            timeToDevo = devo_time;
         }
     }
 };

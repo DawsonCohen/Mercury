@@ -8,6 +8,7 @@
 #include <cstring>
 #include <memory>
 #include <unordered_map>
+#include <cassert>
 #include "visualizer_util.h"
 
 namespace util {
@@ -39,8 +40,6 @@ VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
 
         std::string key = line.substr(0, pos);
         std::string value = line.substr(pos+1);
-
-        std::cout << key << ": " << value << std::endl;
 
         config_map[key] = value;
     }

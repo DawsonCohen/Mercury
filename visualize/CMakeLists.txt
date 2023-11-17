@@ -40,14 +40,14 @@ set(VISUALIZE
 )
 
 set(RENDER
-  renderer/src/Camera.cpp
+  InputManager.cpp
+  renderer/src/Renderer.cpp
   renderer/src/Shader.cpp
   renderer/src/Mesh.cpp
-  renderer/src/Renderer.cpp
-  renderer/src/InputManager.cpp
   renderer/src/VAO.cpp
   renderer/src/VBO.cpp
   renderer/src/EBO.cpp
+  renderer/src/Camera.cpp
   renderer/src/Model.cpp
 
   models/plane_model.cpp
