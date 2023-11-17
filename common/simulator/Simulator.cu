@@ -345,7 +345,7 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 		if(trackStresses) {
 			integrateBodiesStresses<<<m_numBlocksSim,simThreadsPerBlock,m_sharedMemSizeSim>>>(
 				(float4*) m_dPos, (float4*) m_dVel,
-				(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatIds,  (float*) m_dLbars,
+				(ushort2*)  m_dPairs, (uint32_t*) m_dSpringMatEncodings, (uint8_t*) m_dSpringMatIds,  (float*) m_dLbars,
 				(ushort*) m_dMaxStressCount, (ushort*) m_dMinStressCount,
 				(float*) m_dStresses, (uint*) m_dSpringIDs, (float4*) m_dCompositeMats_id,
 				m_total_time, step_count, opt);
@@ -565,9 +565,9 @@ void Simulator::Devo() {
 	};
 			
 	replaceSprings<<<numBlocks, devoThreadsPerBlock, sharedMemSize>>>(
-			(ushort2*) m_dPairs, (uint8_t*) m_dMassMatEncodings,
+			(ushort2*) m_dPairs, (uint32_t*) m_dMassMatEncodings,
 			(float4*) m_dPos, (float*) m_dLbars,
-			(uint8_t*) m_dSpringMatEncodings,
+			(uint32_t*) m_dSpringMatEncodings,
 			(uint*) m_dSpringIDs_Sorted, (ushort2*) m_dRandomPairs, 
 			(float4*) m_dCompositeMats_encoding, m_total_time,
 			opt

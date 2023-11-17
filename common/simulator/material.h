@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <math.h>
+#include <cassert>
 
 #define OMEGA (float) 1.0f * (2.0f*M_PI) // rad/sec
 #define AMPLITUDE .14f
@@ -269,7 +270,7 @@ class materials {
             composite_initialized = true;
         }
 		uint32_t tencoding = encoding;
-        if(encoding & 0x01u) return compositeMaterials[0];
+        if(encoding == 0x00u || encoding & 0x01u) return compositeMaterials[0];
 		unsigned int i = 0;
 		uint firstIdx = 0, secondIdx = 0;
 		while(i < COMPOSITE_COUNT) {
@@ -288,10 +289,9 @@ class materials {
 				break;
 			}
 		}
+		int idx = 1 + (secondIdx ? secondIdx*(secondIdx-1)/2 + firstIdx : firstIdx*(firstIdx-1)/2);
 
-		// printf("idx1: %u, idx2: %u, idx: %u",firstIdx, secondIdx);
-
-		return compositeMaterials[secondIdx*(secondIdx-1)/2 + firstIdx];
+		return compositeMaterials[idx];
     }
 };
 

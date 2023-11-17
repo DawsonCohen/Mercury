@@ -9,6 +9,7 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, fl
 std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, float simTime, uint devoCycles, float devoTime, bool trace = false);
 
 int TestSimulator();
+int TestMatEncoding();
 int TestNNRobot();
 int TestIntegrated();
 int TestDevo();

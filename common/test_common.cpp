@@ -54,5 +54,12 @@ int main(int argc, char** argv)
         std::cout << "Test Case 5: Passed" << std::endl;
     }
 
+    err = TestMatEncoding();
+	if(err) {
+        std::cout << "Test Case 6: Failed with " << err << std::endl;
+    } else {
+        std::cout << "Test Case 6: Passed" << std::endl;
+    }
+
 	return 0;
 }

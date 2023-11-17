@@ -39,10 +39,10 @@ struct DevoOptions {
 __global__ void
 inline replaceSprings(
     ushort2 *__restrict__ pairs,
-    uint8_t *__restrict__ massMatEncodings, 
+    uint32_t *__restrict__ massMatEncodings, 
     float4 *__restrict__ massPos,
     float *__restrict__ Lbars,
-    uint8_t *__restrict__ springMatEncodings,
+    uint32_t *__restrict__ springMatEncodings,
     uint *__restrict__ sortedSpringIds,
     ushort2* newPairs,
     float4 *__restrict__ compositeMats,
@@ -70,7 +70,7 @@ inline replaceSprings(
     float3  posDiff;
     float   rest_length,
             relative_change;
-	uint8_t	matEncodingLeft, matEncodingRight, newMatEncoding;
+	uint32_t	matEncodingLeft, matEncodingRight, newMatEncoding;
 
 	for(uint i = tid; 
         i < opt.maxReplacedSprings && (i / opt.replacedSpringsPerElement) * opt.springsPerElement + i < opt.maxSprings; 

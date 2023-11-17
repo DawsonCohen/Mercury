@@ -85,7 +85,7 @@ void VoxelBenchmark() {
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<Element> robots;
 		for(uint i = 0; i < pop_size; i++) {
-			robots.push_back({R.getMasses(), R.getSprings()});
+			robots.push_back(R);
 		}
 
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
@@ -131,7 +131,7 @@ void StressBenchmark() {
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<Element> robots;
 		for(uint i = 0; i < pop_size; i++) {
-			robots.push_back({R.getMasses(), R.getSprings()});
+			robots.push_back(R);
 		}
 
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
@@ -179,7 +179,7 @@ void DevoBenchmark() {
 	while(pop_size < MAX_ROBOTS*20) {
 		std::vector<Element> robots;
 		for(uint i = 0; i < pop_size; i++) {
-			robots.push_back({R.getMasses(), R.getSprings()});
+			robots.push_back(R);
 		}
 		printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
@@ -283,7 +283,7 @@ void NNBenchmark() {
 		// NNRobot::BatchBuild(robots);
 
 		for(auto& R : robots) {
-			robot_elements.push_back({R.getMasses(), R.getSprings()});
+			robot_elements.push_back(R);
 		}
 
 		

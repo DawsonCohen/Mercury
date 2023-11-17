@@ -73,7 +73,7 @@ void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx ind
         //  Get material of all owning voxels
         BasisIdx path = indices - v_src.indices;
         Material mat, avgMat;
-        uint8_t matEncoding = 0x00u;
+        uint32_t matEncoding = 0x00u;
 
         BasisIdx neighbors[4];
         for(uint i = 0; i < 4; i++) {
@@ -311,7 +311,7 @@ void VoxelRobot::BuildFromCircles() {
         if((uint) v.indices.x == xCount-1 || (uint) v.indices.y == yCount-1 || (uint) v.indices.z == zCount-1)
             continue;
         std::vector<Material> mats;
-        uint8_t matEncoding = 0x00u;
+        uint32_t matEncoding = 0x00u;
         float dist;
         for(Circle& c : circles) {
             dist = (v.center-c.center).norm();
