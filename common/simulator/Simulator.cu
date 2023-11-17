@@ -193,6 +193,12 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	envCount++;
 }
 
+ElementTracker Simulator::SetElement(const Element& element) {
+	std::vector<Element> elements = {element};
+	std::vector<ElementTracker> trackers = SetElements(elements);
+	return trackers[0];
+}
+
 std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& elements) {
 	std::vector<ElementTracker> trackers;
 
@@ -420,6 +426,12 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 	numElements++;
 	
 	return tracker;
+}
+
+Element Simulator::Collect(const ElementTracker& tracker) {
+	std::vector<ElementTracker> trackers = {tracker};
+	std::vector<Element> results = Collect(trackers);
+	return results[0];
 }
 
 std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& trackers) {
