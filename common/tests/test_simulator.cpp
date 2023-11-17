@@ -60,3 +60,21 @@ int TestSimulator() {
 
 	return successFlag;
 }
+
+int TestMatEncoding() {
+    VoxelRobot R;
+    Material bone = materials::bone;
+    Material add = materials::adductor_muscle0;
+    Material air = materials::air;
+    Material air_decoded = materials::decode(air.encoding);
+    Material bone_decoded = materials::decode(bone.encoding);
+    Material add_decoded = materials::decode(add.encoding);
+    Material ab_decoded = materials::decode(air.encoding | bone.encoding);
+    
+    if(air_decoded != materials::air) return 1;
+    if(bone_decoded != materials::bone) return 2;
+    if(add_decoded != materials::adductor_muscle0) return 2;
+    if(ab_decoded != materials::air) return 3;
+
+    return 0;
+}
