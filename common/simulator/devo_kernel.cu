@@ -8,6 +8,18 @@
 #include <assert.h>
 #include <stdio.h>
 
+struct DevoOptions {
+    uint maxReplacedSprings;
+	uint maxSprings;
+    uint springsPerElement;
+    uint massesPerElement;
+    uint replacedSpringsPerElement;
+    uint compositeCount;
+};
+
+__constant__ float4 compositeMats_encoding[COMPOSITE_COUNT];
+__constant__ DevoOptions cDevoOpt;
+
 __global__ void
 inline randomIntegerPairKernel(int N, ushort2* results, int min_value, int max_value, unsigned int seed) {
 
@@ -28,15 +40,6 @@ inline randomIntegerPairKernel(int N, ushort2* results, int min_value, int max_v
     }
 }
 
-struct DevoOptions {
-    uint maxReplacedSprings;
-	uint maxSprings;
-    uint springsPerElement;
-    uint massesPerElement;
-    uint replacedSpringsPerElement;
-    uint compositeCount;
-};
-
 __global__ void
 inline replaceSprings(
     ushort2 *__restrict__ pairs,
@@ -46,19 +49,10 @@ inline replaceSprings(
     uint32_t *__restrict__ springMatEncodings,
     uint *__restrict__ sortedSpringIds,
     ushort2* newPairs,
-    float4 *__restrict__ compositeMats,
-    float time, DevoOptions opt
+    float time
 ) {
-	extern __shared__ float4 s_devo[];
-	float4	*s_compositeMats = s_devo;
-
 	int tid    = blockIdx.x * blockDim.x + threadIdx.x;
 	int stride = blockDim.x;
-
-
-    for(uint i = tid; i < opt.compositeCount; i += stride) {
-		s_compositeMats[i] = __ldg(&compositeMats[i]);
-	}
 
     uint    elementId,
             massOffset,
@@ -77,12 +71,12 @@ inline replaceSprings(
         count,bitmask;
 
 	for(i = tid; 
-        i < opt.maxReplacedSprings && (i / opt.replacedSpringsPerElement) * opt.springsPerElement + i < opt.maxSprings; 
+        i < cDevoOpt.maxReplacedSprings && (i / cDevoOpt.replacedSpringsPerElement) * cDevoOpt.springsPerElement + i < cDevoOpt.maxSprings; 
         i+=stride)
     {
-        elementId = (i / opt.replacedSpringsPerElement);
-        massOffset = elementId * opt.massesPerElement;
-        sortedSpringId = elementId * opt.springsPerElement + i;
+        elementId = (i / cDevoOpt.replacedSpringsPerElement);
+        massOffset = elementId * cDevoOpt.massesPerElement;
+        sortedSpringId = elementId * cDevoOpt.springsPerElement + i;
 
         newPair = __ldg(&newPairs[i]);
         springId = __ldg(&sortedSpringIds[sortedSpringId]);
@@ -125,7 +119,7 @@ inline replaceSprings(
             matIdx = 1 + idx[1]*(idx[1]-1)/2 + idx[0];
         }
 
-        newMat = s_compositeMats[matIdx];
+        newMat = compositeMats_encoding[matIdx];
 
         rest_length = l2norm(posDiff);
         relative_change = newMat.y * sinf(newMat.z * time + newMat.w);

@@ -11,6 +11,21 @@
 #define EPS (float) 0.000001
 #define MAX_FORCE (float) 200000
 
+struct SimOptions {
+	float dt;
+	uint massesPerBlock;
+	uint springsPerBlock;
+	uint maxMasses;
+	uint maxSprings;
+	uint compositeCount;
+	short shiftskip;
+	float drag;
+	float damping;
+};
+
+__constant__ float4 compositeMats_id[COMPOSITE_COUNT];
+__constant__ SimOptions cSimOpt;
+
 __device__
 inline void dragForce(const float4& vel, float3& force,
 					float rho) {	
@@ -27,9 +42,8 @@ inline void dragForce(const float4& vel, float3& force,
 }
 
 __device__
-inline void environmentForce(float3 pos, const float4& vel, float3& force,
-						const Environment& env) {
-	dragForce(vel,force,env.drag);
+inline void environmentForce(float3& pos, const float4& vel, float3& force) {
+	dragForce(vel,force,cSimOpt.drag);
 }
 
 
@@ -72,48 +86,33 @@ inline void springForce(const float3& bl, const float3& br, const float4& mat,
 	force = magF * dir;
 }
 
-struct SimOptions {
-	float dt;
-	uint massesPerBlock;
-	uint springsPerBlock;
-	uint maxMasses;
-	uint maxSprings;
-	uint compositeCount;
-	short shiftskip;
-	Environment env;
-};
-
 __global__ void
 inline integrateBodies(float4 *__restrict__ pos, float4 *__restrict__ vel,
 				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
-				float4 *__restrict__ compositeMats,
-				float time, uint step, SimOptions opt)
+				float time, uint step)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
-	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
-	float4	*s_compositeMats = (float4*) &s_force[opt.massesPerBlock];
+	float3  *s_force = (float3*) &s_pos[cSimOpt.massesPerBlock];
 	
-	uint massOffset   = blockIdx.x * opt.massesPerBlock;
-	uint springOffset = blockIdx.x * opt.springsPerBlock;
+	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
+	uint springOffset = blockIdx.x * cSimOpt.springsPerBlock;
+	uint i;
 
 	int tid    = threadIdx.x;
 	int stride = blockDim.x;
 	
 	// Initialize and compute environment forces
 	float4 pos4;
-	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		pos4 = __ldg(&pos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
-	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
 	}
 
-	for(uint i = tid; i < opt.compositeCount; i += stride) {
-		s_compositeMats[i] = __ldg(&compositeMats[i]);
-	}
 	__syncthreads();
 
 	float4	 mat;
@@ -125,8 +124,7 @@ inline integrateBodies(float4 *__restrict__ pos, float4 *__restrict__ vel,
 			 magF = 0x0f;
 	ushort	 left, right;
 	
-	uint i;
-	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
+	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
 		matId = __ldg(&matIds[i+springOffset]);
 		if(matId == materials::air.id) continue;
 
@@ -136,7 +134,7 @@ inline integrateBodies(float4 *__restrict__ pos, float4 *__restrict__ vel,
 		bl = s_pos[left];
 		br = s_pos[right];
 
-		mat = s_compositeMats[ matId ];
+		mat = compositeMats_id[ matId ];
 
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
@@ -154,18 +152,18 @@ inline integrateBodies(float4 *__restrict__ pos, float4 *__restrict__ vel,
 	// Calculate and store new mass states
 	float4 velocity;
 	float3 pos3;
-	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		velocity = __ldg(&vel[i+massOffset]);
-		environmentForce(s_pos[i],velocity,s_force[i],opt.env);
+		environmentForce(s_pos[i],velocity,s_force[i]);
 
-		velocity.x += (s_force[i].x * opt.dt)*opt.env.damping;
-		velocity.y += (s_force[i].y * opt.dt)*opt.env.damping;
-		velocity.z += (s_force[i].z * opt.dt)*opt.env.damping;
+		velocity.x += (s_force[i].x * cSimOpt.dt)*cSimOpt.damping;
+		velocity.y += (s_force[i].y * cSimOpt.dt)*cSimOpt.damping;
+		velocity.z += (s_force[i].z * cSimOpt.dt)*cSimOpt.damping;
 
 		// new position = old position + velocity * deltaTime
-		s_pos[i].x += velocity.x * opt.dt;
-		s_pos[i].y += velocity.y * opt.dt;
-		s_pos[i].z += velocity.z * opt.dt;
+		s_pos[i].x += velocity.x * cSimOpt.dt;
+		s_pos[i].y += velocity.y * cSimOpt.dt;
+		s_pos[i].z += velocity.z * cSimOpt.dt;
 
 		// store new position and velocity
 		pos3 = s_pos[i];
@@ -180,36 +178,30 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 				ushort2 *__restrict__ pairs, uint32_t *__restrict__ matEncodings, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
 				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
 				float *__restrict__ stresses, uint *__restrict__ ids,
-				float4 *__restrict__ compositeMats,
-				float time, uint step, SimOptions opt)
+				float time, uint step)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
-	float3  *s_force = (float3*) &s_pos[opt.massesPerBlock];
-	float4	*s_compositeMats = (float4*) &s_force[opt.massesPerBlock];
+	float3  *s_force = (float3*) &s_pos[cSimOpt.massesPerBlock];
 
 	__shared__ ushort maxStressedSprings[1024];
 	__shared__ ushort minStressedSprings[1024];
 	
-	uint massOffset   = blockIdx.x * opt.massesPerBlock;
-	uint springOffset = blockIdx.x * opt.springsPerBlock;
+	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
+	uint springOffset = blockIdx.x * cSimOpt.springsPerBlock;
 
 	int tid    = threadIdx.x;
 	int stride = blockDim.x;
 	
 	// Initialize and compute environment forces
 	float4 pos4;
-	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(uint i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		pos4 = __ldg(&pos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 	}
 	
-	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(uint i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
-	}
-
-	for(uint i = tid; i < opt.compositeCount; i += stride) {
-		s_compositeMats[i] = __ldg(&compositeMats[i]);
 	}
 
 	__syncthreads();
@@ -233,7 +225,7 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 			nextGroup_MinSpringIdx;
 	
 	uint i;
-	for(i = tid; i < opt.springsPerBlock && (i+springOffset) < opt.maxSprings; i+=stride) {
+	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
 		matId = __ldg(&matIds[i+springOffset]);
 		if(matId == materials::air.id) continue;
 
@@ -243,7 +235,7 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 		bl = s_pos[left];
 		br = s_pos[right];
 
-		mat = s_compositeMats[ matId ];
+		mat = compositeMats_id[ matId ];
 		
 		Lbar = __ldg(&Lbars[i+springOffset]);
 		springForce(bl,br,mat,Lbar,time, force, magF);
@@ -258,7 +250,7 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 		atomicAdd(&(s_force[right].y), -force.y);
 		atomicAdd(&(s_force[right].z), -force.z);
 
-		if(step % (opt.shiftskip+1) == 0) {
+		if(step % (cSimOpt.shiftskip+1) == 0) {
 			if(fabsf(magF) > maxNormalizedStress) {
 				maxNormalizedStress = __fdiv_rn(fabsf(magF), Lbar);
 				maxSpringIdx = i;
@@ -305,7 +297,7 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 		minNormalizedStress = nextMinStress;
 	}
 
-	if(step % (opt.shiftskip+1) == 0) {
+	if(step % (cSimOpt.shiftskip+1) == 0) {
 		maxStressCount[maxSpringIdx + springOffset] += (maxNormalizedStress > 0.0f);
 		minStressCount[minSpringIdx + springOffset] += (minNormalizedStress > 0.0f);
 		maxStressedSprings[tid]  = maxSpringIdx;
@@ -336,7 +328,7 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 	__syncthreads();
 
 	int tid_next;
-	if(step % (opt.shiftskip+1) == 0) {
+	if(step % (cSimOpt.shiftskip+1) == 0) {
 		tid_next = (tid+1) % blockDim.x;
 		// shift current index to next spring
 		nextGroup_MaxSpringIdx  = maxStressedSprings[tid_next];
@@ -368,18 +360,18 @@ inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ ve
 	// Calculate and store new mass states
 	float4 velocity;
 	float3 pos3;
-	for(uint i = tid; i < opt.massesPerBlock && (i+massOffset) < opt.maxMasses; i+=stride) {
+	for(uint i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		velocity = __ldg(&vel[i+massOffset]);
-		environmentForce(s_pos[i],velocity,s_force[i],opt.env);
+		environmentForce(s_pos[i],velocity,s_force[i]);
 
-		velocity.x += (s_force[i].x * opt.dt)*opt.env.damping;
-		velocity.y += (s_force[i].y * opt.dt)*opt.env.damping;
-		velocity.z += (s_force[i].z * opt.dt)*opt.env.damping;
+		velocity.x += (s_force[i].x * cSimOpt.dt)*cSimOpt.damping;
+		velocity.y += (s_force[i].y * cSimOpt.dt)*cSimOpt.damping;
+		velocity.z += (s_force[i].z * cSimOpt.dt)*cSimOpt.damping;
 
 		// new position = old position + velocity * deltaTime
-		s_pos[i].x += velocity.x * opt.dt;
-		s_pos[i].y += velocity.y * opt.dt;
-		s_pos[i].z += velocity.z * opt.dt;
+		s_pos[i].x += velocity.x * cSimOpt.dt;
+		s_pos[i].y += velocity.y * cSimOpt.dt;
+		s_pos[i].z += velocity.z * cSimOpt.dt;
 
 		// store new position and velocity
 		pos3 = s_pos[i];

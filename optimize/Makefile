@@ -1,9 +1,17 @@
 
 CXX := g++
-CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3 -pg
+CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3
 
 CU := nvcc
-CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3 -pg -use_fast_math -maxrregcount=32
+CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3 -use_fast_math
+
+# Debug build flags
+ifeq ($(dbg),1)
+      CUFLAGS += -pg -g -G
+      BUILD_TYPE := debug
+else
+      BUILD_TYPE := release
+endif
 
 # CUPROF := -pg
 # PROF := -pg

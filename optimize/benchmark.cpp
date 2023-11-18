@@ -251,7 +251,7 @@ void NNBuildBenchmark() {
 }
 
 void NNBenchmark() {
-	printf("BENCHMARKING\n");
+	printf("BENCHMARKING NN\n");
 
 	NNRobot R;
 	R.Build();
@@ -265,7 +265,7 @@ void NNBenchmark() {
 
 	fprintf(pFile,"springs simulated, springs per iteration, execute time, springs per second\n");
 
-	while(num_springs < MAX_SPRINGS) {
+	do {
 		std::vector<NNRobot> robots;
 		std::vector<Element> robot_elements;
 
@@ -309,6 +309,6 @@ void NNBenchmark() {
 		printf("--------------------------\n");
 
 		pop_size *= 2;
-	}
+	} while(num_springs < MAX_SPRINGS);
 	fclose(pFile);
 }

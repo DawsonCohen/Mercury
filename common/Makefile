@@ -5,6 +5,14 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -Wpedantic -O3
 CU := nvcc
 CUFLAGS := -gencode=arch=compute_75,code=sm_75 -gencode=arch=compute_61,code=sm_61 -O3
 
+# Debug build flags
+ifeq ($(dbg),1)
+      CUFLAGS += -pg -lineinfo -pg -G
+      BUILD_TYPE := debug
+else
+      BUILD_TYPE := release
+endif
+
 ifeq ($(BUILD_LOCATION),local)
 	CUFLAGS += -Xcudafe --diag_suppress=20050
 	CUFLAGS += -Xcudafe --diag_suppress=20015

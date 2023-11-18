@@ -79,8 +79,6 @@ protected:
 	uint32_t *m_dMassMatEncodings;
 	uint32_t *m_dSpringMatEncodings;
 	uint8_t  *m_dSpringMatIds;
-	float    *m_dCompositeMats_encoding;
-	float    *m_dCompositeMats_id;
 	ushort	 *m_dPairs;
 	ushort   *m_dRandomPairs;
 	float	 *m_dLbars;
@@ -95,7 +93,7 @@ protected:
 	uint	 m_sharedMemSizeSim = 0;
 	uint	 m_numBlocksSim = 0;
 
-	uint  simThreadsPerBlock = 1024; // TODO: Remove
+	uint  simThreadsPerBlock = 1024;
 	const uint  devoThreadsPerBlock = 256;
 
 	uint springsPerElement = 0;
