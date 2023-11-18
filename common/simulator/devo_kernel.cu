@@ -2,6 +2,7 @@
 #define __DEVO_KERNEL_CUH__
 
 #include "vec_math.cuh"
+#include "material.h"
 #include <curand_kernel.h>
 #include <stdint.h>
 #include <assert.h>
