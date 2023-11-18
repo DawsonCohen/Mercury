@@ -258,12 +258,24 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 		m_hVel[4*i+2] = vel.z();
 	}
 
-	for(uint i = 0; i < COMPOSITE_COUNT; i++) {
-		Material mat = materials::decode(i);
-		m_hCompositeMats_encoding[4*i] = mat.k;
-		m_hCompositeMats_encoding[4*i+1] = mat.dL0;
-		m_hCompositeMats_encoding[4*i+2] = mat.omega;
-		m_hCompositeMats_encoding[4*i+3] = mat.phi;
+	uint32_t encoding = 0x01u;
+	Material mat = materials::decode(encoding);
+	m_hCompositeMats_encoding[0] = mat.k;
+	m_hCompositeMats_encoding[1] = mat.dL0;
+	m_hCompositeMats_encoding[2] = mat.omega;
+	m_hCompositeMats_encoding[3] = mat.phi;
+
+	uint idx;
+	for(uint i = 1; i < MATERIAL_COUNT; i++) {
+		for(uint j = i; j < MATERIAL_COUNT; j++) {
+			encoding = (0x01u << i) | (0x01u << j);
+			idx = materials::encodedCompositeIdx(encoding);
+			mat = materials::decode(encoding);
+			m_hCompositeMats_encoding[4*idx] = mat.k;
+			m_hCompositeMats_encoding[4*idx+1] = mat.dL0;
+			m_hCompositeMats_encoding[4*idx+2] = mat.omega;
+			m_hCompositeMats_encoding[4*idx+3] = mat.phi;
+		}
 	}
 
 	for(uint i = 0; i < COMPOSITE_COUNT; i++) {
@@ -279,7 +291,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 		ushort	 left     	 = springBuf[i].m0,
 			     right	  	 = springBuf[i].m1;
 		uint8_t	 matId 		 = springBuf[i].material.id;
-		uint8_t	 matEncoding = springBuf[i].material.encoding;
+		uint32_t matEncoding = springBuf[i].material.encoding;
 
 		m_hSpringIDs[i] = i;
 		m_hPairs[2*i]   = left;
@@ -288,10 +300,6 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 
 		m_hSpringMatIds[i] = matId;
 		m_hSpringMatEncodings[i] = matEncoding;
-
-		m_hPairs[2*i]   = left;
-		m_hPairs[2*i+1] = right;
-		m_hLbars[i] 	= lbar;
 	}
 
 	cudaMemcpy(m_dVel, m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
@@ -447,6 +455,17 @@ std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& track
 	cudaMemcpy(m_dPos, m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dVel, m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 
+	cudaMemcpy(m_hSpringMatEncodings, m_dSpringMatEncodings, numSprings*sizeof(uint32_t), cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hPairs, m_dPairs, numSprings*2*sizeof(ushort), cudaMemcpyDeviceToHost);
+	cudaMemcpy(m_hLbars, m_dLbars, numSprings * sizeof(float),  cudaMemcpyDeviceToHost);
+
+	for(uint i = 0; i < numSprings; i++) {
+		springBuf[i].m0 = m_hPairs[2*i];
+		springBuf[i].m1 = m_hPairs[2*i+1];
+		springBuf[i].mean_length = m_hLbars[i];
+		springBuf[i].material = materials::decode(m_hSpringMatEncodings[i]);
+	}
+
 	for(uint i = 0; i < numMasses; i++) {
 		float3 pos = {m_hPos[4*i], m_hPos[4*i+1], m_hPos[4*i+2]};
 		float3 vel = {m_hVel[4*i], m_hVel[4*i+1], m_hVel[4*i+2]};
@@ -579,18 +598,5 @@ void Simulator::Devo() {
 	cudaMemset(m_dMinStressCount, 0, numSprings * sizeof(ushort));
 	cudaMemset(m_dMaxStressCount, 0, numSprings * sizeof(ushort));
 	
-	if(m_config.visual) {
-		cudaMemcpy(m_hSpringMatEncodings, m_dSpringMatEncodings, numSprings*sizeof(uint8_t), cudaMemcpyDeviceToHost);
-		cudaMemcpy(m_hPairs, m_dPairs, numSprings*2*sizeof(ushort), cudaMemcpyDeviceToHost);
-		cudaMemcpy(m_hLbars, m_dLbars, numSprings * sizeof(float),  cudaMemcpyDeviceToHost);
-
-		for(uint i = 0; i < numSprings; i++) {
-			springBuf[i].m0 = m_hPairs[2*i];
-			springBuf[i].m1 = m_hPairs[2*i+1];
-			springBuf[i].mean_length = m_hLbars[i];
-			springBuf[i].material = materials::decode(m_hSpringMatEncodings[i]);
-		}
-	}
-
 	seed++;
 }

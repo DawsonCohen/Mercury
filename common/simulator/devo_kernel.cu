@@ -71,8 +71,11 @@ inline replaceSprings(
     float   rest_length,
             relative_change;
 	uint32_t	matEncodingLeft, matEncodingRight, newMatEncoding;
+    uint i, j;
+    uint idx[2] = {0,0},matIdx,
+        count,bitmask;
 
-	for(uint i = tid; 
+	for(i = tid; 
         i < opt.maxReplacedSprings && (i / opt.replacedSpringsPerElement) * opt.springsPerElement + i < opt.maxSprings; 
         i+=stride)
     {
@@ -89,7 +92,7 @@ inline replaceSprings(
 		right = newPair.y;
 
         matEncodingLeft = massMatEncodings[left + massOffset];
-        matEncodingLeft = massMatEncodings[right + massOffset];
+        matEncodingRight = massMatEncodings[right + massOffset];
 
 
         posLeft =  massPos[left+massOffset]; 
@@ -102,11 +105,30 @@ inline replaceSprings(
         };
 
         newMatEncoding = matEncodingLeft | matEncodingRight;
-        newMat = s_compositeMats[newMatEncoding];
+
+        count = 0;
+        bitmask = 0x01u;
+        for(j = 0; j < COMPOSITE_COUNT; j++) {
+            if(newMatEncoding & bitmask) {
+                idx[count] = j;
+                count++;
+				if(j == 0 || count == 2) break;
+            }
+            bitmask <<= 1;
+        }
+        if(idx[0] == 0) {
+            matIdx = 0;
+        } else if(idx[1] == 0) {
+            matIdx = 1 + idx[0]*(idx[0]-1)/2;
+        } else {
+            matIdx = 1 + idx[1]*(idx[1]-1)/2 + idx[0];
+        }
+
+        newMat = s_compositeMats[matIdx];
 
         rest_length = l2norm(posDiff);
         relative_change = newMat.y * sinf(newMat.z * time + newMat.w);
-        
+
         Lbars[springId] = rest_length / (1+relative_change);
         springMatEncodings[springId] = newMatEncoding;
 

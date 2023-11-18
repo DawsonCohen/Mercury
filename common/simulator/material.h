@@ -132,7 +132,7 @@ class materials {
 	static constexpr Material tissue            = {21, 40  , 0        , OMEGA   , 0         , 0x01u << 21, Color(217.0f/255.0f , 102.0f/255.0f ,  78.0f/255.0f , 0.00f)};
 	static constexpr Material bone              = {22, 100 , 0        , OMEGA   , 0         , 0x01u << 22, Color(240.0f/255.0f , 209.0f/255.0f ,  98.0f/255.0f , 0.00f)};
 
-	static Material matLookup(uint mat) {
+	static Material matLookup(unsigned int mat) {
 		switch(mat){
 		case ADDUCTOR_MUSCLE0:
 			return adductor_muscle0;
@@ -185,7 +185,7 @@ class materials {
 	};
 
 	static Material random() {
-		uint matId = rand() % MATERIAL_COUNT;
+		unsigned int matId = rand() % MATERIAL_COUNT;
 		return matLookup(matId);
 	}
 
@@ -194,13 +194,13 @@ class materials {
     	static uint8_t compositeIds[MATERIAL_COUNT-1][MATERIAL_COUNT-1];
     	if(!composite_id_initialized) {
     		uint8_t count = 1;
-    		for(uint i = 0; i < MATERIAL_COUNT-1; i ++) {
+    		for(unsigned int i = 0; i < MATERIAL_COUNT-1; i ++) {
     			compositeIds[i][i] = count;
     			count++;
     		}
 
-			for(uint i = 0; i < MATERIAL_COUNT-1; i++) {
-        		for(uint j = i+1; j < MATERIAL_COUNT-1; j++) {
+			for(unsigned int i = 0; i < MATERIAL_COUNT-1; i++) {
+        		for(unsigned int j = i+1; j < MATERIAL_COUNT-1; j++) {
         			compositeIds[i][j] = compositeIds[j][i] = count;
         			count++;
         		}
@@ -231,12 +231,12 @@ class materials {
         static Material compositeMaterials[COMPOSITE_COUNT];
 
         if (!composite_initialized) {  	
-        	for(uint i = 0; i < MATERIAL_COUNT; i++) {
+        	for(unsigned int i = 0; i < MATERIAL_COUNT; i++) {
         		Material m = matLookup(i);
         		compositeMaterials[m.id] = m;
         	}
 
-			for(uint i = 1; i < MATERIAL_COUNT; i++) {
+			for(unsigned int i = 1; i < MATERIAL_COUNT; i++) {
 				Material mi = matLookup(i);
 				for(uint8_t j = i+1; j < MATERIAL_COUNT; j++) {
 					Material m = avg(mi, matLookup(j));
@@ -252,11 +252,11 @@ class materials {
         static bool composite_initialized = false;
         static Material compositeMaterials[COMPOSITE_COUNT];
 
-        if (!composite_initialized) {  
+        if (!composite_initialized) {
 			compositeMaterials[0] = materials::air;
 
 			Material mi, m;
-			uint idx;
+			unsigned int idx;
 			for(uint32_t i = 1; i < MATERIAL_COUNT; i++) {
 				mi = matLookup(i);
 				idx = (i*(i-1)/2);
@@ -269,30 +269,33 @@ class materials {
 			}
             composite_initialized = true;
         }
-		uint32_t tencoding = encoding;
-        if(encoding == 0x00u || encoding & 0x01u) return compositeMaterials[0];
-		unsigned int i = 0;
-		uint firstIdx = 0, secondIdx = 0;
-		while(i < COMPOSITE_COUNT) {
-			tencoding >>= 1;
-			i++;
-			if(tencoding & 0x01u) {
-				firstIdx = i;
-				break;
-			}
-		}
-		while(i < COMPOSITE_COUNT) {
-			tencoding >>= 1;
-			i++;
-			if(tencoding & 0x01u) {
-				secondIdx = i;
-				break;
-			}
-		}
-		int idx = 1 + (secondIdx ? secondIdx*(secondIdx-1)/2 + firstIdx : firstIdx*(firstIdx-1)/2);
+		int idx = encodedCompositeIdx(encoding);
 
 		return compositeMaterials[idx];
     }
+
+	static int encodedCompositeIdx(uint32_t encoding) {
+		unsigned int idx[2] = {0,0},matIdx,
+					 count = 0,
+					 bitmask = 0x01u;
+        for(unsigned int i = 0; i < COMPOSITE_COUNT; i++) {
+            if(encoding & bitmask) {
+                idx[count] = i;
+				count++;
+				if(i == 0 || count == 2) break;
+            }
+            bitmask <<= 1;
+        }
+        if(idx[0] == 0) {
+            matIdx = 0;
+        } else if(idx[1] == 0) {
+            matIdx = 1 + idx[0]*(idx[0]-1)/2;
+        } else {
+            matIdx = 1 + idx[1]*(idx[1]-1)/2 + idx[0];
+        }
+
+		return matIdx;
+	}
 };
 
 #endif
