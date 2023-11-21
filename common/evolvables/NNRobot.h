@@ -41,7 +41,6 @@ private:
     void forward() {
         if(!randMassesFilled) {
             fillRandMasses(maxMasses);
-            randMassesFilled = true;
         }
         masses = randMasses;
         
@@ -114,8 +113,7 @@ public:
     static unsigned int maxSprings;
 
     static void fillRandMasses(unsigned int N) {
-        static bool filled = false;
-        if(!filled) {
+        if(!randMassesFilled) {
             int seed = 2383;
             std::default_random_engine gen = std::default_random_engine(seed);
             randMasses.clear();
@@ -133,6 +131,7 @@ public:
                 randMasses.push_back(m);
             }
         }
+        randMassesFilled = true;
     }
 
     static void Configure(Config::NNRobot config) {

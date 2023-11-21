@@ -191,14 +191,14 @@ std::vector<float> NNRobot::findDiversity(std::vector<NNRobot> pop) {
     return diversity;
 }
 
-void RunBatchBuild(std::vector<NNRobot>& robots, size_t begin, size_t end) {
+void BuildSubset(std::vector<NNRobot>& robots, size_t begin, size_t end) {
     for(uint i = begin; i < end; i++) {
         robots[i].Build();
     }
 }
 
 void NNRobot::BatchBuild(std::vector<NNRobot>& robots) {
-    const auto processor_count = std::thread::hardware_concurrency();
+    const auto processor_count = std::thread::hardware_concurrency() - 1;
     unsigned int active_threads = min(robots.size(), processor_count);
     unsigned int robots_per_thread = robots.size() / active_threads;
     
@@ -208,12 +208,11 @@ void NNRobot::BatchBuild(std::vector<NNRobot>& robots) {
     for(unsigned int i = 0; i < active_threads; i++) {
         begin = i*robots_per_thread;
         end = min((i+1)*robots_per_thread, robots.size());
-        std::thread t(RunBatchBuild, std::ref(robots), begin, end);
-        threads.push_back(std::move(t));
+        threads.emplace_back(BuildSubset, std::ref(robots), begin, end);
     }
 
-    for(uint i = 0; i < active_threads; i++) {
-        threads[i].join();
+    for (auto& thread : threads) {
+        thread.join();
     }
 }
 

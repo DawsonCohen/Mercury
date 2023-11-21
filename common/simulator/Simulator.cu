@@ -434,6 +434,14 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 		numSprings++;
 		i++;
 	}
+
+	// fill up springs to max spring size
+	// TODO: variable springs per robot
+	for( ; i < springsPerElement; i++) {
+		springBuf[numSprings] = {0,0,0.0f,0.0f,materials::air};
+		offsetBuf[numSprings] = massOffset;
+		numSprings++;
+	}
 	
 	numElements++;
 	

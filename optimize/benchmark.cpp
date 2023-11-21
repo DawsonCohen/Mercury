@@ -282,6 +282,7 @@ void NNBenchmark() {
 		auto start = std::chrono::high_resolution_clock::now();
 		for(uint i = 0; i < pop_size; i++) {
 			NNRobot R;
+			R.Randomize();
 			robots.push_back(R);
 		}
 		NNRobot::BatchBuild(robots);
@@ -308,7 +309,7 @@ void NNBenchmark() {
 		end = std::chrono::high_resolution_clock::now();
 		printf("FINISHED\n\n");
 
-		sim.Collect(trackers);
+		std::vector<Element> results = sim.Collect(trackers);
 
 		execute_time = std::chrono::duration<float>(end - start).count();
 
