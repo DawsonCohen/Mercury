@@ -32,6 +32,7 @@ set(VISUALIZE
   ../common/evolvables/VoxelRobot.cpp
   ../common/evolvables/NNRobot.cpp
   ../common/evolvables/knn.cu
+  ../common/evolvables/delaunay.cpp
 
   ../common/util/util.cpp
   ../optimize/optimizer/util/optimizer_util.cpp
@@ -90,6 +91,7 @@ target_include_directories(visualizer PUBLIC
 target_link_libraries(visualizer PUBLIC
   glad
   glfw
+  gmp
   glm
   stb
   ${OpenCV_LIBS}

@@ -139,6 +139,9 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 
     memset(m_hStresses, 0, maxSprings * sizeof(float));
     memset(m_hSpringIDs, 0, maxSprings * sizeof(uint));
+
+    memset(m_hSpringIDs, 0, maxSprings * sizeof(uint));
+    memset(m_hSpringMatEncodings, 0, maxSprings * sizeof(uint));
 	
     unsigned int massSizefloat4     = sizeof(float)    * 4 * maxMasses;
     unsigned int massSizeuint32_t   = sizeof(uint32_t) * 1 * maxMasses;
@@ -196,13 +199,17 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 	// 	simThreadsPerBlock = attr.maxThreadsPerBlock;
 	
 	// assert( attr.numRegs <= 32768 );
+	uint largestElementSprings = 0;
+	for(auto& e : elements) {
+		if(e.springs.size() > largestElementSprings) largestElementSprings = e.springs.size();
+	}
 
 	maxElements = elements.size();
 	maxReplaced = m_replacedSpringsPerElement * maxElements;
 	massesPerElement = elements[0].masses.size();
-	springsPerElement = elements[0].springs.size();
+	springsPerElement = largestElementSprings;
 	maxMasses = massesPerElement*maxElements;
-	maxSprings = springsPerElement*maxElements;
+	maxSprings = largestElementSprings*maxElements;
 
 	_initialize();
 

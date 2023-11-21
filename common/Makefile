@@ -43,8 +43,8 @@ EIGEN_LIB_DIR := $(SRCDIR)/common/lib
 EIGEN_LIB_NAME := cudart
 
 INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/common/util
-LIB_DIRS := -L$(EIGEN_LIB_DIR)
-LIB_NAMES := -l$(EIGEN_LIB_NAME)
+LIB_DIRS := -L$(EIGEN_LIB_DIR) 
+LIB_NAMES := -l$(EIGEN_LIB_NAME) -lgmp
 
 CXXFLAGS += $(INCLUDE_DIRS)
 CUFLAGS += $(INCLUDE_DIRS)
@@ -79,7 +79,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/optimize/optimizer/%.cpp | $(OBJDIR)
 
 # Evolvables
 $(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cpp | $(OBJDIR)
-	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -I$(SRCDIR)/common/simulator -I$(SRCDIR)/optimize/optimizer -I/usr/include -lCGAL -lgmp -LCGAL_Core -c -o $@ $<
 
 # Evolvables
 $(OBJDIR)/%.o: $(SRCDIR)/common/evolvables/%.cu | $(OBJDIR)

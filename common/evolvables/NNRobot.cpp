@@ -2,8 +2,9 @@
 #include <csignal>
 #include <algorithm>
 #include <map>
+#include <thread>
 #include "NNRobot.h"
-#include "knn.h"
+#include "triangulation.h"
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
@@ -68,8 +69,6 @@ NNRobot::NNRobot()
     }
     
     weights[num_layers-2] = Eigen::MatrixXf::Random(output_size, hidden_sizes[hidden_sizes.size() - 1]);
-
-    // Build();
 }
 
 void NNRobot::Randomize() {
@@ -79,7 +78,7 @@ void NNRobot::Randomize() {
 
     mAge = 0;
 
-    Build();
+    // Build();
 }
 
 void NNRobot::Mutate() {
@@ -91,7 +90,7 @@ void NNRobot::Mutate() {
         weights[layer](row,col) = uniform(gen)*2-1;
     }
 
-    Build();
+    // Build();
 }
 
 CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
@@ -155,8 +154,8 @@ CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents)
         break;
     }
 
-    children.first.Build();
-    children.second.Build();
+    // children.first.Build();
+    // children.second.Build();
 
     uint maxAge = parents.first.mAge;
     if(parents.second.mAge > maxAge)
@@ -192,6 +191,32 @@ std::vector<float> NNRobot::findDiversity(std::vector<NNRobot> pop) {
     return diversity;
 }
 
+void RunBatchBuild(std::vector<NNRobot>& robots, size_t begin, size_t end) {
+    for(uint i = begin; i < end; i++) {
+        robots[i].Build();
+    }
+}
+
+void NNRobot::BatchBuild(std::vector<NNRobot>& robots) {
+    const auto processor_count = std::thread::hardware_concurrency();
+    unsigned int active_threads = min(robots.size(), processor_count);
+    unsigned int robots_per_thread = robots.size() / active_threads;
+    
+    fillRandMasses(maxMasses);
+    std::vector<std::thread> threads;
+    uint begin, end;
+    for(unsigned int i = 0; i < active_threads; i++) {
+        begin = i*robots_per_thread;
+        end = min((i+1)*robots_per_thread, robots.size());
+        std::thread t(RunBatchBuild, std::ref(robots), begin, end);
+        threads.push_back(std::move(t));
+    }
+
+    for(uint i = 0; i < active_threads; i++) {
+        threads[i].join();
+    }
+}
+
 void NNRobot::Build() {
     springs.clear();
 
@@ -203,8 +228,8 @@ void NNRobot::Build() {
     // printf("INFERENCE IN %f SECONDS\n", execute_time);
 
     // start = std::chrono::high_resolution_clock::now();
-    
-    auto knns = KNN::KNN(this->masses, springs_per_mass);
+    auto triangulation = Triangulation::AlphaShape(this->masses);
+    // auto triangulation = Triangulation::KNN(this->masses,springs_per_mass);
     
     // end = std::chrono::high_resolution_clock::now();
     // execute_time = std::chrono::duration<float>(end - start).count();
@@ -212,23 +237,25 @@ void NNRobot::Build() {
 
     // start = std::chrono::high_resolution_clock::now();
 
-    for (size_t i = 0; i < masses.size(); i++) {
-        auto neighbors = knns[i];
-        Material mat1 = masses[i].material,
-                 mat2, mat;
+    for (auto pair : triangulation) {
+        uint16_t m1 = pair.v1,
+                 m2 = pair.v2;
+        float dist = pair.dist;
+        Material mat1, mat2, mat;
 
-        for (auto neighbor : neighbors) {
-            if(neighbor.second < EPS) {
-                mat = materials::air;
-            } else {
-                mat2 = masses[neighbor.first].material;
-                // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
-                mat = materials::decode(mat1.encoding | mat2.encoding);
-            }
+        // std::cout << m1 << ", " << m2 << ", " << dist << std::endl;
 
-            Spring s = {(uint16_t)i, neighbor.first, neighbor.second, neighbor.second, mat};
-            springs.push_back(s);
+        if(dist < EPS) {
+            mat = materials::air;
+        } else {
+            mat1 = masses[m1].material;
+            mat2 = masses[m2].material;
+            // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
+            mat = materials::decode(mat1.encoding | mat2.encoding);
         }
+
+        Spring s = {m1, m2, dist, dist, mat};
+        springs.push_back(s);
     }
 
     for(Spring& s : springs) {

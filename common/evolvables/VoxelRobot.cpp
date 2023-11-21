@@ -2,6 +2,7 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <thread>
 #include "VoxelRobot.h"
 
 VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
@@ -281,6 +282,31 @@ void VoxelRobot::Strip() {
     visited = std::vector<bool>(voxels.size(), false);
     CopyFromVoxelRecurse(getVoxelBasisIdx(maxIdx), R, visited);
     *this = R;
+}
+
+void RunBatchBuild(std::vector<VoxelRobot>& robots, size_t begin, size_t end) {
+    for(uint i = begin; i < end; i++) {
+        robots[i].Build();
+    }
+}
+
+void VoxelRobot::BatchBuild(std::vector<VoxelRobot>& robots) {
+    const auto processor_count = std::thread::hardware_concurrency();
+    unsigned int active_threads = min(robots.size(), processor_count);
+    unsigned int robots_per_thread = robots.size() / active_threads;
+    
+    std::vector<std::thread> threads;
+    uint begin, end;
+    for(unsigned int i = 0; i < active_threads; i++) {
+        begin = i*robots_per_thread;
+        end = min((i+1)*robots_per_thread, robots.size());
+        std::thread t(RunBatchBuild, std::ref(robots), begin, end);
+        threads.push_back(std::move(t));
+    }
+
+    for(uint i = 0; i < active_threads; i++) {
+        threads[i].join();
+    }
 }
 
 void VoxelRobot::Build() {

@@ -32,6 +32,7 @@ int TestEvaluator() {
 	for(auto& R : population) {
 		R.Randomize();
 	}
+	NNRobot::BatchBuild(population);
 
 	config.evaluator.base_time = 1.0f;
 	config.devo.devo_cycles = 1;

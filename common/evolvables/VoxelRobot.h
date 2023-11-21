@@ -84,6 +84,7 @@ enum Encoding {
     void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, std::vector<bool>& visit_list, uint srcIdx = 0);
     void BuildFromCircles();
     void Build();
+    void BatchBuild(std::vector<VoxelRobot>& robots);
     void Initialize();
 
 
@@ -95,10 +96,10 @@ enum Encoding {
     void Strip();
 
 private:
-    float xSize = 1.0f;
-    float ySize = 1.0f;
-    float zSize = 1.0f;
-    float resolution = 12.0f; // Masses per cm
+    float xSize = 12.0f;
+    float ySize = 12.0f;
+    float zSize = 12.0f;
+    float resolution = 1.0f; // Masses per cm
     Eigen::Vector3f center = Eigen::Vector3f(xSize/2.0f, ySize/2.0f, 0.0f);
     std::vector<Voxel> voxels;
     std::vector<Circle> circles;

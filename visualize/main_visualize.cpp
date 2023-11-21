@@ -115,6 +115,7 @@ int main(int argc, char** argv)
 				default: {
 					NNRobot solution = NNRobot();
 					solution.Randomize();
+					solution.Build();
 					solutions.push_back(solution);
 				}
 			}

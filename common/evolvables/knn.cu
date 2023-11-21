@@ -1,4 +1,4 @@
-#include "knn.h"
+#include "triangulation.h"
 #include "knn_kernel.cu"
 #include "mass.h"
 
@@ -21,7 +21,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
    }
 }
 
-namespace KNN {
+namespace Triangulation {
 
 void key_value_sort(float* d_keys_in, float* d_keys_out, uint16_t* d_values_in, uint16_t* d_values_out, uint16_t count) {
     // Determine number of segments
@@ -59,7 +59,7 @@ void key_value_sort(float* d_keys_in, float* d_keys_out, uint16_t* d_values_in, 
     cudaFree(d_temp_storage);
 }
 
-std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const std::vector<Mass>& masses, uint16_t K)
+std::vector<Simplex::Edge> KNN(const std::vector<Mass>& masses, uint16_t K)
 {
     unsigned int num_masses = masses.size();
     
@@ -127,11 +127,24 @@ std::vector<std::vector<std::pair<uint16_t,float>>> KNN(const std::vector<Mass>&
     cudaFree(d_distances);
     cudaFree(d_distances_sorted);
 
-    return KNN;
+    std::vector<Simplex::Edge> triangulation;
+
+    for (uint16_t i = 0; i < masses.size(); i++) {
+        auto neighbors = KNN[i];
+        Material mat1 = masses[i].material,
+                 mat2, mat;
+
+        for (auto neighbor : neighbors) {
+            Simplex::Edge edge = {i, neighbor.first, neighbor.second};
+            triangulation.push_back(edge);
+        }
+    }
+
+    return triangulation;
 }
 
 
-std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU(const std::vector<Mass>& masses, uint16_t K)
+std::vector<Simplex::Edge> KNN_CPU(const std::vector<Mass>& masses, uint16_t K)
 {
     unsigned int num_masses = masses.size();
 
@@ -163,7 +176,17 @@ std::vector<std::vector<std::pair<uint16_t,float>>> KNN_CPU(const std::vector<Ma
         KNN[i] = neighbors;
     }
 
-    return KNN;
+    std::vector<Simplex::Edge> triangulation;
+    for (uint16_t i = 0; i < masses.size(); i++) {
+        auto neighbors = KNN[i];
+
+        for (auto neighbor : neighbors) {
+            Simplex::Edge edge = {i, neighbor.first, neighbor.second};
+            triangulation.push_back(edge);
+        }
+    }
+
+    return triangulation;
 }
 
 }

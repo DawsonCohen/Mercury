@@ -65,6 +65,7 @@ void Optimizer<T>::RandomizePopulation(std::vector<T>& population) {
         evalBuf.push_back(population[i]);
     }
     
+    T::BatchBuild(evalBuf);
     Evaluator<T>::BatchEvaluate(evalBuf);
 
     for(uint i = 0; i < population.size(); i++) {
@@ -168,7 +169,7 @@ void Optimizer<T>::ChildStep(subpopulation<T>& subpop) {
         evalBuf.push_back(fam.children.first);
         evalBuf.push_back(fam.children.second);
     }
-
+    T::BatchBuild(evalBuf);
     Evaluator<T>::BatchEvaluate(evalBuf);
 
 

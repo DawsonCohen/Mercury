@@ -13,7 +13,7 @@
 
 // TODO: Use config file
 
-#define MAX_TIME 5
+#define MAX_TIME 15
 #define MAX_SPRINGS 1e11
 #define MAX_ROBOTS 512
 #define INIT_POP_SIZE 1
@@ -80,7 +80,7 @@ void VoxelBenchmark() {
 
 	float execute_time;
 
-	fprintf(pFile,"springs simulated, springs per iteration, execute time, springs per second\n");
+	fprintf(pFile,"springs simulated, execute time, springs per second\n");
 
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<Element> robots;
@@ -101,10 +101,14 @@ void VoxelBenchmark() {
 
 		execute_time = std::chrono::duration<float>(end - start).count();
 
-		num_springs = R.getSprings().size() * pop_size * (MAX_TIME / sim.getDeltaT());
+		num_springs = 0;
+		for(auto& R : robots) {
+			num_springs += R.springs.size();
+		}
+		num_springs = num_springs * (MAX_TIME / sim.getDeltaT());
 		float springs_per_sec = num_springs / execute_time;
 
-		fprintf(pFile,"%lu,%lu,%f,%f\n", num_springs,R.getSprings().size()*pop_size,execute_time,springs_per_sec);
+		fprintf(pFile,"%lu,%f,%f\n", num_springs,execute_time,springs_per_sec);
 		printf("%u ROBOTS (%.2e SPRINGS) IN %f SECONDS\n", pop_size, (float) num_springs, execute_time);
 		printf("%.2e SPRINGS PER SECOND\n", (float) springs_per_sec);
 		printf("--------------------------\n");
@@ -126,7 +130,7 @@ void StressBenchmark() {
 
 	float execute_time;
 
-	fprintf(pFile,"springs simulated, springs per iteration, execute time, springs per second\n");
+	fprintf(pFile,"springs simulated, execute time, springs per second\n");
 
 	while(num_springs < MAX_SPRINGS) {
 		std::vector<Element> robots;
@@ -147,10 +151,14 @@ void StressBenchmark() {
 
 		execute_time = std::chrono::duration<float>(end - start).count();
 
-		num_springs = R.getSprings().size() * pop_size * (MAX_TIME / sim.getDeltaT());
+		num_springs = 0;
+		for(auto& R : robots) {
+			num_springs += R.springs.size();
+		}
+		num_springs = num_springs * (MAX_TIME / sim.getDeltaT());
 		float springs_per_sec = num_springs / execute_time;
 
-		fprintf(pFile,"%lu,%lu,%f,%f\n", num_springs,R.getSprings().size()*pop_size,execute_time,springs_per_sec);
+		fprintf(pFile,"%lu,%f,%f\n", num_springs,execute_time,springs_per_sec);
 		printf("%u ROBOTS (%.2e SPRINGS) IN %f SECONDS\n", pop_size, (float) num_springs, execute_time);
 		printf("%.2e SPRINGS PER SECOND\n", (float) springs_per_sec);
 		printf("--------------------------\n");
@@ -225,7 +233,6 @@ void NNBuildBenchmark() {
 	ulong num_springs;
 	while(pop_size <= MAX_ROBOTS) {
 		std::vector<NNRobot> robots;
-		std::vector<Element> robot_elements;
 
 		auto start = std::chrono::high_resolution_clock::now();
 		for(uint i = 0; i < pop_size; i++) {
@@ -233,11 +240,15 @@ void NNBuildBenchmark() {
 			R.Randomize();
 			robots.push_back(R);
 		}
+		NNRobot::BatchBuild(robots);
 		auto end = std::chrono::high_resolution_clock::now();
 
 		execute_time = std::chrono::duration<float>(end - start).count();
 
-		num_springs = R.getSprings().size() * pop_size * (MAX_TIME / sim.getDeltaT());
+		num_springs = 0;
+		for(auto& R : robots) {
+			num_springs += R.getSprings().size();
+		}
 		float springs_per_sec = num_springs / execute_time;
 
 		fprintf(pFile,"%lu,%f,%f\n", num_springs,execute_time,springs_per_sec);
@@ -254,11 +265,10 @@ void NNBenchmark() {
 	printf("BENCHMARKING NN\n");
 
 	NNRobot R;
-	R.Build();
-
+	ulong num_springs;
+	
 	uint pop_size = INIT_POP_SIZE;
 
-	ulong num_springs = R.getSprings().size() * (MAX_TIME / sim.getDeltaT());
 	FILE* pFile = fopen((out_dir + "/nn_benchamrk.csv").c_str(),"w");
 
 	float execute_time;
@@ -272,9 +282,9 @@ void NNBenchmark() {
 		auto start = std::chrono::high_resolution_clock::now();
 		for(uint i = 0; i < pop_size; i++) {
 			NNRobot R;
-			R.Build();
 			robots.push_back(R);
 		}
+		NNRobot::BatchBuild(robots);
 		auto end = std::chrono::high_resolution_clock::now();
 
 		execute_time = std::chrono::duration<float>(end - start).count();
@@ -289,7 +299,7 @@ void NNBenchmark() {
 		
 		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
 		
-		sim.SetElements(robot_elements);
+		std::vector<ElementTracker> trackers = sim.SetElements(robot_elements);
 
 		printf("STARTED\n");
 		start = std::chrono::high_resolution_clock::now();
@@ -298,9 +308,15 @@ void NNBenchmark() {
 		end = std::chrono::high_resolution_clock::now();
 		printf("FINISHED\n\n");
 
+		sim.Collect(trackers);
+
 		execute_time = std::chrono::duration<float>(end - start).count();
 
-		num_springs = R.getSprings().size() * pop_size * (MAX_TIME / sim.getDeltaT());
+		num_springs = 0;
+		for(auto& R : robot_elements) {
+			num_springs += R.springs.size();
+		}
+		num_springs = num_springs * (MAX_TIME / sim.getDeltaT());
 		float springs_per_sec = num_springs / execute_time;
 
 		fprintf(pFile,"%lu,%lu,%f,%f\n", num_springs, R.getSprings().size()*pop_size,execute_time,springs_per_sec);

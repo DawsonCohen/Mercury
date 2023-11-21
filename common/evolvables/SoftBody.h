@@ -97,8 +97,6 @@ public:
 				 mAge < C.age());
 	}
 
-	void append(SoftBody src);
-
 	void addMass(Mass mass) { 
 		masses.push_back(mass);
 	}

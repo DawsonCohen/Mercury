@@ -8,6 +8,7 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
+#include <thread>
 #include "SoftBody.h"
 
 #define min(a,b) a < b ? a : b
@@ -81,21 +82,6 @@ void SoftBody::Reset() {
 void SoftBody::Clear() {
     masses.clear();
     springs.clear();
-}
-
-void SoftBody::append(SoftBody src) {
-    std::map<unsigned int, unsigned int> idMap;
-    for(Mass& m : src.masses) {
-        unsigned int oldID = m.id;
-        m.id = masses.size();
-        idMap[oldID] = m.id;
-        masses.push_back(m);
-    }
-    for(Spring& s : src.springs) {
-        s.m0 = idMap[s.m0];
-        s.m1 = idMap[s.m1];
-        springs.push_back(s);
-    }
 }
 
 void SoftBody::updateClosestPos() {

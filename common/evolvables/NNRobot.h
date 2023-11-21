@@ -113,21 +113,25 @@ public:
     static unsigned int maxMasses;
     static unsigned int maxSprings;
 
-    static void fillRandMasses(unsigned int N, int seed = 0) {
-        std::default_random_engine gen = std::default_random_engine(seed);
-        randMasses.clear();
+    static void fillRandMasses(unsigned int N) {
+        static bool filled = false;
+        if(!filled) {
+            int seed = 2383;
+            std::default_random_engine gen = std::default_random_engine(seed);
+            randMasses.clear();
 
-        for(unsigned int i = 0; i < N; i++) {
-            float el = (uniform(gen) * M_PI) - M_PI/2;
-            float az = uniform(gen) * 2 * M_PI;
-            float r = uniform(gen);
+            for(unsigned int i = 0; i < N; i++) {
+                float el = (uniform(gen) * M_PI) - M_PI/2;
+                float az = uniform(gen) * 2 * M_PI;
+                float r = uniform(gen);
 
-            float x = r * cos(el) * cos(az);
-            float z = r * cos(el) * sin(az);
-            float y = r * sin(el);
+                float x = r * cos(el) * cos(az);
+                float z = r * cos(el) * sin(az);
+                float y = r * sin(el);
 
-            Mass m(i,x,y,z);
-            randMasses.push_back(m);
+                Mass m(i,x,y,z);
+                randMasses.push_back(m);
+            }
         }
     }
 
