@@ -57,11 +57,11 @@ CXX_OBJS := $(patsubst %.cpp,$(OBJDIR)/%.o,$(notdir $(CXX_SRCS)))
 CUDA_OBJS := $(patsubst %.cu,$(OBJDIR)/%.o,$(notdir $(CUDA_SRCS)))
 
 # Included libraries
-EIGEN_LIB_DIR := $(SRCDIR)/common/lib
+EIGEN_INCLUDE_DIR := $(SRCDIR)/common/include
 EIGEN_LIB_NAME := cudart
 
-INCLUDE_DIRS := -I$(EIGEN_LIB_DIR) -I$(SRCDIR)/common/util -I$(SRCDIR)/optimize/optimizer/util
-LIB_DIRS := -L$(EIGEN_LIB_DIR)
+INCLUDE_DIRS := -I$(EIGEN_INCLUDE_DIR) -I$(SRCDIR)/common/util -I$(SRCDIR)/optimize/optimizer/util
+LIB_DIRS := -L$(SRCDIR)/common/lib
 LIB_NAMES := -l$(EIGEN_LIB_NAME) -lgmp
 
 CXXFLAGS += $(INCLUDE_DIRS)
