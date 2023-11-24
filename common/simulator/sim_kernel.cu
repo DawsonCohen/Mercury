@@ -8,375 +8,238 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define EPS (float) 0.000001
+#define EPS (float) 1e-12
 #define MAX_FORCE (float) 200000
 
 struct SimOptions {
 	float dt;
 	uint massesPerBlock;
 	uint springsPerBlock;
+	uint facesPerBlock;
+	uint boundaryMassesPerBlock;
 	uint maxMasses;
 	uint maxSprings;
+	uint maxFaces;
 	uint compositeCount;
 	short shiftskip;
 	float drag;
 	float damping;
+	float relaxation;
+	float s;
 };
 
 __constant__ float4 compositeMats_id[COMPOSITE_COUNT];
 __constant__ SimOptions cSimOpt;
 
-__device__
-inline void dragForce(const float4& vel, float3& force,
-					float rho) {	
-	//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
-	float mag_vel_squared = 
-		  __fmul_rn(vel.x,vel.x)
-		+ __fmul_rn(vel.y,vel.y)
-		+ __fmul_rn(vel.z,vel.z);
-	float mag_vel = __fsqrt_rn(mag_vel_squared);
+__global__ inline
+void dragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
+                 float4 *__restrict__ vel) {
+	int stride = blockDim.x * gridDim.x;
+	float4 velocity;
 
-	force.x += -0.5*rho*mag_vel*vel.x;
-	force.y += -0.5*rho*mag_vel*vel.y;
-	force.z += -0.5*rho*mag_vel*vel.z;
+	for(uint i = blockIdx.x * blockDim.x + threadIdx.x;
+		i < cSimOpt.maxMasses; i+=stride) {
+		//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
+		velocity = __ldg(&vel[i]);
+		newPos[i] = __ldg(&pos[i]) + velocity*cSimOpt.dt;
+	}
 }
 
-__device__
-inline void environmentForce(float3& pos, const float4& vel, float3& force) {
-	dragForce(vel,force,cSimOpt.drag);
+__global__ inline
+void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
+                 float4 *__restrict__ vel, ushort4 *__restrict__ faces) {
+	extern __shared__ float3 s[];
+	float3  *s_pos = s;
+	float3  *s_vel = (float3*) &s_pos[cSimOpt.boundaryMassesPerBlock];
+	float3  *s_force = (float3*) &s_vel[cSimOpt.boundaryMassesPerBlock];
+	
+	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
+	uint faceOffset   = blockIdx.x * cSimOpt.facesPerBlock;
+	uint i;
+
+	int tid    = threadIdx.x;
+	int stride = blockDim.x;
+	
+	// Initialize and compute environment forces
+	float4 pos4, vel4;
+	for(i = tid; i < cSimOpt.boundaryMassesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		pos4 = __ldg(&pos[i+massOffset]);
+		vel4 = __ldg(&vel[i+massOffset]);
+		s_pos[i] = {pos4.x,pos4.y,pos4.z};
+		s_vel[i] = {vel4.x,vel4.y,vel4.z};
+	}
+	
+	for(i = tid; i < cSimOpt.boundaryMassesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		s_force[i] = {0.0f, 0.0f, 0.0f};
+	}
+	
+	float rho = cSimOpt.drag, area;
+	ushort4 face;
+	float3  x0, x1, x2,
+	        v0, v1, v2,
+			v, normal, force;
+	for(i = tid; i < cSimOpt.facesPerBlock && (i+faceOffset) < cSimOpt.maxFaces; i+=stride) {
+		// Drag Force: 0.5*rho*A*((Cd - Cl)*dot(v,n)*v + Cl*dot(v,v)*n)
+		face = __ldg(&faces[i+faceOffset]);
+		if(face.w == 0) continue;
+
+		x0 = s_pos[face.x];
+		x1 = s_pos[face.y];
+		x2 = s_pos[face.z];
+		v0 = s_vel[face.x];
+		v1 = s_vel[face.y];
+		v2 = s_vel[face.z];
+		
+		v = (v0 + v1 + v2) / 3.0f;
+		normal = cross((x1 - x0), (x2-x0));
+		area = norm3df(normal.x,normal.y,normal.z);
+		normal = normal / (area + EPS);
+		normal = dot(normal, v) > 0.0f ? normal : -normal;
+		force = -0.5*rho*area*(dot(v,normal)*v + 0.2*dot(v,v)*normal);
+		force = force / 3.0f; // allocate forces evenly amongst masses
+		
+		atomicAdd(&(s_force[face.x].x), force.x);
+		atomicAdd(&(s_force[face.x].y), force.y);
+		atomicAdd(&(s_force[face.x].z), force.z);
+
+		atomicAdd(&(s_force[face.y].x), force.x);
+		atomicAdd(&(s_force[face.y].y), force.y);
+		atomicAdd(&(s_force[face.y].z), force.z);
+
+		atomicAdd(&(s_force[face.z].x), force.x);
+		atomicAdd(&(s_force[face.z].y), force.y);
+		atomicAdd(&(s_force[face.z].z), force.z);
+	}
+
+	for(i = tid; i < cSimOpt.boundaryMassesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		x0 = s_pos[i];
+		v0 = s_vel[i];
+		force = s_force[i];
+		newPos[i+massOffset].x = x0.x + v0.x*cSimOpt.dt + force.x*cSimOpt.dt*cSimOpt.dt;
+		newPos[i+massOffset].y = x0.y + v0.y*cSimOpt.dt + force.y*cSimOpt.dt*cSimOpt.dt;
+		newPos[i+massOffset].z = x0.z + v0.z*cSimOpt.dt + force.z*cSimOpt.dt*cSimOpt.dt;
+	}
 }
 
 
 /*
+	Exended Positon Based Dynamics
+	Computes lagrangian (force) for each distance constraint (spring)
+
 	mat: float4 describing spring material
 		x - k		stiffness
 		y - dL0 	maximum percent change
 		z - omega	frequency of oscillation
 		w - phi		phase
 */
-__device__
-inline void springForce(const float3& bl, const float3& br, const float4& mat, 
-					float mean_length, float time,
-					float3& force, float& magF)
+__global__ inline
+void solveDistance(float4 *__restrict__ newPos, float4 *__restrict__ vel,
+				float * __restrict__ stresses,
+				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
+				float time, uint step, bool integrateForce)
 {
-	float3	dir, diff;
+	extern __shared__ float3 s[];
+	float3  *s_pos = s;
+	float3  *s_dp = (float3*) &s_pos[cSimOpt.massesPerBlock];
+	
+	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
+	uint springOffset = blockIdx.x * cSimOpt.springsPerBlock;
+	uint i;
+
+	int tid    = threadIdx.x;
+	int stride = blockDim.x;
+	
+	// Initialize and compute environment forces
+	float4 pos4;
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		pos4 = __ldg(&newPos[i+massOffset]);
+		s_pos[i] = {pos4.x,pos4.y,pos4.z};
+	}
+	
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		s_dp[i] = {0.0f, 0.0f, 0.0f};
+	}
+
+	__syncthreads();
+
+	float4	 mat;
+	float3	 posL, posR;
+	ushort2	 pair;
+	uint8_t  matId;
+	float	 Lbar,
+			 constraint, compliance,
+			 lambda;
+	ushort	 left, right;
+
+	float3	diff;
 
 	float	relative_change,
 			rest_length,
-			Lsqr, rL, L;
-
-	// rest_length = mean_length * (1 + relative_change);
-	relative_change = mat.y * sinf(mat.z*time+mat.w);
-	rest_length = __fmaf_rn(mean_length, relative_change, mean_length);
-	
-	diff.x = bl.x - br.x;
-	diff.y = bl.y - br.y;
-	diff.z = bl.z - br.z;
-
-	Lsqr = dot(diff,diff);
-	L = __fsqrt_rn(Lsqr);
-	rL = rsqrtf(Lsqr);
-
-	dir = {
-		__fmul_rn(diff.x,rL),
-		__fmul_rn(diff.y,rL),
-		__fmul_rn(diff.z,rL)
-	};
-	magF = mat.x*(rest_length-L);
-	force = magF * dir;
-}
-
-__global__ void
-inline integrateBodies(float4 *__restrict__ pos, float4 *__restrict__ vel,
-				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
-				float time, uint step)
-{
-	extern __shared__ float3 s[];
-	float3  *s_pos = s;
-	float3  *s_force = (float3*) &s_pos[cSimOpt.massesPerBlock];
-	
-	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
-	uint springOffset = blockIdx.x * cSimOpt.springsPerBlock;
-	uint i;
-
-	int tid    = threadIdx.x;
-	int stride = blockDim.x;
-	
-	// Initialize and compute environment forces
-	float4 pos4;
-	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		pos4 = __ldg(&pos[i+massOffset]);
-		s_pos[i] = {pos4.x,pos4.y,pos4.z};
-	}
-	
-	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		s_force[i] = {0.0f, 0.0f, 0.0f};
-	}
-
-	__syncthreads();
-
-	float4	 mat;
-	float3	 bl, br;
-	float3	 force;
-	ushort2	 pair;
-	uint8_t  matId;
-	float	 Lbar,
-			 magF = 0x0f;
-	ushort	 left, right;
+			n;
+	float3  dp;
 	
 	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
 		matId = __ldg(&matIds[i+springOffset]);
 		if(matId == materials::air.id) continue;
 
 		pair = __ldg(&pairs[i+springOffset]);
-		left  = pair.x;
-		right = pair.y;
-		bl = s_pos[left];
-		br = s_pos[right];
+		left = pair.x; right = pair.y;
+		posL = s_pos[left];
+		posR = s_pos[right];
 
 		mat = compositeMats_id[ matId ];
 
 		Lbar = __ldg(&Lbars[i+springOffset]);
-		springForce(bl,br,mat,Lbar,time, force, magF);
+	
+		// rest_length = mean_length * (1 + relative_change);
+		relative_change = mat.y * sinf(mat.z*time+mat.w);
+		rest_length = __fmaf_rn(Lbar, relative_change, Lbar);
+		
+		diff = posL-posR;
+		n = l2norm(diff);
+		// if(n < EPS) {
+		// 	printf("%u: (%f,%f,%f)\n",step, diff.x,diff.y,diff.z);
+		// 	assert(0);
+		// }
+		constraint = n-rest_length;
+		compliance = 1 / mat.x / cSimOpt.dt / cSimOpt.dt;
+		lambda = -(constraint) / (2 + compliance);
+		dp = lambda * diff / (n + EPS);
 
-		atomicAdd(&(s_force[left].x), force.x);
-		atomicAdd(&(s_force[left].y), force.y);
-		atomicAdd(&(s_force[left].z), force.z);
+		if(integrateForce) stresses[i+springOffset] += lambda / Lbar;
 
-		atomicAdd(&(s_force[right].x), -force.x);
-		atomicAdd(&(s_force[right].y), -force.y);
-		atomicAdd(&(s_force[right].z), -force.z);
+		atomicAdd(&(s_dp[left].x), dp.x);
+		atomicAdd(&(s_dp[left].y), dp.y);
+		atomicAdd(&(s_dp[left].z), dp.z);
+
+		atomicAdd(&(s_dp[right].x), -dp.x);
+		atomicAdd(&(s_dp[right].y), -dp.y);
+		atomicAdd(&(s_dp[right].z), -dp.z);
 	}
 	__syncthreads();
 
-	// Calculate and store new mass states
-	float4 velocity;
-	float3 pos3;
 	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		velocity = __ldg(&vel[i+massOffset]);
-		environmentForce(s_pos[i],velocity,s_force[i]);
-
-		velocity.x += (s_force[i].x * cSimOpt.dt)*cSimOpt.damping;
-		velocity.y += (s_force[i].y * cSimOpt.dt)*cSimOpt.damping;
-		velocity.z += (s_force[i].z * cSimOpt.dt)*cSimOpt.damping;
-
-		// new position = old position + velocity * deltaTime
-		s_pos[i].x += velocity.x * cSimOpt.dt;
-		s_pos[i].y += velocity.y * cSimOpt.dt;
-		s_pos[i].z += velocity.z * cSimOpt.dt;
-
-		// store new position and velocity
-		pos3 = s_pos[i];
-		pos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
-		vel[i+massOffset] = velocity;
+		pos4 =__ldg(&newPos[i+massOffset]);
+		pos4.x += s_dp[i].x;
+		pos4.y += s_dp[i].y;
+		pos4.z += s_dp[i].z;
+		newPos[i+massOffset] = pos4;
 	}
 }
 
-
-__global__ void
-inline integrateBodiesStresses(float4 *__restrict__ pos, float4 *__restrict__ vel,
-				ushort2 *__restrict__ pairs, uint32_t *__restrict__ matEncodings, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
-				ushort *__restrict__ maxStressCount, ushort *__restrict__ minStressCount,
-				float *__restrict__ stresses, uint *__restrict__ ids,
-				float time, uint step)
-{
-	extern __shared__ float3 s[];
-	float3  *s_pos = s;
-	float3  *s_force = (float3*) &s_pos[cSimOpt.massesPerBlock];
-
-	__shared__ ushort maxStressedSprings[1024];
-	__shared__ ushort minStressedSprings[1024];
-	
-	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
-	uint springOffset = blockIdx.x * cSimOpt.springsPerBlock;
-
-	int tid    = threadIdx.x;
-	int stride = blockDim.x;
-	
-	// Initialize and compute environment forces
-	float4 pos4;
-	for(uint i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		pos4 = __ldg(&pos[i+massOffset]);
-		s_pos[i] = {pos4.x,pos4.y,pos4.z};
-	}
-	
-	for(uint i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		s_force[i] = {0.0f, 0.0f, 0.0f};
-	}
-
-	__syncthreads();
-
-	float4	 mat;
-	float3	 bl, br;
-	float3	 force;
-	ushort2	 pair;
-	uint8_t  matId;
-	float	 Lbar,
-			 magF = 0x0f;
-	ushort	 left, right;
-
-	float	minNormalizedStress = 0.0f,
-			maxNormalizedStress  = 0.0f,
-			nextMinStress = 0.0f;
-	ushort	maxSpringIdx = tid,
-			minSpringIdx = tid,
-			nextMinSpringIdx = tid+stride,
-			nextGroup_MaxSpringIdx,
-			nextGroup_MinSpringIdx;
-	
-	uint i;
-	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
-		matId = __ldg(&matIds[i+springOffset]);
-		if(matId == materials::air.id) continue;
-
-		pair = __ldg(&pairs[i+springOffset]);
-		left  = pair.x;
-		right = pair.y;
-		bl = s_pos[left];
-		br = s_pos[right];
-
-		mat = compositeMats_id[ matId ];
-		
-		Lbar = __ldg(&Lbars[i+springOffset]);
-		springForce(bl,br,mat,Lbar,time, force, magF);
-
-		// assert(!isnan(force.x) && !isnan(force.y) && !isnan(force.z));
-
-		atomicAdd(&(s_force[left].x), force.x);
-		atomicAdd(&(s_force[left].y), force.y);
-		atomicAdd(&(s_force[left].z), force.z);
-
-		atomicAdd(&(s_force[right].x), -force.x);
-		atomicAdd(&(s_force[right].y), -force.y);
-		atomicAdd(&(s_force[right].z), -force.z);
-
-		if(step % (cSimOpt.shiftskip+1) == 0) {
-			if(fabsf(magF) > maxNormalizedStress) {
-				maxNormalizedStress = __fdiv_rn(fabsf(magF), Lbar);
-				maxSpringIdx = i;
-			}
-			if(((fabsf(magF) < minNormalizedStress) || (minNormalizedStress == 0.0f))) {
-				if(i > tid) {
-					nextMinStress = minNormalizedStress;
-					nextMinSpringIdx = minSpringIdx;
-				}
-
-				minNormalizedStress = __fdiv_rn(fabsf(magF), Lbar);
-				minSpringIdx = i;
-				
-			}
-		}
-
-		#ifdef FULL_STRESS
-		stresses[i + springOffset] = stresses[i + springOffset] + fabsf(magF);
-		#endif
-	}
-
-	ushort2  cMaxPair,
-			 cMinPair;
-	uint32_t cMaxMatEncoding,
-			 cMinMatEncoding;
-	uint8_t  cMaxMatId,
-			 cMinMatId;
-	ushort	 cMax_MaxCount,
-			 cMax_MinCount,
-			 cMin_MaxCount,
-			 cMin_MinCount;
-	float	 cMaxLbar,
-			 cMinLbar;
-	#ifdef FULL_STRESS
-	float	 cMaxStress,
-			 cMinStress;
-	float	 cMaxID,
-			 cMinID;
-	#endif
-
-	
-	if(minSpringIdx == maxSpringIdx) { // guarentees not both max and min
-		minSpringIdx = nextMinSpringIdx;
-		minNormalizedStress = nextMinStress;
-	}
-
-	if(step % (cSimOpt.shiftskip+1) == 0) {
-		maxStressCount[maxSpringIdx + springOffset] += (maxNormalizedStress > 0.0f);
-		minStressCount[minSpringIdx + springOffset] += (minNormalizedStress > 0.0f);
-		maxStressedSprings[tid]  = maxSpringIdx;
-		minStressedSprings[tid]  = minSpringIdx;
-		
-		// current thread max spring info
-		cMaxPair = pairs[maxSpringIdx + springOffset];
-		cMax_MaxCount = maxStressCount[maxSpringIdx + springOffset];
-		cMax_MinCount = minStressCount[maxSpringIdx + springOffset];
-		cMaxMatEncoding = matEncodings[maxSpringIdx + springOffset];
-		cMaxMatId = matIds[maxSpringIdx + springOffset];
-		cMaxLbar = Lbars[maxSpringIdx + springOffset];
-
-		cMinPair = pairs[minSpringIdx + springOffset];
-		cMin_MaxCount = maxStressCount[minSpringIdx + springOffset];
-		cMin_MinCount = minStressCount[minSpringIdx + springOffset];
-		cMinMatEncoding = matEncodings[minSpringIdx + springOffset];
-		cMinMatId = matIds[minSpringIdx + springOffset];
-		cMinLbar = Lbars[minSpringIdx + springOffset];
-
-		#ifdef FULL_STRESS
-		cMaxStress = stresses[maxSpringIdx + springOffset];
-		cMaxID = ids[maxSpringIdx + springOffset];
-		cMinStress = stresses[minSpringIdx + springOffset];
-		cMinID = ids[minSpringIdx + springOffset];
-		#endif
-	}
-	__syncthreads();
-
-	int tid_next;
-	if(step % (cSimOpt.shiftskip+1) == 0) {
-		tid_next = (tid+1) % blockDim.x;
-		// shift current index to next spring
-		nextGroup_MaxSpringIdx  = maxStressedSprings[tid_next];
-		nextGroup_MinSpringIdx = minStressedSprings[tid_next];
-
-		pairs[nextGroup_MaxSpringIdx + springOffset] = cMaxPair;
-		matEncodings[nextGroup_MaxSpringIdx + springOffset] = cMaxMatEncoding;
-		matIds[nextGroup_MaxSpringIdx + springOffset] = cMaxMatId;
-		Lbars[nextGroup_MaxSpringIdx + springOffset] = cMaxLbar;
-		maxStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MaxCount;
-		minStressCount[nextGroup_MaxSpringIdx + springOffset] = cMax_MinCount;
-
-		pairs[nextGroup_MinSpringIdx + springOffset] = cMinPair;
-		matEncodings[nextGroup_MinSpringIdx + springOffset] = cMinMatEncoding;
-		matIds[nextGroup_MinSpringIdx + springOffset] = cMinMatId;
-		Lbars[nextGroup_MinSpringIdx + springOffset] = cMinLbar;
-		maxStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MaxCount;
-		minStressCount[nextGroup_MinSpringIdx + springOffset] = cMin_MinCount;
-
-		#ifdef FULL_STRESS
-		stresses[nextGroup_MaxSpringIdx + springOffset] = cMaxStress;
-		ids[nextGroup_MaxSpringIdx + springOffset] = cMaxID;
-
-		stresses[nextGroup_MinSpringIdx + springOffset] = cMinStress;
-		ids[nextGroup_MinSpringIdx + springOffset] = cMinID;
-		#endif
-	}
-
+__global__
+inline void update(float4 *__restrict__ pos, float4 *__restrict__ newPos, float4 *__restrict__ vel) {
 	// Calculate and store new mass states
-	float4 velocity;
-	float3 pos3;
-	for(uint i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		velocity = __ldg(&vel[i+massOffset]);
-		environmentForce(s_pos[i],velocity,s_force[i]);
+	int stride = blockDim.x * gridDim.x;
 
-		velocity.x += (s_force[i].x * cSimOpt.dt)*cSimOpt.damping;
-		velocity.y += (s_force[i].y * cSimOpt.dt)*cSimOpt.damping;
-		velocity.z += (s_force[i].z * cSimOpt.dt)*cSimOpt.damping;
-
-		// new position = old position + velocity * deltaTime
-		s_pos[i].x += velocity.x * cSimOpt.dt;
-		s_pos[i].y += velocity.y * cSimOpt.dt;
-		s_pos[i].z += velocity.z * cSimOpt.dt;
-
-		// store new position and velocity
-		pos3 = s_pos[i];
-		pos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
-		vel[i+massOffset] = velocity;
+	float4 newPos4, pos4;
+	for(uint i = blockIdx.x * blockDim.x + threadIdx.x; i < cSimOpt.maxMasses; i+=stride) {
+		pos4 = __ldg(&pos[i]);
+		newPos4 = __ldg(&newPos[i]);
+		pos[i] = newPos4;
+		vel[i].x = 0.99*(newPos4.x - pos4.x) / cSimOpt.dt;
+		vel[i].y = 0.99*(newPos4.y - pos4.y) / cSimOpt.dt;
+		vel[i].z = 0.99*(newPos4.z - pos4.z) / cSimOpt.dt;
 	}
 }
 

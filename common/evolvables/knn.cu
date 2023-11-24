@@ -59,7 +59,7 @@ void key_value_sort(float* d_keys_in, float* d_keys_out, uint16_t* d_values_in, 
     cudaFree(d_temp_storage);
 }
 
-std::vector<Simplex::Edge> KNN(const std::vector<Mass>& masses, uint16_t K)
+Mesh KNN(const std::vector<Mass>& masses, uint16_t K)
 {
     unsigned int num_masses = masses.size();
     
@@ -127,7 +127,7 @@ std::vector<Simplex::Edge> KNN(const std::vector<Mass>& masses, uint16_t K)
     cudaFree(d_distances);
     cudaFree(d_distances_sorted);
 
-    std::vector<Simplex::Edge> triangulation;
+    std::vector<Simplex::Edge> edges;
 
     for (uint16_t i = 0; i < masses.size(); i++) {
         auto neighbors = KNN[i];
@@ -136,15 +136,15 @@ std::vector<Simplex::Edge> KNN(const std::vector<Mass>& masses, uint16_t K)
 
         for (auto neighbor : neighbors) {
             Simplex::Edge edge = {i, neighbor.first, neighbor.second};
-            triangulation.push_back(edge);
+            edges.push_back(edge);
         }
     }
 
-    return triangulation;
+    return {edges};
 }
 
 
-std::vector<Simplex::Edge> KNN_CPU(const std::vector<Mass>& masses, uint16_t K)
+Mesh KNN_CPU(const std::vector<Mass>& masses, uint16_t K)
 {
     unsigned int num_masses = masses.size();
 
@@ -176,17 +176,17 @@ std::vector<Simplex::Edge> KNN_CPU(const std::vector<Mass>& masses, uint16_t K)
         KNN[i] = neighbors;
     }
 
-    std::vector<Simplex::Edge> triangulation;
+    std::vector<Simplex::Edge> edges;
     for (uint16_t i = 0; i < masses.size(); i++) {
         auto neighbors = KNN[i];
 
         for (auto neighbor : neighbors) {
             Simplex::Edge edge = {i, neighbor.first, neighbor.second};
-            triangulation.push_back(edge);
+            edges.push_back(edge);
         }
     }
 
-    return triangulation;
+    return {edges};
 }
 
 }

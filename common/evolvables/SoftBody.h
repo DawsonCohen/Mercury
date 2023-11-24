@@ -37,7 +37,7 @@ public:
 	~SoftBody() override { }
 
 	SoftBody(const SoftBody& src) :
-	Element{src.masses, src.springs}, Candidate(src),
+	Element{src.masses, src.springs, src.faces, src.boundaryCount}, Candidate(src),
 	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
 	{}
 
@@ -102,10 +102,6 @@ public:
 	}
 
 	void addSpring(Spring& s) {
-		if(s.material != materials::air) {
-			masses[s.m0].active = true;
-			masses[s.m1].active = true;
-		}
 		springs.push_back(s);
 	}
 
@@ -119,10 +115,6 @@ public:
 	void setSprings(std::vector<Spring> _springs) {
 		springs.clear();
 		for(Spring& s : _springs) {
-			if(s.material != materials::air) {
-				masses[s.m0].active = true;
-				masses[s.m1].active = true;
-			}
 			springs.push_back(s);
 		}
 	}

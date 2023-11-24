@@ -3,10 +3,14 @@
 
 #include "mass.h"
 #include "spring.h"
+#include "face.h"
 
 struct Element {
 	std::vector<Mass> masses;
 	std::vector<Spring> springs;
+	std::vector<Face> faces;
+
+	unsigned int boundaryCount = 0;
 
 	float sim_time = 0;
 	float total_sim_time = 0;

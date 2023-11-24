@@ -17,8 +17,6 @@ struct Mass {
 	
 	float mass = 1.0f;
 
-	bool	active = false;
-
 	Mass() {}
 
 	Mass(uint id, float x, float y, float z, float mass = 1.0f, Material mat = materials::bone) :

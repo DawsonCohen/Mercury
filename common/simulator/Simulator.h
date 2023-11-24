@@ -6,14 +6,13 @@
 #include "config.h"
 #include <memory>
 
+// TODO: Face statistics if necessary??
 struct ElementTracker {
 	uint ID;
 	Mass* mass_begin;
 	Mass* mass_end;
 	Spring* spring_begin;
 	Spring* spring_end;
-	uint* offset_begin;
-	uint* offset_end;
 };
 
 class Simulator {
@@ -52,13 +51,13 @@ protected:
 
 	std::vector<Environment> mEnvironments;
     float m_total_time = 0;
-    float m_deltaT = 0.001f;
+    float m_deltaT = 0.0001f;
 	uint m_replacedSpringsPerElement = 32; // recommend multiple of 32 for warp
 	// bool track_stresses = false;
 
-	Mass*			massBuf;
-	Spring*			springBuf;
-	uint*			offsetBuf;
+	Mass*           massBuf;
+	Spring*         springBuf;
+	Face*           faceBuf;
 	Environment*	envBuf;
 
 	// CPU data
@@ -69,18 +68,22 @@ protected:
 	float    *m_hCompositeMats_id;
 	float    *m_hCompositeMats_encoding;
 	ushort   *m_hPairs;
+	ushort   *m_hFaces;
 	float    *m_hLbars;
 	ushort   *m_hMaxStressCount, *m_hMinStressCount;
 	float    *m_hStresses;
 	uint     *m_hSpringIDs;
 
 	// GPU data
-	float    *m_dPos, *m_dVel;
+	float    *m_dPos, *m_dNewPos, *m_dVel;
 	uint32_t *m_dMassMatEncodings;
 	uint32_t *m_dSpringMatEncodings;
 	uint8_t  *m_dSpringMatIds;
 	ushort	 *m_dPairs;
+	ushort	 *m_dFaces;
 	ushort   *m_dRandomPairs;
+	float	 *m_dSpringStresses;
+	float	 *m_dSpringStresses_Sorted;
 	float	 *m_dLbars;
 	ushort   *m_dMaxStressCount, *m_dMinStressCount;
 	ushort   *m_dMinStressCount_Sorted;
@@ -90,22 +93,27 @@ protected:
 
 	uint	 m_massesPerBlock = 0;
 	uint	 m_springsPerBlock = 0;
+	uint	 m_facesPerBlock = 0;
 	uint	 m_sharedMemSizeSim = 0;
 	uint	 m_numBlocksSim = 0;
 
 	uint  simThreadsPerBlock = 1024;
 	const uint  devoThreadsPerBlock = 256;
 
-	uint springsPerElement = 0;
 	uint massesPerElement  = 0;
+	uint boundaryMassesPerElement  = 0;
+	uint springsPerElement = 0;
+	uint facesPerElement   = 0;
 	uint maxElements       = 0;
 	uint maxMasses 	       = 0;
 	uint maxSprings        = 0;
+	uint maxFaces          = 0;
 	uint maxReplaced       = 0;
 	uint maxEnvs           = 0;
 	uint numElements       = 0;
 	uint numMasses         = 0;
 	uint numSprings        = 0;
+	uint numFaces          = 0;
 	uint envCount          = 0;
 	uint elementCount      = 0;
 

@@ -31,7 +31,6 @@ void ShiftY(VoxelRobot& R) {
     bool setFlag = false;
     float minY = -1;
     for(const Mass& m : R.getMasses()) {
-        if(!m.active) continue;
         if(!setFlag || m.protoPos.y() < minY) {
             setFlag = true;
             minY = m.protoPos.y();
@@ -46,7 +45,6 @@ void ShiftX(VoxelRobot& R) {
     bool setFlag = false;
     float maxX = 0;
     for(const Mass& m : R.getMasses()) {
-        if(!m.active) continue;
         if(!setFlag || m.protoPos.x() > maxX) {
             setFlag = true;
             maxX = m.protoPos.x();

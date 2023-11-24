@@ -15,12 +15,37 @@ __device__ __forceinline__ float3 operator+=(const float3 &a, const float3 &b) {
 		__fadd_rn(a.z,b.z) };
 }
 
+__device__ __forceinline__ float4 operator+=(const float4 &a, const float3 &b) {
+	return {
+		__fadd_rn(a.x,b.x),
+		__fadd_rn(a.y,b.y),
+		__fadd_rn(a.z,b.z),
+		a.w
+	 };
+}
+
 __device__ __forceinline__ float4 operator+(const float4 &a, const float4 &b) {
 	return {
 		__fadd_rn(a.x,b.x),
 		__fadd_rn(a.y,b.y),
 		__fadd_rn(a.z,b.z),
 		__fadd_rn(a.w,b.w) };
+}
+
+__device__ __forceinline__ float4 operator+(const float4 &a, const float3 &b) {
+	return {
+		__fadd_rn(a.x,b.x),
+		__fadd_rn(a.y,b.y),
+		__fadd_rn(a.z,b.z),
+		a.w };
+}
+
+__device__ __forceinline__ float4 operator+(const float3 &a, const float4 &b) {
+	return {
+		__fadd_rn(a.x,b.x),
+		__fadd_rn(a.y,b.y),
+		__fadd_rn(a.z,b.z),
+		b.w };
 }
 
 __device__ __forceinline__ float4 operator+=(const float4 &a, const float4 &b) {
@@ -51,6 +76,21 @@ __device__ __forceinline__ float4 operator*(const float4 &a, const float4 &b) {
 		__fmul_rn(a.y, b.y),
 		__fmul_rn(a.z, b.z),
 		__fmul_rn(a.w, b.w) };
+}
+
+__device__ __forceinline__ float4 operator*(const float &a, const float4 &vec) {
+	return {
+		__fmul_rn(a, vec.x),
+		__fmul_rn(a, vec.y),
+		__fmul_rn(a, vec.z) };
+}
+
+__device__ __forceinline__ float4 operator*(const float4 &vec, const float &a) {
+	return {
+		__fmul_rn(a,vec.x),
+		__fmul_rn(a,vec.y),
+		__fmul_rn(a,vec.z)
+	};
 }
 
 __device__ __forceinline__ float3 operator*(const float &a, const float3 &vec) {
@@ -96,12 +136,20 @@ __device__ __forceinline__ float dot(const float4 &a, const float4 &b) {
 	);
 }
 
+__device__ __forceinline__ float3 cross(const float3 &a, const float3 &b) {
+	return {
+		 __fmul_rn(a.y, b.z) - __fmul_rn(a.z, b.y),
+		 __fmul_rn(a.z, b.x) - __fmul_rn(a.x, b.z),
+		 __fmul_rn(a.x, b.y) - __fmul_rn(a.y, b.x)
+	};
+}
+
 __device__ __forceinline__ float l2norm(const float3 &a) {
-	return __fsqrt_rn(dot(a,a));
+	return norm3df(a.x,a.y,a.z);
 }
 
 __device__ __forceinline__ float l2norm(const float4 &a) {
-	return __fsqrt_rn(dot(a,a));
+	return norm3df(a.x,a.y,a.z);
 }
 
 __device__ __forceinline__ float3 normalize(const float3 &a) {
