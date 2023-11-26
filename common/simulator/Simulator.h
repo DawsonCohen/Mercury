@@ -58,42 +58,66 @@ protected:
 	Mass*           massBuf;
 	Spring*         springBuf;
 	Face*           faceBuf;
+	Cell*           cellBuf;
 	Environment*	envBuf;
 
-	// CPU data
-	float    *m_hPos, *m_hVel;
-	uint32_t *m_hMassMatEncodings;
-	uint32_t *m_hSpringMatEncodings;
-	uint8_t  *m_hSpringMatIds;
+	// ----------- CPU data --------------
 	float    *m_hCompositeMats_id;
 	float    *m_hCompositeMats_encoding;
-	ushort   *m_hPairs;
-	ushort   *m_hFaces;
-	float    *m_hLbars;
-	ushort   *m_hMaxStressCount, *m_hMinStressCount;
-	float    *m_hStresses;
-	uint     *m_hSpringIDs;
 
-	// GPU data
+	// MASS DATA
+	float    *m_hPos, *m_hVel;
+	uint32_t *m_hMassMatEncodings;
+	
+	// SPRING DATA
+	ushort   *m_hPairs;
+	uint32_t *m_hSpringMatEncodings;
+	uint8_t  *m_hSpringMatIds;
+	float    *m_hLbars;
+	uint     *m_hSpringIDs;
+	float    *m_hSpringStresses;
+
+	// FACE DATA
+	ushort   *m_hFaces;
+
+	// CELL DATA
+	ushort   *m_hCells;
+	float    *m_hVbars;
+	float    *m_hMats;
+	float    *m_hCellStresses;
+
+	// ----------- GPU data --------------
+	// MASS DATA
 	float    *m_dPos, *m_dNewPos, *m_dVel;
 	uint32_t *m_dMassMatEncodings;
+
+	// SPRING DATA
+	ushort	 *m_dPairs;
 	uint32_t *m_dSpringMatEncodings;
 	uint8_t  *m_dSpringMatIds;
-	ushort	 *m_dPairs;
-	ushort	 *m_dFaces;
-	ushort   *m_dRandomPairs;
-	float	 *m_dSpringStresses;
-	float	 *m_dSpringStresses_Sorted;
 	float	 *m_dLbars;
-	ushort   *m_dMaxStressCount, *m_dMinStressCount;
-	ushort   *m_dMinStressCount_Sorted;
-	float	 *m_dStresses;
 	uint     *m_dSpringIDs;
+	float	 *m_dSpringStresses;
+	
+	// SPRING DEVO DATA
+	ushort   *m_dRandomPairs;
 	uint     *m_dSpringIDs_Sorted;
+	float	 *m_dSpringStresses_Sorted;
+
+	// FACE DATA
+	ushort	 *m_dFaces;
+
+	// CELL DATA
+	ushort	 *m_dCells;
+	float	 *m_dVbars;
+	float	 *m_dMats;
+	float	 *m_dCellStresses;
+	// -------------------------
 
 	uint	 m_massesPerBlock = 0;
 	uint	 m_springsPerBlock = 0;
 	uint	 m_facesPerBlock = 0;
+	uint	 m_cellsPerBlock = 0;
 	uint	 m_sharedMemSizeSim = 0;
 	uint	 m_numBlocksSim = 0;
 
@@ -104,16 +128,21 @@ protected:
 	uint boundaryMassesPerElement  = 0;
 	uint springsPerElement = 0;
 	uint facesPerElement   = 0;
+	uint cellsPerElement   = 0;
+
 	uint maxElements       = 0;
 	uint maxMasses 	       = 0;
 	uint maxSprings        = 0;
 	uint maxFaces          = 0;
+	uint maxCells          = 0;
 	uint maxReplaced       = 0;
 	uint maxEnvs           = 0;
 	uint numElements       = 0;
 	uint numMasses         = 0;
+
 	uint numSprings        = 0;
 	uint numFaces          = 0;
+	uint numCells          = 0;
 	uint envCount          = 0;
 	uint elementCount      = 0;
 

@@ -108,7 +108,7 @@ enum MaterialOption {
 
 class materials {
 	public:
-	static constexpr Material air               = {0 , 0     , 0        , 0       , 0       , 0x01u << 0 , Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f , 0.00f)};
+	static constexpr Material air               = {0 , 0     , 0        , 0     , 0       , 0x01u << 0 , Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f , 0.00f)};
 	static constexpr Material adductor_muscle0  = {1 , 50  , AMPLITUDE, OMEGA   , 0   	    , 0x01u << 1 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
 	static constexpr Material adductor_muscle1  = {2 , 50  , AMPLITUDE, OMEGA   , M_PI/8    , 0x01u << 2 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
 	static constexpr Material adductor_muscle2  = {3 , 50  , AMPLITUDE, OMEGA   , M_PI/4    , 0x01u << 3 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
@@ -222,6 +222,30 @@ class materials {
 		result.phi = (m1.phi + m2.phi) / 2.0;
 		result.encoding = m1.encoding | m2.encoding;
 		result.color = (m1.color + m2.color) / 2.0;
+
+		return result;
+	}
+
+	static Material avg(std::vector<Material> mats) {
+		Material result{0,0,0,0,0,0};
+
+		uint count = 1;
+		for(const Material& m : mats) {
+			if(m.id == materials::air.id) return materials::air;
+			if(count == 1) {
+				result = m;
+				count++;
+				continue;
+			}
+			result.k = result.k + (m.k - result.k) / (float) count;
+			result.dL0 = result.dL0 + (m.dL0 - result.dL0) / (float) count;
+			result.omega = result.omega + (m.omega - result.omega) / (float) count;
+			result.phi = result.phi + (m.phi - result.phi) / (float) count;
+			result.color = m.color;
+			result.encoding = result.encoding | m.encoding;
+			result.color = result.color + (m.color - result.color) / (float) count;
+			count++;
+		}
 
 		return result;
 	}

@@ -7,7 +7,6 @@ struct Face {
 	uint16_t m0;
     uint16_t m1;
     uint16_t m2;
-	bool active = true;
 
 	friend std::ostream& operator<<(std::ostream& out, const Face& f) {
 		out << std::setprecision(9);

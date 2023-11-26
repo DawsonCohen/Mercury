@@ -4,11 +4,13 @@
 #include "mass.h"
 #include "spring.h"
 #include "face.h"
+#include "cell.h"
 
 struct Element {
 	std::vector<Mass> masses;
 	std::vector<Spring> springs;
 	std::vector<Face> faces;
+	std::vector<Cell> cells;
 
 	unsigned int boundaryCount = 0;
 

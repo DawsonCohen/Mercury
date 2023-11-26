@@ -13,7 +13,7 @@
 
 // TODO: Use config file
 
-#define MAX_TIME 15
+#define MAX_TIME 0.5
 #define MAX_SPRINGS 1e11
 #define MAX_ROBOTS 512
 #define INIT_POP_SIZE 1

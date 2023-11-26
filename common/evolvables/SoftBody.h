@@ -37,7 +37,7 @@ public:
 	~SoftBody() override { }
 
 	SoftBody(const SoftBody& src) :
-	Element{src.masses, src.springs, src.faces, src.boundaryCount}, Candidate(src),
+	Element{src.masses, src.springs, src.faces, src.cells, src.boundaryCount}, Candidate(src),
 	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
 	{}
 

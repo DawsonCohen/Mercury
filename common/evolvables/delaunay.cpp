@@ -54,16 +54,22 @@ Triangulation::Mesh Triangulation::AlphaShape(const std::vector<Mass>& masses) {
     as.set_alpha((*opt));
 
     std::list<Edge>  as_edges;
-    std::list<Facet>  as_facets;
+    std::list<Facet> as_facets;
+    std::list<Cell_handle>  as_cells;
     as.get_alpha_shape_edges(std::back_inserter(as_edges),
                         Alpha_shape_3::REGULAR);
     as.get_alpha_shape_edges(std::back_inserter(as_edges),
                         Alpha_shape_3::INTERIOR); 
+
     as.get_alpha_shape_facets(std::back_inserter(as_facets),
                         Alpha_shape_3::REGULAR);
-    
+                        
+    as.get_alpha_shape_cells(std::back_inserter(as_cells),
+                        Alpha_shape_3::INTERIOR);
+
     std::vector<Simplex::Edge> edges;
     std::vector<Simplex::Facet> facets;
+    std::vector<Simplex::Cell> cells;
     std::vector<bool> isBoundaryVertexFlags(masses.size(), false);
 
     for(const auto& e : as_edges) {
@@ -88,5 +94,15 @@ Triangulation::Mesh Triangulation::AlphaShape(const std::vector<Mass>& masses) {
         facets.push_back(facet);
     }
 
-    return {edges, facets, isBoundaryVertexFlags};
+    for(const auto& c : as_cells) {
+        uint16_t v0 = c->vertex(0)->info();
+        uint16_t v1 = c->vertex(1)->info();
+        uint16_t v2 = c->vertex(2)->info();
+        uint16_t v3 = c->vertex(3)->info();
+
+        Simplex::Cell cell = {v0, v1, v2, v3};
+        cells.push_back(cell);
+    }
+
+    return {edges, facets, cells, isBoundaryVertexFlags};
 }

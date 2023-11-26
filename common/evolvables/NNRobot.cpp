@@ -222,9 +222,19 @@ void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
     std::vector<uint16_t> idxMap(masses.size());
 
     // Can push to batched GPU sort if need be
+    // std::cout << "Before: ";
+    // for(uint i = 0; i < 20; i++) {
+    //     std::cout << mesh.isBoundaryVertexFlags[masses[i].id] << ", ";
+    // }
+    // std::cout << std::`endl;
+    // std::cout << "After: ";
     std::sort(masses.begin(), masses.end(),[mesh](const Mass a, const Mass b) {
-            return mesh.isBoundaryVertexFlags[a.id] < mesh.isBoundaryVertexFlags[b.id];
+            return mesh.isBoundaryVertexFlags[a.id] > mesh.isBoundaryVertexFlags[b.id];
         });
+    // for(uint i = 0; i < 20; i++) {
+    //     std::cout << mesh.isBoundaryVertexFlags[masses[i].id] << ", ";
+    // }
+    // std::cout << std::endl;
     for(uint i = 0; i < masses.size(); i++) {
         idxMap[masses[i].id] = i;
         masses[i].id = i;
@@ -237,6 +247,12 @@ void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
         f.v1 = idxMap[f.v1];
         f.v2 = idxMap[f.v2];
         f.v3 = idxMap[f.v3];
+    }
+    for(auto& c : mesh.cells) {
+        c.v1 = idxMap[c.v1];
+        c.v2 = idxMap[c.v2];
+        c.v3 = idxMap[c.v3];
+        c.v4 = idxMap[c.v3];
     }
 }
 
@@ -289,6 +305,30 @@ void NNRobot::Build() {
 
         Spring s = {m1, m2, dist, dist, mat};
         springs.push_back(s);
+    }
+
+    for (auto cell : triangulation.cells) {
+        uint16_t v1 = cell.v1,
+                 v2 = cell.v2,
+                 v3 = cell.v3,
+                 v4 = cell.v4;
+        Mass m1 = masses[v1],
+             m2 = masses[v2],
+             m3 = masses[v3],
+             m4 = masses[v4];
+        Material mat1, mat2, mat3, mat4, mat;
+
+        mat1 = masses[v1].material;
+        mat2 = masses[v2].material;
+        mat3 = masses[v3].material;
+        mat4 = masses[v4].material;
+        // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
+        mat = materials::avg({mat1, mat2, mat3, mat4});
+
+        float volume = ((m2.pos-m3.pos).cross(m4.pos-m2.pos)).dot(m4.pos-m1.pos) / 6.0f;
+
+        Cell c = {v1, v2, v3, v4, volume, mat};
+        cells.push_back(c);
     }
 
     for(uint i = 0; i < triangulation.isBoundaryVertexFlags.size(); i++) {

@@ -16,10 +16,17 @@ namespace Triangulation {
             uint16_t v2;
             uint16_t v3;
         };
+        struct Cell {
+            uint16_t v1;
+            uint16_t v2;
+            uint16_t v3;
+            uint16_t v4;
+        };
     }
     struct Mesh {
-        std::vector<Simplex::Edge> edges;
+        std::vector<Simplex::Edge>  edges;
         std::vector<Simplex::Facet> facets;
+        std::vector<Simplex::Cell>  cells;
 
         std::vector<bool> isBoundaryVertexFlags;
     };

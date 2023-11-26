@@ -16,10 +16,12 @@ struct SimOptions {
 	uint massesPerBlock;
 	uint springsPerBlock;
 	uint facesPerBlock;
+	uint cellsPerBlock;
 	uint boundaryMassesPerBlock;
 	uint maxMasses;
 	uint maxSprings;
 	uint maxFaces;
+	uint maxCells;
 	uint compositeCount;
 	short shiftskip;
 	float drag;
@@ -81,7 +83,8 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 	for(i = tid; i < cSimOpt.facesPerBlock && (i+faceOffset) < cSimOpt.maxFaces; i+=stride) {
 		// Drag Force: 0.5*rho*A*((Cd - Cl)*dot(v,n)*v + Cl*dot(v,v)*n)
 		face = __ldg(&faces[i+faceOffset]);
-		if(face.w == 0) continue;
+		if(face.x == face.y || face.x == face.z || face.y == face.z)
+			continue;
 
 		x0 = s_pos[face.x];
 		x1 = s_pos[face.y];
@@ -133,8 +136,7 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 		w - phi		phase
 */
 __global__ inline
-void solveDistance(float4 *__restrict__ newPos, float4 *__restrict__ vel,
-				float * __restrict__ stresses,
+void solveDistance(float4 *__restrict__ newPos, float * __restrict__ stresses,
 				ushort2 *__restrict__ pairs, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
 				float time, uint step, bool integrateForce)
 {
@@ -163,19 +165,20 @@ void solveDistance(float4 *__restrict__ newPos, float4 *__restrict__ vel,
 	__syncthreads();
 
 	float4	 mat;
-	float3	 posL, posR;
-	ushort2	 pair;
 	uint8_t  matId;
-	float	 Lbar,
-			 constraint, compliance,
-			 lambda;
-	ushort	 left, right;
 
-	float3	diff;
+	float3	 pos0, pos1;
+	float	 Lbar,
+			 C, alpha,
+			 lambda;
+	ushort	 v0, v1;
+	ushort2	 pair;
+
+	float3	distance, n;
 
 	float	relative_change,
 			rest_length,
-			n;
+			d, K;
 	float3  dp;
 	
 	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
@@ -183,38 +186,35 @@ void solveDistance(float4 *__restrict__ newPos, float4 *__restrict__ vel,
 		if(matId == materials::air.id) continue;
 
 		pair = __ldg(&pairs[i+springOffset]);
-		left = pair.x; right = pair.y;
-		posL = s_pos[left];
-		posR = s_pos[right];
+		Lbar = __ldg(&Lbars[i+springOffset]);
+		v0 = pair.x; v1 = pair.y;
+		pos0 = s_pos[v0];
+		pos1 = s_pos[v1];
 
 		mat = compositeMats_id[ matId ];
-
-		Lbar = __ldg(&Lbars[i+springOffset]);
-	
+		alpha = 1.0f / mat.x / cSimOpt.dt / cSimOpt.dt;
 		// rest_length = mean_length * (1 + relative_change);
 		relative_change = mat.y * sinf(mat.z*time+mat.w);
 		rest_length = __fmaf_rn(Lbar, relative_change, Lbar);
 		
-		diff = posL-posR;
-		n = l2norm(diff);
-		// if(n < EPS) {
-		// 	printf("%u: (%f,%f,%f)\n",step, diff.x,diff.y,diff.z);
-		// 	assert(0);
-		// }
-		constraint = n-rest_length;
-		compliance = 1 / mat.x / cSimOpt.dt / cSimOpt.dt;
-		lambda = -(constraint) / (2 + compliance);
-		dp = lambda * diff / (n + EPS);
+		K = 2.0f + alpha;
+		distance = pos0-pos1;
+		d = l2norm(distance);
+		n = distance / (d + EPS);
+		
+		C = d-rest_length;
+		lambda = -(C) / (K);
+		dp = lambda * n;
 
 		if(integrateForce) stresses[i+springOffset] += lambda / Lbar;
 
-		atomicAdd(&(s_dp[left].x), dp.x);
-		atomicAdd(&(s_dp[left].y), dp.y);
-		atomicAdd(&(s_dp[left].z), dp.z);
+		atomicAdd(&(s_dp[v0].x), dp.x);
+		atomicAdd(&(s_dp[v0].y), dp.y);
+		atomicAdd(&(s_dp[v0].z), dp.z);
 
-		atomicAdd(&(s_dp[right].x), -dp.x);
-		atomicAdd(&(s_dp[right].y), -dp.y);
-		atomicAdd(&(s_dp[right].z), -dp.z);
+		atomicAdd(&(s_dp[v1].x), -dp.x);
+		atomicAdd(&(s_dp[v1].y), -dp.y);
+		atomicAdd(&(s_dp[v1].z), -dp.z);
 	}
 	__syncthreads();
 
