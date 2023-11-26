@@ -67,6 +67,7 @@ set_target_properties(visualizer PROPERTIES CUDA_ARCHITECTURES "61;75")
 # Set include directories
 target_include_directories(visualizer PUBLIC
   ../common/lib
+  ../common/include
   ../common/simulator
   ../optimize/optimizer
   ../optimize/optimizer/util

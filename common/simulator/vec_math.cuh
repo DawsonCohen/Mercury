@@ -152,12 +152,21 @@ __device__ __forceinline__ float l2norm(const float4 &a) {
 	return norm3df(a.x,a.y,a.z);
 }
 
+__device__ __forceinline__ float squaredL2norm(const float3 &a) {
+	return {
+		__fmul_rn(a.x, a.x) +
+		__fmul_rn(a.y, a.y) +
+		__fmul_rn(a.z, a.z)
+	};
+}
+
 __device__ __forceinline__ float3 normalize(const float3 &a) {
 	float norm = l2norm(a);
 	return { 
         __fdiv_rn(a.x, norm),
         __fdiv_rn(a.y, norm),
-        __fdiv_rn(a.z, norm) };
+        __fdiv_rn(a.z, norm)
+	};
 }
 
 __device__ __forceinline__ float4 normalize(const float4 &a) {
@@ -166,7 +175,8 @@ __device__ __forceinline__ float4 normalize(const float4 &a) {
         __fdiv_rn(a.x, norm),
         __fdiv_rn(a.y, norm),
         __fdiv_rn(a.z, norm),
-        __fdiv_rn(a.w, norm) };
+        __fdiv_rn(a.w, norm)
+	};
 }
 
 #endif

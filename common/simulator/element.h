@@ -16,6 +16,17 @@ struct Element {
 
 	float sim_time = 0;
 	float total_sim_time = 0;
+
+	friend void swap(Element& e1, Element& e2) {
+        using std::swap;
+        swap(e1.masses, e2.masses);
+        swap(e1.springs, e2.springs);
+        swap(e1.faces, e2.faces);
+        swap(e1.cells,e2.cells);
+        swap(e1.boundaryCount,e2.boundaryCount);
+        swap(e1.sim_time,e2.sim_time);
+        swap(e1.total_sim_time,e2.total_sim_time);
+    }
 };
 
 #endif

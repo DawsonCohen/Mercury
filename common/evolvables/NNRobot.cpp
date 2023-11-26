@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <map>
 #include <thread>
+#include <assert.h>
 #include "NNRobot.h"
 #include "triangulation.h"
 
@@ -222,19 +223,9 @@ void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
     std::vector<uint16_t> idxMap(masses.size());
 
     // Can push to batched GPU sort if need be
-    // std::cout << "Before: ";
-    // for(uint i = 0; i < 20; i++) {
-    //     std::cout << mesh.isBoundaryVertexFlags[masses[i].id] << ", ";
-    // }
-    // std::cout << std::`endl;
-    // std::cout << "After: ";
     std::sort(masses.begin(), masses.end(),[mesh](const Mass a, const Mass b) {
             return mesh.isBoundaryVertexFlags[a.id] > mesh.isBoundaryVertexFlags[b.id];
         });
-    // for(uint i = 0; i < 20; i++) {
-    //     std::cout << mesh.isBoundaryVertexFlags[masses[i].id] << ", ";
-    // }
-    // std::cout << std::endl;
     for(uint i = 0; i < masses.size(); i++) {
         idxMap[masses[i].id] = i;
         masses[i].id = i;
@@ -244,6 +235,9 @@ void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
         e.v2 = idxMap[e.v2];
     }
     for(auto& f : mesh.facets) {
+        assert(mesh.isBoundaryVertexFlags[f.v1]);
+        assert(mesh.isBoundaryVertexFlags[f.v2]);
+        assert(mesh.isBoundaryVertexFlags[f.v3]);
         f.v1 = idxMap[f.v1];
         f.v2 = idxMap[f.v2];
         f.v3 = idxMap[f.v3];
@@ -252,7 +246,7 @@ void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
         c.v1 = idxMap[c.v1];
         c.v2 = idxMap[c.v2];
         c.v3 = idxMap[c.v3];
-        c.v4 = idxMap[c.v3];
+        c.v4 = idxMap[c.v4];
     }
 }
 
@@ -307,15 +301,16 @@ void NNRobot::Build() {
         springs.push_back(s);
     }
 
+    uint i = 0;
     for (auto cell : triangulation.cells) {
         uint16_t v1 = cell.v1,
                  v2 = cell.v2,
                  v3 = cell.v3,
                  v4 = cell.v4;
-        Mass m1 = masses[v1],
-             m2 = masses[v2],
-             m3 = masses[v3],
-             m4 = masses[v4];
+        Mass m0 = masses[v1],
+             m1 = masses[v2],
+             m2 = masses[v3],
+             m3 = masses[v4];
         Material mat1, mat2, mat3, mat4, mat;
 
         mat1 = masses[v1].material;
@@ -325,10 +320,11 @@ void NNRobot::Build() {
         // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
         mat = materials::avg({mat1, mat2, mat3, mat4});
 
-        float volume = ((m2.pos-m3.pos).cross(m4.pos-m2.pos)).dot(m4.pos-m1.pos) / 6.0f;
+        float volume = ((m1.pos-m0.pos).cross(m2.pos-m0.pos)).dot(m3.pos-m0.pos) / 6.0f;
 
         Cell c = {v1, v2, v3, v4, volume, mat};
         cells.push_back(c);
+        i++;
     }
 
     for(uint i = 0; i < triangulation.isBoundaryVertexFlags.size(); i++) {

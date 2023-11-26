@@ -49,8 +49,7 @@ public:
 	friend void swap(SoftBody& s1, SoftBody& s2) {
 		using std::swap;
 		swap((Candidate&) s1, (Candidate&) s2);
-		swap(s1.masses, s2.masses);
-		swap(s1.springs, s2.springs);
+		swap((Element&) s1, (Element&) s2);
 		swap(s1.mVolume, s2.mVolume);
         swap(s1.mBaseCOM, s2.mBaseCOM);
         swap(s1.mLength, s2.mLength);

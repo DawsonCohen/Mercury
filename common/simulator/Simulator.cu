@@ -88,7 +88,7 @@ void Simulator::freeMemory() {
 	cudaFree((void**) m_dRandomPairs);
 	cudaFree((void**) m_dSpringStresses_Sorted);
 	cudaFree((void**) m_dSpringIDs_Sorted);
-	
+
 	cudaFree((void**) m_dFaces);
 
 	cudaFree((void**) m_dCells);
@@ -183,6 +183,7 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	cudaMalloc((void**)&m_dSpringStresses_Sorted,  springSizefloat);
 
 	cudaMalloc((void**)&m_dFaces,  faceSizeushort4);
+	
 	cudaMalloc((void**)&m_dCells,  cellSizeushort4);
 	cudaMalloc((void**)&m_dVbars,  cellSizefloat);
 	cudaMalloc((void**)&m_dMats,  cellSizefloat4);
@@ -292,9 +293,9 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 	}
 
 	for(uint i = 0; i < numSprings; i++) {
-		float    lbar     	 = springBuf[i].mean_length;
-		ushort	 m0     	 = springBuf[i].m0,
-			     m1			 = springBuf[i].m1;
+		float    lbar        = springBuf[i].mean_length;
+		ushort	 m0          = springBuf[i].m0,
+			     m1	         = springBuf[i].m1;
 		uint8_t	 matId 		 = springBuf[i].material.id;
 		uint32_t matEncoding = springBuf[i].material.encoding;
 
@@ -328,7 +329,7 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 		m_hCells[4*i]   = m0;
 		m_hCells[4*i+1] = m1;
 		m_hCells[4*i+2] = m2;
-		m_hCells[4*i+2] = m3;
+		m_hCells[4*i+3] = m3;
 
 		m_hMats[4*i]   = mat.k;
 		m_hMats[4*i+1] = mat.dL0;
@@ -340,27 +341,24 @@ std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& e
 
 	cudaMemcpyToSymbol(compositeMats_id,   m_hCompositeMats_id,   COMPOSITE_COUNT*4*sizeof(float));
 	cudaMemcpyToSymbol(compositeMats_encoding,   m_hCompositeMats_encoding,   COMPOSITE_COUNT*4*sizeof(float));
-	gpuErrchk( cudaPeekAtLastError() );
 
 	cudaMemcpy(m_dPos, m_hPos,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dVel, m_hVel,   numMasses   *4*sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(m_dMassMatEncodings,		m_hMassMatEncodings,   	 numMasses  * sizeof(uint32_t), cudaMemcpyHostToDevice);
-	gpuErrchk( cudaPeekAtLastError() );
 	
-	cudaMemcpy(m_dPairs,  m_hPairs,  numSprings *2*sizeof(ushort),  cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dSpringMatEncodings,		m_hSpringMatEncodings,   	 numSprings  * sizeof(uint32_t), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dSpringMatIds,   m_hSpringMatIds,   numSprings * sizeof(uint8_t), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dLbars,  m_hLbars,  numSprings  * sizeof(float), cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dSpringIDs,   m_hSpringIDs,   numSprings*sizeof(uint), cudaMemcpyHostToDevice);
-	cudaMemset(m_dSpringStresses,  0.0f,  numSprings  * sizeof(float));
-	gpuErrchk( cudaPeekAtLastError() );
-
+	cudaMemcpy(m_dPairs,  				m_hPairs			  , numSprings*2*sizeof(ushort),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dSpringMatEncodings,	m_hSpringMatEncodings , numSprings * sizeof(uint32_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dSpringMatIds,   		m_hSpringMatIds		  , numSprings * sizeof(uint8_t), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dLbars,  				m_hLbars			  , numSprings * sizeof(float), cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dSpringIDs,   			m_hSpringIDs		  , numSprings * sizeof(uint), cudaMemcpyHostToDevice);
+	cudaMemset(m_dSpringStresses,  		0.0f				  , numSprings * sizeof(float));
+	
 	cudaMemcpy(m_dFaces,  m_hFaces,  numFaces *4*sizeof(ushort),  cudaMemcpyHostToDevice);
-
-	cudaMemcpy(m_dCells,  m_hCells,  numCells *4*sizeof(ushort),  cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dVbars,  m_hVbars,  numCells *1*sizeof(float) ,  cudaMemcpyHostToDevice);
-	cudaMemcpy(m_dMats ,  m_hMats ,  numCells *4*sizeof(float) ,  cudaMemcpyHostToDevice);
-	cudaMemset(m_dCellStresses,  0.0f,  numCells  * sizeof(float));
+	
+	cudaMemcpy(m_dCells,  		m_hCells,  numCells*4*sizeof(ushort),  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dVbars,  		m_hVbars,  numCells*1*sizeof(float) ,  cudaMemcpyHostToDevice);
+	cudaMemcpy(m_dMats ,  		m_hMats ,  numCells*4*sizeof(float) ,  cudaMemcpyHostToDevice);
+	cudaMemset(m_dCellStresses, 0.0f	,  numCells*1*sizeof(float));
 
 	gpuErrchk( cudaPeekAtLastError() );
 
@@ -380,11 +378,11 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 
 	uint maxSharedMemSize = 49152;
 	uint bytesPerMass = sizeof(float3) + sizeof(float3);
-	// uint bytesPerElement = massesPerElement*bytesPerMass;
 	uint elementsPerBlock = 1;
-	// uint elementsPerBlock = 1;
 	m_massesPerBlock = massesPerElement * elementsPerBlock;
 	m_springsPerBlock = springsPerElement * elementsPerBlock;
+	m_facesPerBlock = facesPerElement * elementsPerBlock;
+	m_cellsPerBlock = cellsPerElement * elementsPerBlock;
 	m_sharedMemSizeSim = m_massesPerBlock * bytesPerMass;
 	m_numBlocksSim = (numElements + elementsPerBlock - 1) / elementsPerBlock;
 
@@ -394,7 +392,6 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 	assert(m_sharedMemSizeSim <= maxSharedMemSize);
 
 	uint bytesPerBoundaryMass = sizeof(float3) + sizeof(float3) + sizeof(float3);
-	// bytesPerElement = boundaryMassesPerElement*bytesPerMass;
 	uint boundaryMassesPerBlock = boundaryMassesPerElement * elementsPerBlock;
 	uint dragSharedMemorySize = boundaryMassesPerBlock * bytesPerBoundaryMass;
 	uint numDragBlocks = (numElements + elementsPerBlock - 1) / elementsPerBlock;
@@ -438,17 +435,17 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 		cudaDeviceSynchronize();
 		gpuErrchk( cudaPeekAtLastError() );
 
-		dragForce<<<blocks, numThreads>>>(
+		preSolve<<<blocks, numThreads>>>(
 			(float4*) m_dPos, (float4*) m_dNewPos, (float4*) m_dVel);
 		cudaDeviceSynchronize();
 		gpuErrchk( cudaPeekAtLastError() );
 
 		solveDistance<<<m_numBlocksSim,simThreadsPerBlock,m_sharedMemSizeSim>>>(
-			(float4*) m_dNewPos, (float*) m_dSpringStresses,
-			(ushort2*)  m_dPairs, (uint8_t*) m_dSpringMatIds, (float*) m_dLbars,
+			(float4*) m_dNewPos, (ushort2*)  m_dPairs, 
+			(float*) m_dSpringStresses, (uint8_t*) m_dSpringMatIds, (float*) m_dLbars,
 			m_total_time, step_count, trackStresses);
-			cudaDeviceSynchronize();
-			gpuErrchk( cudaPeekAtLastError() );
+		cudaDeviceSynchronize();
+		gpuErrchk( cudaPeekAtLastError() );
 			
 		update<<<blocks,512>>>((float4*) m_dPos, (float4*) m_dNewPos,
 			(float4*) m_dVel);
@@ -521,7 +518,7 @@ ElementTracker Simulator::AllocateElement(const Element& e) {
 
 	count = 0;
 	for(const Face& f : e.faces) {
-		faceBuf[numFaces] = {f.m0, f.m1, f.m2};
+		faceBuf[numFaces] = f;
 
 		numFaces++;
 		count++;

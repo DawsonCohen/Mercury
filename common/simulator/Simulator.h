@@ -112,7 +112,7 @@ protected:
 	float	 *m_dVbars;
 	float	 *m_dMats;
 	float	 *m_dCellStresses;
-	// -------------------------
+	// -------------------------	
 
 	uint	 m_massesPerBlock = 0;
 	uint	 m_springsPerBlock = 0;
@@ -137,9 +137,9 @@ protected:
 	uint maxCells          = 0;
 	uint maxReplaced       = 0;
 	uint maxEnvs           = 0;
+
 	uint numElements       = 0;
 	uint numMasses         = 0;
-
 	uint numSprings        = 0;
 	uint numFaces          = 0;
 	uint numCells          = 0;

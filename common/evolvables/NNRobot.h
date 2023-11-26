@@ -68,7 +68,7 @@ private:
             float norm = x.col(i).head(output_size - MATERIAL_COUNT).norm();
             if(maxNorm < norm) maxNorm = norm;
         }
-        x.topRows(output_size - MATERIAL_COUNT) = x.topRows(output_size - MATERIAL_COUNT) / maxNorm;
+        x.topRows(output_size - MATERIAL_COUNT) = 10 * x.topRows(output_size - MATERIAL_COUNT) / maxNorm;
 
         
         // softmax activation to material rows
