@@ -8,7 +8,6 @@
 #include "triangulation.h"
 
 #define min(a,b) a < b ? a : b
-#define max(a,b) a > b ? a : b
 
 #define EPS 1e-3
 
@@ -272,12 +271,9 @@ void NNRobot::Build() {
     // start = std::chrono::high_resolution_clock::now();
 
     sortBoundaryMasses(masses, triangulation);
-    for (auto facet : triangulation.facets) {
-        uint16_t m1 = facet.v1,
-                 m2 = facet.v2,
-                 m3 = facet.v3;
-        Face f = {m1, m2, m3};
-        faces.push_back(f);
+    boundaryCount = 0;
+    for(uint i = 0; i < triangulation.isBoundaryVertexFlags.size(); i++) {
+        boundaryCount += triangulation.isBoundaryVertexFlags[i];
     }
 
     for (auto edge : triangulation.edges) {
@@ -301,7 +297,17 @@ void NNRobot::Build() {
         springs.push_back(s);
     }
 
-    uint i = 0;
+    for (auto facet : triangulation.facets) {
+        uint16_t m1 = facet.v1,
+                 m2 = facet.v2,
+                 m3 = facet.v3;
+        Face f = {m1, m2, m3};
+        assert(m1 < boundaryCount);
+        assert(m2 < boundaryCount);
+        assert(m3 < boundaryCount);
+        faces.push_back(f);
+    }
+
     for (auto cell : triangulation.cells) {
         uint16_t v1 = cell.v1,
                  v2 = cell.v2,
@@ -324,12 +330,8 @@ void NNRobot::Build() {
 
         Cell c = {v1, v2, v3, v4, volume, mat};
         cells.push_back(c);
-        i++;
     }
 
-    for(uint i = 0; i < triangulation.isBoundaryVertexFlags.size(); i++) {
-        boundaryCount += triangulation.isBoundaryVertexFlags[i];
-    }
 
     // end = std::chrono::high_resolution_clock::now();
     // execute_time = std::chrono::duration<float>(end - start).count();
