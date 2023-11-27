@@ -7,7 +7,7 @@
 #include <cassert>
 
 #define OMEGA (float) 1.0f * (2.0f*M_PI) // rad/sec
-#define AMPLITUDE .14f
+#define AMPLITUDE 1.0f
 
 struct Color {
 	float r;
@@ -108,7 +108,7 @@ enum MaterialOption {
 
 class materials {
 	public:
-	static constexpr Material air               = {0 , 0     , 0        , 0     , 0       , 0x01u << 0 , Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f , 0.00f)};
+	static constexpr Material air               = {0 , 0     , 0        , 0     , 0         , 0x01u << 0 , Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f , 0.00f)};
 	static constexpr Material adductor_muscle0  = {1 , 50  , AMPLITUDE, OMEGA   , 0   	    , 0x01u << 1 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
 	static constexpr Material adductor_muscle1  = {2 , 50  , AMPLITUDE, OMEGA   , M_PI/8    , 0x01u << 2 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
 	static constexpr Material adductor_muscle2  = {3 , 50  , AMPLITUDE, OMEGA   , M_PI/4    , 0x01u << 3 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};

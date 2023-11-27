@@ -150,8 +150,6 @@ void Simulator::_initialize() { //uint maxMasses, uint maxSprings) {
 	memset(m_hSpringStresses, 0, maxSprings * sizeof(float));
     memset(m_hCellStresses, 0, maxCells * sizeof(float));
 
-    // memset(m_hSpringIDs, 0, maxSprings * sizeof(uint));
-    // memset(m_hSpringMatEncodings, 0, maxSprings * sizeof(uint));
 	
     unsigned int massSizefloat4     = sizeof(float)    * 4 * maxMasses;
     unsigned int massSizeuint32_t   = sizeof(uint32_t) * 1 * maxMasses;
@@ -444,6 +442,14 @@ void Simulator::Simulate(float sim_duration, bool trackStresses, bool trace, std
 			(float4*) m_dNewPos, (ushort2*)  m_dPairs, 
 			(float*) m_dSpringStresses, (uint8_t*) m_dSpringMatIds, (float*) m_dLbars,
 			m_total_time, step_count, trackStresses);
+
+		solveVolume<<<m_numBlocksSim,simThreadsPerBlock,m_sharedMemSizeSim>>>(
+			(float4*) m_dNewPos, (ushort4*) m_dCells,
+			(float*) m_dCellStresses,
+			(float4*) m_dMats, (float*) m_dVbars,
+			m_total_time, step_count,
+			trackStresses
+		);
 		cudaDeviceSynchronize();
 		gpuErrchk( cudaPeekAtLastError() );
 			
@@ -560,7 +566,6 @@ Element Simulator::Collect(const ElementTracker& tracker) {
 std::vector<Element> Simulator::Collect(const std::vector<ElementTracker>& trackers) {
 	cudaMemcpy(m_hPos,m_dPos,numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hVel,m_dVel,numMasses*4*sizeof(float),cudaMemcpyDeviceToHost);
-	cudaMemcpy(m_hSpringStresses,   m_dSpringStresses,   numSprings*sizeof(float), cudaMemcpyDeviceToHost);
 
 	cudaMemcpy(m_hSpringMatEncodings, m_dSpringMatEncodings, numSprings*sizeof(uint32_t), cudaMemcpyDeviceToHost);
 	cudaMemcpy(m_hPairs, m_dPairs, numSprings*2*sizeof(ushort), cudaMemcpyDeviceToHost);
@@ -700,5 +705,7 @@ void Simulator::Devo() {
 	cudaDeviceSynchronize();
 	gpuErrchk( cudaPeekAtLastError() );
 
+	cudaMemset(m_dSpringStresses, 0, numSprings * sizeof(float));
+	cudaMemset(m_dCellStresses, 0, numCells * sizeof(float));	
 	seed++;
 }

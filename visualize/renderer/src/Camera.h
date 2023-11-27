@@ -41,7 +41,7 @@ public:
 	float sensitivity = 5.0f;
 
 	// Camera constructor to set up initial values
-	Camera(int screenWidth, int screenHeight, glm::vec3 position = glm::vec3(0.0f, 0.75f, 5.0f), float rotX = 0.0f, uint tabCount = 1);
+	Camera(int screenWidth, int screenHeight, glm::vec3 position = glm::vec3(0.0f, 5.0f, 20.0f), float rotX = 0.0f, uint tabCount = 1);
 	Camera() {}
 
 	// Updates the camera matrix to the Vertex Shader
