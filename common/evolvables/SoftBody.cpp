@@ -181,6 +181,8 @@ void SoftBody::Decode(const std::string& filename) {
     std::string line;
     masses.clear();
     springs.clear();
+    faces.clear();
+    cells.clear();
 
     std::getline(infile, line);
     std::getline(infile, line);
