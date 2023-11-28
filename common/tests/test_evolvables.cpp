@@ -16,6 +16,7 @@ int TestNNRobot() {
 
     NNRobot R;
     R.Randomize();
+    R.Build();
 
     std::string encoding = R.Encode();
 

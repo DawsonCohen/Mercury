@@ -13,8 +13,8 @@ struct Cell {
 
 	friend std::ostream& operator<<(std::ostream& out, const Cell& c) {
 		out << std::setprecision(9);
-		return out << c.m0 << "," << c.m1 << "," << "," << c.m2 << "," << c.m3 << "," <<
-				(double) c.mean_volume << "," << (unsigned int) c.material.id;
+		return out << c.m0 << "," << c.m1 << "," << c.m2 << "," << c.m3 << "," <<
+				(double) c.mean_volume << "," << (uint16_t) c.material.encoding;
 	}
 };
 

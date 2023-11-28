@@ -250,7 +250,11 @@ void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
 }
 
 void NNRobot::Build() {
+    masses.clear();
     springs.clear();
+    faces.clear();
+    cells.clear();
+    boundaryCount = 0;
 
     // auto start = std::chrono::high_resolution_clock::now();
     forward();
@@ -271,7 +275,6 @@ void NNRobot::Build() {
     // start = std::chrono::high_resolution_clock::now();
 
     sortBoundaryMasses(masses, triangulation);
-    boundaryCount = 0;
     for(uint i = 0; i < triangulation.isBoundaryVertexFlags.size(); i++) {
         boundaryCount += triangulation.isBoundaryVertexFlags[i];
     }

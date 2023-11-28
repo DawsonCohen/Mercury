@@ -34,20 +34,6 @@ __constant__ float4 compositeMats_id[COMPOSITE_COUNT];
 __constant__ SimOptions cSimOpt;
 
 __global__ inline
-void preSolve(float4 *__restrict__ pos, float4 *__restrict__ newPos,
-                 float4 *__restrict__ vel) {
-	int stride = blockDim.x * gridDim.x;
-	float4 velocity;
-
-	for(uint i = blockIdx.x * blockDim.x + threadIdx.x;
-		i < cSimOpt.maxMasses; i+=stride) {
-		//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
-		velocity = __ldg(&vel[i]);
-		newPos[i] = __ldg(&pos[i]) + velocity*cSimOpt.dt;
-	}
-}
-
-__global__ inline
 void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
                  float4 *__restrict__ vel, ushort4 *__restrict__ faces) {
 	extern __shared__ float3 s[];
@@ -69,9 +55,6 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 		vel4 = __ldg(&vel[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 		s_vel[i] = {vel4.x,vel4.y,vel4.z};
-	}
-	
-	for(i = tid; i < cSimOpt.boundaryMassesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		s_force[i] = {0.0f, 0.0f, 0.0f};
 	}
 	
@@ -121,6 +104,20 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 		newPos[i+massOffset].x = x0.x + v0.x*cSimOpt.dt + force.x*cSimOpt.dt*cSimOpt.dt;
 		newPos[i+massOffset].y = x0.y + v0.y*cSimOpt.dt + force.y*cSimOpt.dt*cSimOpt.dt;
 		newPos[i+massOffset].z = x0.z + v0.z*cSimOpt.dt + force.z*cSimOpt.dt*cSimOpt.dt;
+	}
+}
+
+__global__ inline
+void preSolve(float4 *__restrict__ pos, float4 *__restrict__ newPos,
+                 float4 *__restrict__ vel) {
+	int stride = blockDim.x * gridDim.x;
+	float4 velocity;
+
+	for(uint i = blockIdx.x * blockDim.x + threadIdx.x;
+		i < cSimOpt.maxMasses; i+=stride) {
+		//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
+		velocity = __ldg(&vel[i]);
+		newPos[i] = __ldg(&pos[i]) + velocity*cSimOpt.dt;
 	}
 }
 

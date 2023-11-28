@@ -14,6 +14,7 @@ int TestDevo() {
 
 	NNRobot R;
 	R.Randomize();
+	R.Build();
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		robots.push_back(R);
 	}

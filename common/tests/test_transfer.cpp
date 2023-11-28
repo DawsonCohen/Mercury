@@ -31,6 +31,7 @@ int TestTransfer() {
 
 	NNRobot R;
 	R.Randomize();
+	R.Build();
 	for(size_t i = 0; i < ROBO_COUNT; i++) {
 		robots.push_back(R);
 	}

@@ -157,6 +157,17 @@ std::string SoftBody::Encode() const {
         ss << springs[i];
         ss << (i < springs.size()- 1 ? ";" : "\n");
     }
+    ss << "faces=";
+    for(unsigned int i = 0; i < faces.size(); i++) {
+        ss << faces[i];
+        ss << (i < faces.size()- 1 ? ";" : "\n");
+    }
+    ss << "cells=";
+    for(unsigned int i = 0; i < cells.size(); i++) {
+        ss << cells[i];
+        ss << (i < cells.size()- 1 ? ";" : "\n");
+    }
+    ss << "boundary_count=" << boundaryCount << "\n";
     return ss.str();
 }
 
@@ -230,6 +241,67 @@ void SoftBody::Decode(const std::string& filename) {
             Spring s = {m0, m1, rl, ml, mat};
             springs.push_back(s);
         }
+    }
+    std::getline(infile, line);
+    pos = line.find('=');
+    key = line.substr(0, pos);
+    value = line.substr(pos+1);
+    if(key == "faces") {
+        std::istringstream lineStream(value);
+        std::string cell;
+
+        while (std::getline(lineStream, cell, ';')) {
+            std::istringstream spring(cell);
+            std::string param;
+            uint16_t m0, m1, m2;
+
+            std::getline(spring, param, ',');
+            m0 = std::stoi(param);
+            std::getline(spring, param, ',');
+            m1 = std::stoi(param);
+            std::getline(spring, param, ',');
+            m2 = std::stoi(param);
+            Face f = {m0, m1, m2};
+            faces.push_back(f);
+        }
+    }
+    std::getline(infile, line);
+    pos = line.find('=');
+    key = line.substr(0, pos);
+    value = line.substr(pos+1);
+    if(key == "cells") {
+        std::istringstream lineStream(value);
+        std::string cell;
+
+        while (std::getline(lineStream, cell, ';')) {
+            std::istringstream spring(cell);
+            std::string param;
+            uint16_t m0, m1, m2, m3;
+            float mv;
+            Material mat;
+
+            std::getline(spring, param, ',');
+            m0 = std::stoi(param);
+            std::getline(spring, param, ',');
+            m1 = std::stoi(param);
+            std::getline(spring, param, ',');
+            m2 = std::stoi(param);
+            std::getline(spring, param, ',');
+            m3 = std::stoi(param);
+            std::getline(spring, param, ',');
+            mv = std::stof(param);
+            std::getline(spring, param, ',');
+            mat = materials::decode((uint16_t) std::stoi(param));
+            Cell c = {m0, m1, m2, m3, mv, mat};
+            cells.push_back(c);
+        }
+    }
+    std::getline(infile, line);
+    pos = line.find('=');
+    key = line.substr(0, pos);
+    value = line.substr(pos+1);
+    if(key == "boundary_count") {
+        boundaryCount = std::stoi(value);
     }
     updateBaseline();
 }

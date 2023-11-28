@@ -25,6 +25,7 @@ int TestSimulator() {
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		VoxelRobot R;
 		R.Randomize();
+		R.Build();
 		robots.push_back(R);
 	}
 

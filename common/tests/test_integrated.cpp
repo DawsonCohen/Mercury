@@ -93,6 +93,7 @@ int TestIntegrated() {
 	for(uint i = 0; i < ROBO_COUNT; i++) {
 		NNRobot R;
 		R.Randomize();
+		R.Build();
 		robots.push_back(R);
 	}
 
