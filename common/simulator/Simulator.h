@@ -4,6 +4,7 @@
 #include "environment.h"
 #include "element.h"
 #include "config.h"
+#include "softbodysystem.h"
 #include <memory>
 
 // TODO: Face statistics if necessary??
@@ -87,31 +88,32 @@ protected:
 	float    *m_hCellStresses;
 
 	// ----------- GPU data --------------
-	// MASS DATA
-	float    *m_dPos, *m_dNewPos, *m_dVel;
-	uint32_t *m_dMassMatEncodings;
+	DeviceData m_dData;
+	// // MASS DATA
+	// float    *m_dPos, *m_dNewPos, *m_dVel;
+	// uint32_t *m_dMassMatEncodings;
 
-	// SPRING DATA
-	ushort	 *m_dPairs;
-	uint32_t *m_dSpringMatEncodings;
-	uint8_t  *m_dSpringMatIds;
-	float	 *m_dLbars;
-	uint     *m_dSpringIDs;
-	float	 *m_dSpringStresses;
+	// // SPRING DATA
+	// ushort	 *m_dPairs;
+	// uint32_t *m_dSpringMatEncodings;
+	// uint8_t  *m_dSpringMatIds;
+	// float	 *m_dLbars;
+	// uint     *m_dSpringIDs;
+	// float	 *m_dSpringStresses;
 	
-	// SPRING DEVO DATA
-	ushort   *m_dRandomPairs;
-	uint     *m_dSpringIDs_Sorted;
-	float	 *m_dSpringStresses_Sorted;
+	// // SPRING DEVO DATA
+	// ushort   *m_dRandomPairs;
+	// uint     *m_dSpringIDs_Sorted;
+	// float	 *m_dSpringStresses_Sorted;
 
-	// FACE DATA
-	ushort	 *m_dFaces;
+	// // FACE DATA
+	// ushort	 *m_dFaces;
 
-	// CELL DATA
-	ushort	 *m_dCells;
-	float	 *m_dVbars;
-	float	 *m_dMats;
-	float	 *m_dCellStresses;
+	// // CELL DATA
+	// ushort	 *m_dCells;
+	// float	 *m_dVbars;
+	// float	 *m_dMats;
+	// float	 *m_dCellStresses;
 	// -------------------------	
 
 	uint	 m_massesPerBlock = 0;
@@ -120,9 +122,6 @@ protected:
 	uint	 m_cellsPerBlock = 0;
 	uint	 m_sharedMemSizeSim = 0;
 	uint	 m_numBlocksSim = 0;
-
-	uint  simThreadsPerBlock = 1024;
-	const uint  devoThreadsPerBlock = 256;
 
 	uint massesPerElement  = 0;
 	uint boundaryMassesPerElement  = 0;

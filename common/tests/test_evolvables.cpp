@@ -52,3 +52,18 @@ int TestNNRobot() {
 
     return 0;
 }
+
+int TestNNBuild() {
+    std::vector<NNRobot> robots;
+    for(uint i = 0; i < 100; i++) {
+        robots.clear();
+        for(uint j = 0; j < 1000; j++) {
+            NNRobot R;
+            R.Randomize();
+            robots.push_back(R);
+        }
+        NNRobot::BatchBuild(robots);
+        printf("BUILT %u\n", (i+1)*1000);
+    }
+    return 0;
+}

@@ -11,6 +11,7 @@ std::vector<float> runSimulator(Simulator& sim, std::vector<SoftBody> robots, fl
 int TestSimulator();
 int TestMatEncoding();
 int TestNNRobot();
+int TestNNBuild();
 int TestIntegrated();
 int TestDevo();
 int TestTransfer();

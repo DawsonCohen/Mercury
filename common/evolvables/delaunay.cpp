@@ -41,17 +41,30 @@ Triangulation::Mesh Triangulation::AlphaShape(const std::vector<Mass>& masses) {
         lp.push_back({p,m.id});
     }
 
+    std::vector<Simplex::Edge> edges;
+    std::vector<Simplex::Facet> facets;
+    std::vector<Simplex::Cell> cells;
+    std::vector<bool> isBoundaryVertexFlags(masses.size(), false);
+    if(lp.size() < 4) {
+        return {edges, facets, cells, isBoundaryVertexFlags};
+    }
+
+    for (const auto& point : lp) {
+        assert(point.first.dimension() == 3);
+    }
+
     // Create a Delaunay triangulation
     // Delaunay_3 dt(lp.begin(), lp.end());
 
     // Create an alpha shape
     Alpha_shape_3 as(lp.begin(), lp.end());
-
-    // std::cout << "Alpha shape computed in REGULARIZED mode by default."
-    //             << std::endl;
+    assert(as.dimension() == 3);
+    
     // find optimal alpha values
     Alpha_iterator opt = as.find_optimal_alpha(1);
-    as.set_alpha((*opt));
+    if(opt != as.alpha_end()) {
+        as.set_alpha((*opt));
+    }
 
     std::list<Edge>  as_edges;
     std::list<Facet> as_facets;
@@ -67,10 +80,6 @@ Triangulation::Mesh Triangulation::AlphaShape(const std::vector<Mass>& masses) {
     as.get_alpha_shape_cells(std::back_inserter(as_cells),
                         Alpha_shape_3::INTERIOR);
 
-    std::vector<Simplex::Edge> edges;
-    std::vector<Simplex::Facet> facets;
-    std::vector<Simplex::Cell> cells;
-    std::vector<bool> isBoundaryVertexFlags(masses.size(), false);
 
     for(const auto& e : as_edges) {
         // std::cout << e.second << ", " << e.third << std::endl;
