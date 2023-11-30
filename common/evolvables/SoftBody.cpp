@@ -194,23 +194,23 @@ void SoftBody::Decode(const std::string& filename) {
         std::string cell;
 
         while (std::getline(lineStream, cell, ';')) {
-            std::istringstream mass(cell);
+            std::istringstream word(cell);
             std::string param;
             uint id;
             float x,y,z, m;
             Material mat;
 
-            std::getline(mass, param, ',');
+            std::getline(word, param, ',');
             id = std::stoi(param);
-            std::getline(mass, param, ',');
+            std::getline(word, param, ',');
             x = std::stof(param);
-            std::getline(mass, param, ',');
+            std::getline(word, param, ',');
             y = std::stof(param);
-            std::getline(mass, param, ',');
+            std::getline(word, param, ',');
             z = std::stof(param);
-            std::getline(mass, param, ',');
+            std::getline(word, param, ',');
             m = std::stof(param);
-            std::getline(mass, param, ',');
+            std::getline(word, param, ',');
             mat = materials::id_lookup(stoi(param));
             masses.push_back(Mass(id, x, y, z, m, mat));
         }
@@ -224,21 +224,21 @@ void SoftBody::Decode(const std::string& filename) {
         std::string cell;
 
         while (std::getline(lineStream, cell, ';')) {
-            std::istringstream spring(cell);
+            std::istringstream word(cell);
             std::string param;
             uint16_t m0, m1;
             float rl, ml;
             Material mat;
 
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m0 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m1 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             rl = std::stof(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             ml = std::stof(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             mat = materials::id_lookup(std::stoi(param));
             Spring s = {m0, m1, rl, ml, mat};
             springs.push_back(s);
@@ -253,15 +253,15 @@ void SoftBody::Decode(const std::string& filename) {
         std::string cell;
 
         while (std::getline(lineStream, cell, ';')) {
-            std::istringstream spring(cell);
+            std::istringstream word(cell);
             std::string param;
             uint16_t m0, m1, m2;
 
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m0 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m1 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m2 = std::stoi(param);
             Face f = {m0, m1, m2};
             faces.push_back(f);
@@ -276,23 +276,23 @@ void SoftBody::Decode(const std::string& filename) {
         std::string cell;
 
         while (std::getline(lineStream, cell, ';')) {
-            std::istringstream spring(cell);
+            std::istringstream word(cell);
             std::string param;
             uint16_t m0, m1, m2, m3;
             float mv;
             Material mat;
 
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m0 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m1 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m2 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             m3 = std::stoi(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             mv = std::stof(param);
-            std::getline(spring, param, ',');
+            std::getline(word, param, ',');
             mat = materials::decode((uint16_t) std::stoi(param));
             Cell c = {m0, m1, m2, m3, mv, mat};
             cells.push_back(c);

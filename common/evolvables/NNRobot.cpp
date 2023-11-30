@@ -196,7 +196,7 @@ void BuildSubset(std::vector<NNRobot>& robots, size_t begin, size_t end) {
 void NNRobot::BatchBuild(std::vector<NNRobot>& robots) {
     const auto processor_count = std::thread::hardware_concurrency() - 1;
     unsigned int active_threads = min(robots.size(), processor_count);
-    unsigned int robots_per_thread = robots.size() / active_threads;
+    unsigned int robots_per_thread = (robots.size() + active_threads - 1) / active_threads;
     
     fillRandMasses(maxMasses);
     std::vector<std::thread> threads;
