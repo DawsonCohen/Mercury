@@ -66,7 +66,7 @@ def plotComparedFitness(filepaths, stratagies):
     plt.figure()
     sns.lineplot(data=solution_hist, x="evaluation", y='solution_fitness', hue='strat')
 
-    plt.xscale("log")
+    # plt.xscale("log")
     plt.title(f"Learning Curves")
     plt.ylabel("Fitness (m/s)")
     plt.xlabel("Evaluations")
@@ -98,7 +98,7 @@ def plotDiversity(filepath):
     sns.scatterplot(x="evaluation",y="value",
                 data=run_diversity)
 
-    plt.xscale("log")
+    # plt.xscale("log")
     plt.ylim([0,10200])
     plt.title(f"Diversity")
     plt.ylabel("distance")
@@ -107,8 +107,8 @@ def plotDiversity(filepath):
 
 if __name__ == "__main__":
     # TODO: ingest filepath so we can call from evodevo
-    filepath1 = "/path/to/z_results/evo_run_folder"
-    filepath2 = "/path/to/z_results/evodevo_run_folder"
+    filepath1 = "/mnt/vault/evo-devo/z_results/2023-11-16-201741"
+    filepath2 = "/mnt/vault/evo-devo/z_results/2023-11-18-021434"
     plotComparedFitness([filepath1, filepath2], ["Evo", "EvoDevo"])
-    plotDiversity(filepath2)
-    plotFitness(filepath2)
+    # plotDiversity(filepath2)
+    # plotFitness(filepath2)

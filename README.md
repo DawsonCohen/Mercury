@@ -1,12 +1,19 @@
-# Simulation Instructions
+# EvoDevo - A Fast SoftBody Evolutionary Optimizer
+
+## Requirements
+
+- Linux 22.04
+- gmp (sudo apt install libgmp-dev)
 
 ## Optimization
 
 ### Build
 
-1. cd optimize
-1. make [-j12]
-1. ./evodevo configs/config.default
+``````
+git submodule add --init 
+cd EvoDevo
+make [-j12]
+```````
 
 ### Config Options
 **Optimizer Parameters**
@@ -49,9 +56,11 @@
 
 ## Visualization
 
-### Build
-sudo apt install libassimp-dev
+## Requirements
+libassimp-dev
+opencv
 
+### Build
 1. cd visualize
 1. cmake .
 1. make [-j12]
