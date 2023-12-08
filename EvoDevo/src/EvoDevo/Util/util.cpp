@@ -30,6 +30,12 @@ namespace EvoDevo {
     
 namespace Util {
 
+    /**
+     * @brief Creates a directory with the specified name.
+     * 
+     * @param directory The name of the directory to create.
+     * @return int Returns 0 if the directory is successfully created, otherwise returns a non-zero value.
+     */
     int MakeDirectory(const std::string& directory) {
         std::string path = directory;
         std::string token;
@@ -55,6 +61,14 @@ namespace Util {
     }
 
 
+    /**
+     * Writes data to a file.
+     *
+     * @param filepath The path of the file to write to.
+     * @param datastring The data to write to the file.
+     * @param append If true, the data will be appended to the file. If false, the file will be overwritten.
+     * @return The number of bytes written to the file, or -1 if an error occurred.
+     */
     int WriteFile(const std::string& filepath, const std::string& datastring, bool append) {
         std::string directory = filepath.substr(0, filepath.find_last_of('/'));
         if (MakeDirectory(directory)) {
@@ -75,6 +89,12 @@ namespace Util {
         return 0;
     }
 
+    /**
+     * @brief Reads a configuration file and returns a Config object.
+     * 
+     * @param filename The path to the configuration file.
+     * @return Config The Config object containing the parsed configuration data.
+     */
     Config ReadConfigFile(const std::string& filename) {
         std::unordered_map<std::string, std::string> config_map;
 
@@ -122,12 +142,30 @@ namespace Util {
             config.io.out_dir = config_map["OUT_DIR"];
         }
 
-        if(config_map.find("IN_DIR") != config_map.end()) {
-            config.io.in_dir = config_map["IN_DIR"];
-        }
-
         if(config_map.find("BASE_DIR") != config_map.end()) {
             config.io.base_dir = config_map["BASE_DIR"];
+        }
+
+        // If IN_DIR empty, try to use 'latest.txt' to find solution directory
+        if(config_map.find("IN_DIR") != config_map.end()) {
+            config.io.in_dir = config_map["IN_DIR"];
+
+            if(config.io.in_dir == "") {
+                if(config_map.find("BASE_DIR") != config_map.end()) {
+                    std::string filename = config_map["BASE_DIR"] + "/latest.txt";
+                    std::ifstream file(filename);
+                    if(!file.is_open()) {
+                        std::cerr << "ERROR: directory file " << filename << " does not exist" << std::endl;
+                        exit(0);
+                    }
+                    std::string line;
+                    std::getline(file, line);
+                    config.io.in_dir = line;
+                }
+            }
+            if(config.io.out_dir == "") {
+                config.io.out_dir = config.io.in_dir;
+            }
         }
 
         if(config_map.find("TIME_STEP") != config_map.end()) {
@@ -300,6 +338,12 @@ namespace Util {
         return config;
     }
 
+    /**
+     * @brief Reads the robot type from the specified file.
+     * 
+     * @param filename The name of the file to read from.
+     * @return The robot type read from the file.
+     */
     RobotType ReadRobotType(const std::string& filename) {
         std::ifstream file(filename);
         if(!file.is_open()) {
@@ -333,47 +377,6 @@ namespace Util {
         }
         std::cerr << "ERROR: ReadRobotType could not parse config file " << filename << std::endl;
         return ROBOT_VOXEL;
-    }
-
-    std::string FitnessHistoryToCSV(std::vector<std::tuple<ulong,float>>& h) {
-        std::string s = "evaluation, solution_fitness\n";
-        for(size_t i = 0; i < h.size(); i++) {
-            s += std::to_string(std::get<0>(h[i])) + ", " + std::to_string(std::get<1>(h[i]))+"\n";
-        }
-
-        return s;
-    }
-
-    std::string PopulationFitnessHistoryToCSV(std::vector<std::tuple<ulong, std::vector<float>, std::vector<float>>> h) {
-        std::string s = "evaluation";
-        for(size_t i = 0; i < std::get<1>(h[0]).size(); i++) {
-            s += ", organism_"+std::to_string(i);
-        }
-        s+="\n";
-
-        for(size_t i = 0; i < h.size(); i++) {
-            for(size_t j = 0; j < std::get<1>(h[0]).size(); j++) {
-                s += std::to_string(std::get<0>(h[i])) + ", "+std::to_string(std::get<1>(h[i])[j]);
-            }
-            s+="\n";
-        }
-        return s;
-    }
-
-    std::string PopulationDiversityHistoryToCSV(std::vector<std::tuple<ulong, std::vector<float>, std::vector<float>>> h) {
-        std::string s = "evaluation";
-        for(size_t i = 0; i < std::get<1>(h[0]).size(); i++) {
-            s += ", organism_"+std::to_string(i);
-        }
-        s+="\n";
-
-        for(size_t i = 0; i < h.size(); i++) {
-            for(size_t j = 0; j < std::get<1>(h[0]).size(); j++) {
-                s += std::to_string(std::get<0>(h[i])) + ", "+std::to_string(std::get<2>(h[i])[j]);
-            }
-            s+="\n";
-        }
-        return s;
     }
 
 }

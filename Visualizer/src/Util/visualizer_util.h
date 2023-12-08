@@ -9,8 +9,8 @@
 #include "visualizer_config.h"
 #include "EvoDevo.h"
 
-namespace Util {
-    namespace visualizer {
+namespace Visualizer {
+    namespace Util {
         VisualizerConfig ReadConfigFile(const std::string& filename);
     }
 }

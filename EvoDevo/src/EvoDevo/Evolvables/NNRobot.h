@@ -41,6 +41,8 @@ namespace EvoDevo {
         }
 
         void forward() {
+            EV_PROFILE_FUNCTION();
+            
             if(!randMassesFilled) {
                 fillRandMasses(maxMasses);
             }

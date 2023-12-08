@@ -11,9 +11,9 @@
 #include <cassert>
 #include "visualizer_util.h"
 
-namespace Util {
+namespace Visualizer {
 
-VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
+VisualizerConfig Util::ReadConfigFile(const std::string& filename) {
     std::unordered_map<std::string, std::string> config_map;
 
     VisualizerConfig config = EvoDevo::Util::ReadConfigFile(filename);
@@ -72,6 +72,7 @@ VisualizerConfig visualizer::ReadConfigFile(const std::string& filename) {
     
     if(config_map.find("RAND_COUNT") != config_map.end()) {
         config.visualizer.rand_count = stoi(config_map["RAND_COUNT"]);
+        config.evaluator.pop_size = config.visualizer.rand_count;
     }
 
     if(config_map.find("SHOWCASE_TIME") != config_map.end()) {

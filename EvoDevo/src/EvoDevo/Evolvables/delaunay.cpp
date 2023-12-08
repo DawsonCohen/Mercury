@@ -1,3 +1,5 @@
+#include "evpch.h"
+
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Alpha_shape_3.h>
 #include <CGAL/Alpha_shape_cell_base_3.h>
@@ -33,6 +35,8 @@ typedef Tds::Vertex_handle                               Vertex_handle;
 namespace EvoDevo {
 
     Triangulation::Mesh Triangulation::AlphaShape(const std::vector<Mass>& masses) {
+        EV_PROFILE_FUNCTION();
+
         std::list<std::pair<Point, uint16_t>> lp;
         Point p;
 
