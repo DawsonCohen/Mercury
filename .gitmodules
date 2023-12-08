@@ -1,12 +1,16 @@
 [submodule "EvoDevo/vendor/CGAL"]
 	path = EvoDevo/vendor/CGAL
 	url = https://github.com/DawsonCohen/CGAL
+	branch = v1.x
 [submodule "EvoDevo/vendor/eigen"]
 	path = EvoDevo/vendor/eigen
 	url = https://gitlab.com/libeigen/eigen
+	branch=master
 [submodule "EvoDevo/vendor/spdlog"]
 	path = EvoDevo/vendor/spdlog
 	url = https://github.com/DawsonCohen/spdlog
+	branch=master
 [submodule "Visualizer/vendor/elastic"]
 	path = Visualizer/vendor/elastic
 	url = https://github.com/DawsonCohen/Elastic
+	branch=main
