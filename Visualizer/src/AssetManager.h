@@ -3,32 +3,34 @@
 
 #include "Elastic.h"
 #include "EvoDevo.h"
+#include "Models/robot_model.h"
 
 class AssetManager {
 public:
     AssetManager() : m_CurrentAssetIndex(0)
     {}
 
-    AssetManager(std::vector<Elastic::Mesh*> initAssets) :
+    AssetManager(std::vector<RobotModel*> initAssets) :
         m_Assets(initAssets), m_CurrentAssetIndex(0)
     {}
 
     ~AssetManager();
 
-    void loadAssets(std::vector<Elastic::Mesh*> assets) {
+    void loadAssets(std::vector<RobotModel*> assets) {
         m_Assets.insert(m_Assets.end(), assets.begin(), assets.end());
     }
 
     void loadAssets(std::string directory);
     void loadRandomAssets(size_t count, EvoDevo::RobotType type);
 
-    void loadAsset(Elastic::Mesh* newAsset) {
+    void loadAsset(RobotModel* newAsset) {
         m_Assets.push_back(newAsset);
     }
 
     void switchToNextAsset() {
         if(m_CurrentAssetIndex + 1 == m_Assets.size()) m_AssetWrappedFlag = true;
         m_CurrentAssetIndex = (m_CurrentAssetIndex + 1) % m_Assets.size();
+        m_Assets[m_CurrentAssetIndex]->Reset();
         m_AssetChangedFlag = true;
     }
 
@@ -52,12 +54,12 @@ public:
         m_AssetWrappedFlag = false;
     }
 
-    Elastic::Mesh* getCurrentAsset() const {
+    RobotModel* getCurrentAsset() const {
         return m_Assets[m_CurrentAssetIndex];
     }
 
 private:
-    std::vector<Elastic::Mesh*> m_Assets;
+    std::vector<RobotModel*> m_Assets;
     size_t m_CurrentAssetIndex;
     bool m_AssetChangedFlag = false;
     bool m_AssetWrappedFlag = false;

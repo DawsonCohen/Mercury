@@ -16,6 +16,10 @@ namespace EvoDevo {
 		Mass* mass_end;
 		Spring* spring_begin;
 		Spring* spring_end;
+		Face* face_begin;
+		Face* face_end;
+		Cell* cell_begin;
+		Cell* cell_end;
 	};
 
 	class Simulator {
@@ -49,10 +53,12 @@ namespace EvoDevo {
 
 		void Reset() { m_total_time = 0.0f; }
 
+		void SetEnvironment(const Environment& env) { m_Environment = env; }
+
 	protected:
 		bool initialized = false;
 
-		std::vector<Environment> mEnvironments;
+		Environment m_Environment;
 		float m_total_time = 0;
 		float m_deltaT = 0.0001f;
 		uint m_replacedSpringsPerElement = 32; // recommend multiple of 32 for warp
@@ -62,7 +68,6 @@ namespace EvoDevo {
 		Spring*         springBuf;
 		Face*           faceBuf;
 		Cell*           cellBuf;
-		Environment*	envBuf;
 
 		// ----------- CPU data --------------
 		float    *m_hCompositeMats_id;
@@ -137,14 +142,12 @@ namespace EvoDevo {
 		uint maxFaces          = 0;
 		uint maxCells          = 0;
 		uint maxReplaced       = 0;
-		uint maxEnvs           = 0;
 
 		uint numElements       = 0;
 		uint numMasses         = 0;
 		uint numSprings        = 0;
 		uint numFaces          = 0;
 		uint numCells          = 0;
-		uint envCount          = 0;
 		uint elementCount      = 0;
 
 		Config::Simulator m_config;

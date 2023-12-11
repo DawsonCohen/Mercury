@@ -11,6 +11,8 @@
 #include <list>
 #include <cassert>
 
+#include <Eigen/Dense>
+
 #include "triangulation.h"
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -35,8 +37,6 @@ typedef Tds::Vertex_handle                               Vertex_handle;
 namespace EvoDevo {
 
     Triangulation::Mesh Triangulation::AlphaShape(const std::vector<Mass>& masses) {
-        EV_PROFILE_FUNCTION();
-
         std::list<std::pair<Point, uint16_t>> lp;
         Point p;
 
@@ -88,34 +88,32 @@ namespace EvoDevo {
 
 
         for(const auto& e : as_edges) {
-            // std::cout << e.second << ", " << e.third << std::endl;
-            uint16_t v0 = e.first->vertex(e.second)->info();
-            uint16_t v1 = e.first->vertex(e.third)->info();
-            float dist = (masses[v0].pos - masses[v1].pos).norm();
-            Simplex::Edge edge = {v0, v1, dist};
+            uint16_t v1 = e.first->vertex(e.second)->info();
+            uint16_t v2 = e.first->vertex(e.third)->info();
+            float dist = (masses[v1].pos - masses[v2].pos).norm();
+            Simplex::Edge edge = {v1, v2, dist};
             edges.push_back(edge);
         }
 
         for(const auto& f : as_facets) {
-            // std::cout << e.second << ", " << e.third << std::endl;
-            uint16_t v0 = f.first->vertex((f.second+1)%4)->info();
-            uint16_t v1 = f.first->vertex((f.second+2)%4)->info();
-            uint16_t v2 = f.first->vertex((f.second+3)%4)->info();
+            uint16_t v1 = f.first->vertex((f.second+1)%4)->info();
+            uint16_t v2 = f.first->vertex((f.second+2)%4)->info();
+            uint16_t v3 = f.first->vertex((f.second+3)%4)->info();
 
-            isBoundaryVertexFlags[v0] = true;
             isBoundaryVertexFlags[v1] = true;
             isBoundaryVertexFlags[v2] = true;
-            Simplex::Facet facet = {v0, v1, v2};
+            isBoundaryVertexFlags[v3] = true;
+            Simplex::Facet facet = {v1, v2, v3};
             facets.push_back(facet);
         }
 
         for(const auto& c : as_cells) {
-            uint16_t v0 = c->vertex(0)->info();
-            uint16_t v1 = c->vertex(1)->info();
-            uint16_t v2 = c->vertex(2)->info();
-            uint16_t v3 = c->vertex(3)->info();
+            uint16_t v1 = c->vertex(0)->info();
+            uint16_t v2 = c->vertex(1)->info();
+            uint16_t v3 = c->vertex(2)->info();
+            uint16_t v4 = c->vertex(3)->info();
 
-            Simplex::Cell cell = {v0, v1, v2, v3};
+            Simplex::Cell cell = {v1, v2, v3, v4};
             cells.push_back(cell);
         }
 

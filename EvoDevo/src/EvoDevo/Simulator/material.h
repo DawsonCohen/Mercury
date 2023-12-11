@@ -37,6 +37,11 @@ namespace EvoDevo {
 			float rscalar = 1 / scalar;
 			return Color(r * rscalar, g * rscalar, b * rscalar, a * rscalar);
 		}
+
+		friend inline std::ostream& operator<<(std::ostream& os, const Color& c)
+		{
+			return os << "(" << c.r << ", " << c.g << ", " << c.b << ", " << c.a << ")";
+		}
 	};
 
 	// k - spring constant 
@@ -76,6 +81,11 @@ namespace EvoDevo {
 					std::to_string(color.b) + ", " +
 					std::to_string(color.a);
 		}
+
+		friend inline std::ostream& operator<<(std::ostream& os, const Material& mat)
+		{
+			return os << mat.to_string();
+		}
 	};
 
 	enum MaterialOption {
@@ -110,29 +120,29 @@ namespace EvoDevo {
 
 	class materials {
 		public:
-		static constexpr Material air               = {0 , 0   , 0        , 0       , 0         , 0x01u << 0 , Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle0  = {1 , 500  , AMPLITUDE, OMEGA   , 0   	    , 0x01u << 1 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle1  = {2 , 500  , AMPLITUDE, OMEGA   , M_PI/8    , 0x01u << 2 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle2  = {3 , 500  , AMPLITUDE, OMEGA   , M_PI/4    , 0x01u << 3 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle3  = {4 , 500  , AMPLITUDE, OMEGA   , 3*M_PI/8  , 0x01u << 4 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle4  = {5 , 500  , AMPLITUDE, OMEGA   , M_PI/2    , 0x01u << 5 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle5  = {6 , 500  , AMPLITUDE, OMEGA   , 5*M_PI/8  , 0x01u << 6 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle6  = {7 , 500  , AMPLITUDE, OMEGA   , 3*M_PI/4  , 0x01u << 7 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle7  = {8 , 500  , AMPLITUDE, OMEGA   , 7*M_PI/8  , 0x01u << 8 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle8  = {9 , 500  , AMPLITUDE, OMEGA*2 , 0         , 0x01u << 9 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material adductor_muscle9  = {10, 500  , AMPLITUDE, OMEGA/2 , 0         , 0x01u << 10, Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle0  = {11, 500  , AMPLITUDE, OMEGA   , M_PI      , 0x01u << 11, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle1  = {12, 500  , AMPLITUDE, OMEGA   , 9*M_PI/8  , 0x01u << 12, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle2  = {13, 500  , AMPLITUDE, OMEGA   , 5*M_PI/4  , 0x01u << 13, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle3  = {14, 500  , AMPLITUDE, OMEGA   , 11*M_PI/8 , 0x01u << 14, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle4  = {15, 500  , AMPLITUDE, OMEGA   , 3*M_PI/2  , 0x01u << 15, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle5  = {16, 500  , AMPLITUDE, OMEGA   , 13*M_PI/8 , 0x01u << 16, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle6  = {17, 500  , AMPLITUDE, OMEGA   , 7*M_PI/4  , 0x01u << 17, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle7  = {18, 500  , AMPLITUDE, OMEGA   , 15*M_PI/8 , 0x01u << 18, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle8  = {19, 500  , AMPLITUDE, OMEGA*2 , M_PI      , 0x01u << 19, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material abductor_muscle9  = {20, 500  , AMPLITUDE, OMEGA/2 , M_PI      , 0x01u << 20, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material tissue            = {21, 400  , 0        , OMEGA   , 0         , 0x01u << 21, Color(217.0f/255.0f , 102.0f/255.0f ,  78.0f/255.0f , 0.00f)};
-		static constexpr Material bone              = {22, 1000 , 0        , OMEGA   , 0         , 0x01u << 22, Color(240.0f/255.0f , 209.0f/255.0f ,  98.0f/255.0f , 0.00f)};
+		static constexpr Material air               = {0 , 0   , 0        , 0       , 0         , 0x01u << 0 , Color(  0.0f/255.0f ,   0.0f/255.0f ,   0.0f/255.0f ,  0.00f)};
+		static constexpr Material adductor_muscle0  = {1 , 50  , AMPLITUDE, OMEGA   , 0   	    , 0x01u << 1 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f ,  1.00f)};
+		static constexpr Material adductor_muscle1  = {2 , 50  , AMPLITUDE, OMEGA   , M_PI/8    , 0x01u << 2 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle2  = {3 , 50  , AMPLITUDE, OMEGA   , M_PI/4    , 0x01u << 3 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle3  = {4 , 50  , AMPLITUDE, OMEGA   , 3*M_PI/8  , 0x01u << 4 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle4  = {5 , 50  , AMPLITUDE, OMEGA   , M_PI/2    , 0x01u << 5 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle5  = {6 , 50  , AMPLITUDE, OMEGA   , 5*M_PI/8  , 0x01u << 6 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle6  = {7 , 50  , AMPLITUDE, OMEGA   , 3*M_PI/4  , 0x01u << 7 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle7  = {8 , 50  , AMPLITUDE, OMEGA   , 7*M_PI/8  , 0x01u << 8 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle8  = {9 , 50  , AMPLITUDE, OMEGA*2 , 0         , 0x01u << 9 , Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material adductor_muscle9  = {10, 50  , AMPLITUDE, OMEGA/2 , 0         , 0x01u << 10, Color(106.0f/255.0f , 211.0f/255.0f , 250.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle0  = {11, 50  , AMPLITUDE, OMEGA   , M_PI      , 0x01u << 11, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle1  = {12, 50  , AMPLITUDE, OMEGA   , 9*M_PI/8  , 0x01u << 12, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle2  = {13, 50  , AMPLITUDE, OMEGA   , 5*M_PI/4  , 0x01u << 13, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle3  = {14, 50  , AMPLITUDE, OMEGA   , 11*M_PI/8 , 0x01u << 14, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle4  = {15, 50  , AMPLITUDE, OMEGA   , 3*M_PI/2  , 0x01u << 15, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle5  = {16, 50  , AMPLITUDE, OMEGA   , 13*M_PI/8 , 0x01u << 16, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle6  = {17, 50  , AMPLITUDE, OMEGA   , 7*M_PI/4  , 0x01u << 17, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle7  = {18, 50  , AMPLITUDE, OMEGA   , 15*M_PI/8 , 0x01u << 18, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle8  = {19, 50  , AMPLITUDE, OMEGA*2 , M_PI      , 0x01u << 19, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material abductor_muscle9  = {20, 50  , AMPLITUDE, OMEGA/2 , M_PI      , 0x01u << 20, Color( 89.0f/255.0f , 217.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material tissue            = {21, 40  , 0        , OMEGA   , 0         , 0x01u << 21, Color(217.0f/255.0f , 102.0f/255.0f ,  78.0f/255.0f , 1.00f)};
+		static constexpr Material bone              = {22, 100 , 0        , OMEGA   , 0         , 0x01u << 22, Color(240.0f/255.0f , 209.0f/255.0f ,  98.0f/255.0f , 1.00f)};
 
 		static Material matLookup(unsigned int mat) {
 			switch(mat){

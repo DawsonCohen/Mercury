@@ -114,7 +114,7 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 		area = norm3df(normal.x,normal.y,normal.z);
 		normal = normal / (area + EPS);
 		normal = dot(normal, v) > 0.0f ? normal : -normal;
-		force = -0.5*rho*area*(100*dot(v,normal)*v + 0.2*dot(v,v)*normal);
+		force = -0.5f*rho*area*(100*dot(v,normal)*v + 0.2*dot(v,v)*normal);
 		force = force / 3.0f; // allocate forces evenly amongst masses
 		
 		atomicAdd(&(s_force[face.x].x), force.x);
@@ -173,7 +173,7 @@ void preSolve(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 
 	for(uint i = blockIdx.x * blockDim.x + threadIdx.x;
 		i < cSimOpt.maxMasses; i+=stride) {
-		//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
+		
 		velocity = __ldg(&vel[i]);
 		newPos[i] = __ldg(&pos[i]) + velocity*cSimOpt.dt;
 	}

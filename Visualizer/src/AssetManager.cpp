@@ -12,7 +12,7 @@
 using namespace EvoDevo;
 
 AssetManager::~AssetManager() {
-    for(Elastic::Mesh* asset : m_Assets) {
+    for(auto asset : m_Assets) {
         delete asset;
     }
 }
@@ -52,6 +52,7 @@ void AssetManager::loadAssets(std::string directory) {
 }
 
 void AssetManager::loadRandomAssets(size_t count, RobotType type) {
+    printf("INITIALIZING %lu RANDOM ASSETS\n", count);
     uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
     std::vector<SoftBody*> solutions;

@@ -38,6 +38,10 @@ public:
 	SoftBody() { }
 	~SoftBody() override { }
 
+	SoftBody(const Element& src) : Element(src) {
+		Update(src);
+		updateBaseline();
+	}
 	SoftBody(const SoftBody& src) :
 	Element{src.masses, src.springs, src.faces, src.cells, src.boundaryCount}, Candidate(src),
 	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
@@ -66,21 +70,16 @@ public:
 	float getSimTime() const { return sim_time; }
 	float getTotalSimTime() const { return total_sim_time; }
 	Eigen::Vector3f getCOM() const { return mCOM; }
+	Eigen::Vector3f getBaseCOM() const { return mBaseCOM; }
 	Eigen::Vector3f getClosestPos() const { return mClosestPos; }
     void incrementSimTime(float dt) { sim_time += dt; total_sim_time += dt; }
     void resetSimTime() { sim_time = 0; }
 
-	void Update(Element e) { 
-		masses = e.masses; 
-		springs = e.springs;
-
-		updateFitness();
-	}
-
 	void updateBaseline() {
+		updateLength();
 		updateCOM();
 		mBaseCOM = mCOM;
-		updateLength();
+		std::cout << "BASELINE COM: " << mBaseCOM.x() << std::endl;
 	}
 
 	void Reset() override;

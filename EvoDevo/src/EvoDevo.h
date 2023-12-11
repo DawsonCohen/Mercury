@@ -12,7 +12,5 @@
 #include "EvoDevo/Simulator/Simulator.h"
 
 #include "EvoDevo/Util/util.h"
-#include "EvoDevo/Core/Log.h"
-#include "EvoDevo/Core/Assert.h"
 
 // -----------------------------------

@@ -92,6 +92,13 @@ namespace EvoDevo {
         float sim_time = 0;
         float total_sim_time = 0;
 
+        void Update(Element e) {
+            masses = e.masses;
+            springs = e.springs;
+            faces = e.faces;
+            cells = e.cells;
+        }
+
         friend void swap(Element& e1, Element& e2) {
             using std::swap;
             swap(e1.masses, e2.masses);
@@ -102,6 +109,23 @@ namespace EvoDevo {
             swap(e1.sim_time,e2.sim_time);
             swap(e1.total_sim_time,e2.total_sim_time);
         }
+
+        std::string ToOBJ() const {
+            std::stringstream ss;
+            for(const Mass& m : masses) {
+                ss << "v " << m.pos.x() << " " << m.pos.y() << " " << m.pos.z() << std::endl;
+            }
+
+            for(const Face& f : faces) {
+                ss << "f " << f.m0+1 << " " << f.m1+1 << " " << f.m2+1 << std::endl;
+            }
+
+            for(const Spring& e : springs) {
+                ss << "l " << e.m0+1 << " " << e.m1+1 << std::endl;
+            }
+            return ss.str();
+        }
+        
     };
 
 }

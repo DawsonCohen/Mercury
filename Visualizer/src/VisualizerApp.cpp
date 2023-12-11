@@ -1,11 +1,10 @@
 #include "EvoDevo.h"
-#include "Elastic.h"
+#include <Elastic.h>
+#include "Elastic/Core/EntryPoint.h"
 
-#include "Sandbox2D.h"
+#include "Visualizer.h"
 
-#include "Evaluator.h"
-
-#include <opencv2/opencv.hpp>
+// #include <opencv2/opencv.hpp>
 
 #include <filesystem>
 #include <regex>
@@ -19,15 +18,10 @@ using namespace EvoDevo;
 
 std::string config_file = "configs/config.random";
 
-void handle_commandline_args(int argc, char** argv);
-int handle_file_io();
-
-void Visualize(std::vector<SoftBody>& R);
+void handle_commandline_args(Elastic::ApplicationCommandLineArgs args);
 
 std::string out_sol_video_file;
 std::string in_sol_file;
-
-VisualizerConfig config;
 
 class Sandbox : public Elastic::Application
 {
@@ -35,7 +29,7 @@ public:
 	Sandbox(const Elastic::ApplicationSpecification& specification)
 		: Elastic::Application(specification)
 	{
-		PushLayer(new Sandbox2D());
+		PushLayer(new Visualizer(config_file));
 	}
 
 	~Sandbox()
@@ -46,11 +40,15 @@ public:
 Elastic::Application* Elastic::CreateApplication(Elastic::ApplicationCommandLineArgs args)
 {
 	ApplicationSpecification spec;
-	spec.Name = "Sandbox";
-	spec.WorkingDirectory = "Sandbox";
+	spec.Name = "Visualizer";
+	spec.WorkingDirectory = ".";
 	spec.CommandLineArgs = args;
 
 	handle_commandline_args(args);
+
+
+	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
+	srand(seed);
 
 	return new Sandbox(spec);
 }

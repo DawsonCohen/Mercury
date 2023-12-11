@@ -12,6 +12,7 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <cassert>
 #include <array>
 #include <vector>
 #include <list>
@@ -21,9 +22,5 @@
 #include <memory>
 
 #include "EvoDevo/Core/Base.h"
-
-#include "EvoDevo/Core/Log.h"
-
-#include "EvoDevo/Util/Instrumentor.h"
 
 #endif

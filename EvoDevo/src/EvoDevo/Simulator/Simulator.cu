@@ -26,7 +26,6 @@ namespace EvoDevo {
 		delete[] springBuf;
 		delete[] faceBuf;
 		delete[] cellBuf;
-		delete[] envBuf;
 
 		delete[] m_hCompositeMats_encoding;
 		delete[] m_hCompositeMats_id;
@@ -77,8 +76,6 @@ namespace EvoDevo {
 	Simulator::~Simulator() { if(initialized) freeMemory(); }
 
 	void Simulator::Initialize(Config::Simulator config) {
-		EV_PROFILE_FUNCTION();
-		
 		m_replacedSpringsPerElement = config.replaced_springs_per_element;
 		m_deltaT = config.time_step;
 		m_config = config;
@@ -86,11 +83,7 @@ namespace EvoDevo {
 		_initialize();
 	}
 
-
 	void Simulator::_initialize() {
-		EV_PROFILE_FUNCTION();
-		
-		maxEnvs = 1;
 		m_total_time = 0.0f;
 		
 		if(initialized) freeMemory();
@@ -100,7 +93,6 @@ namespace EvoDevo {
 		springBuf = new Spring[maxSprings];
 		faceBuf   = new Face[maxFaces];
 		cellBuf   = new Cell[maxCells];
-		envBuf 	  = new Environment[1];
 
 		m_hCompositeMats_encoding	= new float[COMPOSITE_COUNT*4];
 		m_hCompositeMats_id			= new float[COMPOSITE_COUNT*4];
@@ -170,11 +162,10 @@ namespace EvoDevo {
 
 		switch(m_config.env_type) {
 			case ENVIRONMENT_LAND:
-				envBuf[0] = EnvironmentLand;
+				m_Environment = EnvironmentLand;
 			case ENVIRONMENT_WATER:
-				envBuf[0] = EnvironmentWater;
+				m_Environment = EnvironmentWater;
 		}
-		envCount++;
 	}
 
 	ElementTracker Simulator::SetElement(const Element& element) {
@@ -184,8 +175,6 @@ namespace EvoDevo {
 	}
 
 	std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& elements) {
-		EV_PROFILE_FUNCTION();
-		
 		std::vector<ElementTracker> trackers;
 
 		// cudaFuncAttributes attr;
@@ -330,7 +319,7 @@ namespace EvoDevo {
 		cudaMemcpy(m_dData.dMassMatEncodings,		m_hMassMatEncodings,   	 numMasses  * sizeof(uint32_t), cudaMemcpyHostToDevice);
 		
 		cudaMemcpy(m_dData.dPairs,  				m_hPairs			  , numSprings*2*sizeof(ushort),  cudaMemcpyHostToDevice);
-		cudaMemcpy(m_dData.dSpringMatEncodings,	m_hSpringMatEncodings , numSprings * sizeof(uint32_t), cudaMemcpyHostToDevice);
+		cudaMemcpy(m_dData.dSpringMatEncodings,		m_hSpringMatEncodings , numSprings * sizeof(uint32_t), cudaMemcpyHostToDevice);
 		cudaMemcpy(m_dData.dSpringMatIds,   		m_hSpringMatIds		  , numSprings * sizeof(uint8_t), cudaMemcpyHostToDevice);
 		cudaMemcpy(m_dData.dLbars,  				m_hLbars			  , numSprings * sizeof(float), cudaMemcpyHostToDevice);
 		cudaMemcpy(m_dData.dSpringIDs,   			m_hSpringIDs		  , numSprings * sizeof(uint), cudaMemcpyHostToDevice);
@@ -390,8 +379,8 @@ namespace EvoDevo {
 			numMasses, numSprings, numFaces, numCells,
 			COMPOSITE_COUNT,
 			shiftskip,
-			envBuf[0].drag,
-			envBuf[0].damping,
+			m_Environment.drag,
+			m_Environment.damping,
 			1.0,
 			0.2
 		};
@@ -452,9 +441,13 @@ namespace EvoDevo {
 		ElementTracker tracker;
 
 		tracker.mass_begin = massBuf + numMasses;
-		tracker.spring_begin = springBuf + numSprings;
 		tracker.mass_end = tracker.mass_begin; 
+		tracker.spring_begin = springBuf + numSprings;
 		tracker.spring_end = tracker.spring_begin;
+		tracker.face_begin = faceBuf + numFaces;
+		tracker.face_end = tracker.face_begin;
+		tracker.cell_begin = cellBuf + numCells;
+		tracker.cell_end = tracker.cell_begin;
 		
 		for(const Mass& m : e.masses) {
 			massBuf[numMasses] = m;
@@ -487,6 +480,7 @@ namespace EvoDevo {
 		count = 0;
 		for(const Face& f : e.faces) {
 			faceBuf[numFaces] = f;
+			tracker.face_end++;
 
 			numFaces++;
 			count++;
@@ -502,6 +496,7 @@ namespace EvoDevo {
 		count = 0;
 		for(const Cell& c : e.cells) {
 			cellBuf[numCells] = c;
+			tracker.cell_end++;
 
 			numCells++;
 			count++;
@@ -562,6 +557,8 @@ namespace EvoDevo {
 	Element Simulator::CollectElement(const ElementTracker& tracker) {
 		std::vector<Mass> result_masses;
 		std::vector<Spring> result_springs;
+		std::vector<Face> result_faces;
+		std::vector<Cell> result_cells;
 
 		for(Mass* i = tracker.mass_begin; i < tracker.mass_end; i++) {
 			result_masses.push_back(*i);
@@ -570,8 +567,16 @@ namespace EvoDevo {
 		for(Spring* i = tracker.spring_begin; i < tracker.spring_end; i++) {
 			result_springs.push_back(*i);
 		}
+
+		for(Face* i = tracker.face_begin; i < tracker.face_end; i++) {
+			result_faces.push_back(*i);
+		}
+
+		for(Cell* i = tracker.cell_begin; i < tracker.cell_end; i++) {
+			result_cells.push_back(*i);
+		}
 		
-		return {result_masses, result_springs};
+		return {result_masses, result_springs, result_faces, result_cells};
 	}
 
 	void key_value_sort(float* d_keys_in, float* d_keys_out, uint* d_values_in, uint* d_values_out, uint items_per_segment, uint num_segments) {
@@ -632,7 +637,7 @@ namespace EvoDevo {
 		};
 		
 		setDevoOpts(opt);
-		devoBodies(m_dData, opt, m_total_time);
+		// devoBodies(m_dData, opt, m_total_time);
 		
 		cudaDeviceSynchronize();
 		gpuErrchk( cudaPeekAtLastError() );

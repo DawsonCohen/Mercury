@@ -2,8 +2,6 @@
 
 #include <memory>
 
-#include "EvoDevo/Core/Log.h"
-
 #ifdef EV_DEBUG
     #include <signal.h>
     #define EV_DEBUGBREAK() raise(SIGTRAP)
@@ -36,6 +34,3 @@ namespace EvoDevo {
 	}
 
 }
-
-#include "EvoDevo/Core/Log.h"
-#include "EvoDevo/Core/Assert.h"

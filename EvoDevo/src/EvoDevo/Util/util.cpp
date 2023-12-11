@@ -14,7 +14,7 @@ namespace EvoDevo {
     void FileWriter::Open(const std::string& filepath, bool append) {
         std::string directory = filepath.substr(0, filepath.find_last_of('/'));
         if (Util::MakeDirectory(directory)) {
-            EV_CORE_ASSERT(false, "Could not create output directory to {0}", directory);
+            std::cerr << "Could not create ouptut directory " << directory << std::endl;
             return;
         };
 
@@ -22,7 +22,7 @@ namespace EvoDevo {
 
         m_OutputStream = std::ofstream(filepath, std::ios::out | (append ? std::ios::app : std::ios::trunc));
 
-        EV_CORE_ASSERT(m_OutputStream.is_open(), "Could not open file {0}", filepath);
+        assert(m_OutputStream.is_open());
 
         this->Write("TEST\n");
     }
@@ -72,7 +72,7 @@ namespace Util {
     int WriteFile(const std::string& filepath, const std::string& datastring, bool append) {
         std::string directory = filepath.substr(0, filepath.find_last_of('/'));
         if (MakeDirectory(directory)) {
-            EV_CORE_ASSERT(false, "Could not create output directory to {0}", directory);
+            std::cerr << "Could not create ouptut directory " << directory << std::endl;
             return 1;
         };
         std::ofstream outfile(filepath, std::ios::out | (append ? std::ios::app : std::ios::trunc));
@@ -156,7 +156,6 @@ namespace Util {
                     std::ifstream file(filename);
                     if(!file.is_open()) {
                         std::cerr << "ERROR: directory file " << filename << " does not exist" << std::endl;
-                        exit(0);
                     }
                     std::string line;
                     std::getline(file, line);
@@ -348,7 +347,6 @@ namespace Util {
         std::ifstream file(filename);
         if(!file.is_open()) {
             std::cerr << "ERROR: config file " << filename << " does not exist" << std::endl;
-            exit(0);
         }
 
         std::string line;

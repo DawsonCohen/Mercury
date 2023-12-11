@@ -16,13 +16,18 @@ cmake_install.cmake
 *.a
 *.cmake
 Makefile
-!optimizer/Makefile
-!common/Makefile
+!EvoDevo/Makefile
+imgui.ini
+*.obj
+
+evodevo
+vis
 
 # Videos and results
 *.avi
 z_results/
 z_archive/
+z_tests/
 *.png
 
 # Environment

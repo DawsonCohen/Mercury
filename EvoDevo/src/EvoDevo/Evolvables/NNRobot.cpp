@@ -67,6 +67,83 @@ namespace EvoDevo {
         weights[num_layers-2] = Eigen::MatrixXf::Random(output_size, hidden_sizes[hidden_sizes.size() - 1]);
     }
 
+    Eigen::MatrixXf relu(const Eigen::MatrixXf& x) {
+            return x.array().max(0);
+        }
+
+    Eigen::MatrixXf tanh(const Eigen::MatrixXf& x) {
+        return x.array().tanh();
+    }
+
+    Eigen::MatrixXf softmax(const Eigen::MatrixXf& input) {
+        Eigen::MatrixXf output(input.rows(), input.cols());
+        for (int j = 0; j < input.cols(); j++) {
+            Eigen::VectorXf col = input.col(j);
+            col.array() -= col.maxCoeff(); // subtract max for numerical stability
+            col = col.array().exp();
+            output.col(j) = col / col.sum();
+        }
+        return output;
+    }
+
+    Eigen::MatrixXf addBias(const Eigen::MatrixXf& A) {
+        Eigen::MatrixXf B(A.rows()+1, A.cols());
+        B.topRows(A.rows()) = A;
+        B.row(A.rows()).setOnes();
+        return B;
+    }
+
+    void NNRobot::forward() {            
+        if(!randMassesFilled) {
+            fillRandMasses(maxMasses);
+        }
+        masses = randMasses;
+        
+        Eigen::MatrixXf input(input_size, masses.size());
+
+        for(size_t i = 0; i < masses.size(); i++) {
+            Mass m = masses[i];
+            input.col(i) << m.protoPos.x(), m.protoPos.y(), m.protoPos.z();
+        }
+
+        Eigen::MatrixXf x = input;
+        for (unsigned int i = 0; i < num_layers-2; i++) {
+            // x = addBias(x);
+            x = weights[i] * x;
+            x = relu(x);
+        }
+
+        // x = addBias(x);
+        x = weights[num_layers-2] * x;
+
+        // tanh activation to position rows
+        // x.topRows(output_size - MATERIAL_COUNT) = tanh(x.topRows(output_size - MATERIAL_COUNT)); 
+        float maxNorm = 0.0f;
+        for (int i = 0; i < x.cols(); ++i) {
+            float norm = x.col(i).head(output_size - MATERIAL_COUNT).norm();
+            if(maxNorm < norm) maxNorm = norm;
+        }
+        x.topRows(output_size - MATERIAL_COUNT) = 10 * x.topRows(output_size - MATERIAL_COUNT) / maxNorm;
+
+        
+        // softmax activation to material rows
+        x.bottomRows(MATERIAL_COUNT) = softmax(x.bottomRows(MATERIAL_COUNT)); 
+
+        Eigen::MatrixXf output = x;
+        Eigen::MatrixXf positions = output.topRows(3);
+        Eigen::MatrixXf material_probs = output.bottomRows(MATERIAL_COUNT);
+        
+        for(uint i = 0; i < masses.size(); i++) {
+            // Eigen::Vector3f = psoitions.col(i);
+            masses[i].pos = masses[i].protoPos = positions.col(i);
+
+            Eigen::VectorXf mat_prob = material_probs.col(i);
+            int maxIdx;
+            mat_prob.maxCoeff(&maxIdx);
+            masses[i].material = materials::matLookup(maxIdx);
+        }
+    }
+
     void NNRobot::Randomize() {
         for(unsigned int i = 0; i < weights.size(); i++) {
             weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
@@ -283,8 +360,6 @@ namespace EvoDevo {
             float dist = edge.dist;
             Material mat1, mat2, mat;
 
-            // std::cout << m1 << ", " << m2 << ", " << dist << std::endl;
-
             if(dist < EPS) {
                 // mat = materials::air;
                 continue;
@@ -303,9 +378,6 @@ namespace EvoDevo {
                     m2 = facet.v2,
                     m3 = facet.v3;
             Face f = {m1, m2, m3};
-            assert(m1 < boundaryCount);
-            assert(m2 < boundaryCount);
-            assert(m3 < boundaryCount);
             faces.push_back(f);
         }
 
@@ -342,6 +414,9 @@ namespace EvoDevo {
         ShiftY(*this);
 
         updateBaseline();
+
+        std::ofstream("robot.obj") << ToOBJ();
+        
     }
 
 }
