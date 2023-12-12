@@ -11,6 +11,7 @@
 Use the following instruction: sudo apt-get install libboost-all-dev
 
 ## Optimization
+Note before building: You will need to customize the makefile to compile for your GPU architecture. On line 6 include the number for your GPU architecture.
 
 ### Build
 
