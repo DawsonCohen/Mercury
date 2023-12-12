@@ -191,9 +191,14 @@ void preSolve(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 		w - phi		phase
 */
 __global__ inline
-void solveDistance(float4 *__restrict__ pos, float4 *__restrict__ newPos, ushort2 *__restrict__ pairs, 
-				float * __restrict__ stresses, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
-				float time, uint step, bool integrateForce)
+void solveDistance(
+	float4 *__restrict__ newPos,
+	ushort2 *__restrict__ pairs, 
+	float * __restrict__ stresses,
+	uint8_t *__restrict__ matIds,
+	float *__restrict__ Lbars,
+	float time, uint step, bool integrateForce
+	)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
@@ -209,7 +214,7 @@ void solveDistance(float4 *__restrict__ pos, float4 *__restrict__ newPos, ushort
 	// Initialize and compute environment forces
 	float4 pos4;
 	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		pos4 = __ldg(&pos[i+massOffset]);
+		pos4 = __ldg(&newPos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
 		s_dp[i] = {0.0f, 0.0f, 0.0f};
 	}
@@ -344,7 +349,6 @@ void integrateBodies(DeviceData deviceData, uint numElements,
 	cudaDeviceSynchronize();
 
 	solveDistance<<<numBlocksSolve,numThreadsPerBlockSolve,sharedMemSizeSolve>>>(
-		(float4*) deviceData.dPos,
 		(float4*) deviceData.dNewPos, (ushort2*)  deviceData.dPairs, 
 		(float*) deviceData.dSpringStresses, (uint8_t*) deviceData.dSpringMatIds, (float*) deviceData.dLbars,
 		time, step, integrateForce);

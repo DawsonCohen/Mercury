@@ -374,15 +374,21 @@ namespace EvoDevo {
 
 		SimOptions opt = {
 			m_deltaT,
-			m_massesPerBlock, m_springsPerBlock, m_facesPerBlock, m_cellsPerBlock,
+			m_massesPerBlock,
+			m_springsPerBlock,
+			m_facesPerBlock,
+			m_cellsPerBlock,
 			boundaryMassesPerBlock,
-			numMasses, numSprings, numFaces, numCells,
+			numMasses,
+			numSprings,
+			numFaces,
+			numCells,
 			COMPOSITE_COUNT,
 			shiftskip,
 			m_Environment.drag,
 			m_Environment.damping,
-			1.0,
-			0.2
+			1.0f,
+			0.2f
 		};
 		
 		uint step_count = 0;

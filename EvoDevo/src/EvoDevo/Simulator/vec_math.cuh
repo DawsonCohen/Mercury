@@ -97,7 +97,8 @@ __device__ __forceinline__ float3 operator*(const float &a, const float3 &vec) {
 	return {
 		__fmul_rn(a, vec.x),
 		__fmul_rn(a, vec.y),
-		__fmul_rn(a, vec.z) };
+		__fmul_rn(a, vec.z)
+	};
 }
 
 __device__ __forceinline__ float3 operator*(const float3 &vec, const float &a) {

@@ -65,6 +65,13 @@ void setSimOpts(SimOptions opt) {
 	cudaMemcpyToSymbol(cSimOpt, &opt, sizeof(SimOptions));
 }
 
+/*
+	mat: float4 describing spring material
+		x - k		stiffness
+		y - dL0 	maximum percent change
+		z - omega	frequency of oscillation
+		w - phi		phase
+*/
 __global__ inline
 void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
                  float4 *__restrict__ vel, ushort4 *__restrict__ faces) {
@@ -114,7 +121,7 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 		area = norm3df(normal.x,normal.y,normal.z);
 		normal = normal / (area + EPS);
 		normal = dot(normal, v) > 0.0f ? normal : -normal;
-		force = -0.5f*rho*area*(100*dot(v,normal)*v + 0.2*dot(v,v)*normal);
+		force = -0.5f*rho*area*(dot(v,normal)*v + 0.2*dot(v,v)*normal);
 		force = force / 3.0f; // allocate forces evenly amongst masses
 		
 		atomicAdd(&(s_force[face.x].x), force.x);
@@ -131,37 +138,11 @@ void surfaceDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 	}
 
 	for(i = tid; i < cSimOpt.boundaryMassesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		x0 = s_pos[i];
-		v0 = s_vel[i];
+		// force = {0.0f, 0.0f, 0.0f};
 		force = s_force[i];
-		newPos[i+massOffset].x = x0.x + v0.x*cSimOpt.dt + force.x*cSimOpt.dt*cSimOpt.dt;
-		newPos[i+massOffset].y = x0.y + v0.y*cSimOpt.dt + force.y*cSimOpt.dt*cSimOpt.dt;
-		newPos[i+massOffset].z = x0.z + v0.z*cSimOpt.dt + force.z*cSimOpt.dt*cSimOpt.dt;
-	}
-}
-
-__global__ inline
-void pointDragForce(float4 *__restrict__ pos, float4 *__restrict__ newPos,
-                 float4 *__restrict__ vel) {
-	int stride = blockDim.x * gridDim.x;
-	float4 velocity, pos4;
-
-	float3 force;
-	float  mag_vel;
-	for(uint i = blockIdx.x * blockDim.x + threadIdx.x;
-		i < cSimOpt.maxMasses; i+=stride) {
-		//Force due to drag = - (1/2 * rho * |v|^2 * A * Cd) * v / |v| (Assume A and Cd are 1)
-		velocity = __ldg(&vel[i]);
-		mag_vel = norm3df(velocity.x,velocity.y,velocity.z);
-
-		force.x = -0.5*cSimOpt.drag*mag_vel*velocity.x;
-		force.y = -0.5*cSimOpt.drag*mag_vel*velocity.y;
-		force.z = -0.5*cSimOpt.drag*mag_vel*velocity.z;
-
-		pos4 = __ldg(&pos[i]);
-		newPos[i].x = pos4.x + velocity.x*cSimOpt.dt + force.x*cSimOpt.dt*cSimOpt.dt;
-		newPos[i].y = pos4.y + velocity.y*cSimOpt.dt + force.y*cSimOpt.dt*cSimOpt.dt;
-		newPos[i].z = pos4.z + velocity.z*cSimOpt.dt + force.z*cSimOpt.dt*cSimOpt.dt;
+		vel[i+massOffset].x += force.x*cSimOpt.dt;
+		vel[i+massOffset].y += force.y*cSimOpt.dt;
+		vel[i+massOffset].z += force.z*cSimOpt.dt;
 	}
 }
 
@@ -179,21 +160,15 @@ void preSolve(float4 *__restrict__ pos, float4 *__restrict__ newPos,
 	}
 }
 
-
-/*
-	Exended Positon Based Dynamics
-	Computes lagrangian (force) for each distance constraint (spring)
-
-	mat: float4 describing spring material
-		x - k		stiffness
-		y - dL0 	maximum percent change
-		z - omega	frequency of oscillation
-		w - phi		phase
-*/
-__global__ inline
-void solveDistance(float4 *__restrict__ newPos, ushort2 *__restrict__ pairs, 
-				float * __restrict__ stresses, uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
-				float time, uint step, bool integrateForce)
+__global__ void
+inline solveDistance(
+	float4 *__restrict__ newPos,
+	ushort2 *__restrict__ pairs, 
+	float * __restrict__ stresses,
+	uint8_t *__restrict__ matIds,
+	float *__restrict__ Lbars,
+	float time, uint step, bool integrateForce
+	)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
@@ -211,27 +186,30 @@ void solveDistance(float4 *__restrict__ newPos, ushort2 *__restrict__ pairs,
 	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		pos4 = __ldg(&newPos[i+massOffset]);
 		s_pos[i] = {pos4.x,pos4.y,pos4.z};
+	}
+	
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		s_dp[i] = {0.0f, 0.0f, 0.0f};
 	}
 
 	__syncthreads();
 
-	float4	 mat;
-	uint8_t  matId;
+	float4	mat;
+	uint8_t matId;
 
-	float3	 pos0, pos1;
-	float	 Lbar,
-			 C, alpha,
-			 lambda;
-	ushort	 v0, v1;
-	ushort2	 pair;
+	float3	pos0, pos1;
+	float	Lbar,
+			C, alpha,
+			lambda;
+	ushort  v0, v1;
+	ushort2	pair;
 
 	float3	distance, n;
 
 	float	relative_change,
 			rest_length,
 			d, K;
-	float3  dp;
+	float3	dp;
 	
 	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
 		matId = __ldg(&matIds[i+springOffset]);
@@ -244,7 +222,7 @@ void solveDistance(float4 *__restrict__ newPos, ushort2 *__restrict__ pairs,
 		pos1 = s_pos[v1];
 
 		mat = compositeMats_id[ matId ];
-		alpha = 1.0f / mat.x / cSimOpt.dt / cSimOpt.dt;
+		alpha = 1.0f/ mat.x / cSimOpt.dt / cSimOpt.dt;
 		// rest_length = mean_length * (1 + relative_change);
 		relative_change = mat.y * sinf(mat.z*time+mat.w);
 		rest_length = __fmaf_rn(Lbar, relative_change, Lbar);
@@ -270,6 +248,7 @@ void solveDistance(float4 *__restrict__ newPos, ushort2 *__restrict__ pairs,
 	}
 	__syncthreads();
 
+	// Calculate and store new mass states
 	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		pos4 =__ldg(&newPos[i+massOffset]);
 		pos4.x += s_dp[i].x;
@@ -344,12 +323,17 @@ void integrateBodies(DeviceData deviceData, uint numElements,
 	cudaDeviceSynchronize();
 
 	solveDistance<<<numBlocksSolve,numThreadsPerBlockSolve,sharedMemSizeSolve>>>(
-		(float4*) deviceData.dNewPos, (ushort2*)  deviceData.dPairs, 
-		(float*) deviceData.dSpringStresses, (uint8_t*) deviceData.dSpringMatIds, (float*) deviceData.dLbars,
+		(float4*) deviceData.dNewPos,
+		(ushort2*)  deviceData.dPairs, 
+		(float*) deviceData.dSpringStresses,
+		(uint8_t*) deviceData.dSpringMatIds,
+		(float*) deviceData.dLbars,
 		time, step, integrateForce);
 	cudaDeviceSynchronize();
 		
-	update<<<numBlocksUpdate,numThreadsPerBlockUpdate>>>((float4*) deviceData.dPos, (float4*) deviceData.dNewPos,
+	update<<<numBlocksUpdate,numThreadsPerBlockUpdate>>>(
+		(float4*) deviceData.dPos,
+		(float4*) deviceData.dNewPos,
 		(float4*) deviceData.dVel);
 	cudaDeviceSynchronize();
 }

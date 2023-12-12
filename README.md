@@ -58,23 +58,17 @@ make [-j12]
 
 ## Requirements
 libassimp-dev
-opencv
 
 ### Build
-1. cd visualize
-1. cmake .
-1. make [-j12]
-1. ./visualizer configs/config.verify
+``````
+git submodule add --init --recursive
+cd Visualizer
+make [-j12]
+./vis
+```````
 
 ### Controls
 
 - WASD: move camera
 - Mouseclick: tilt camera
 - TAB: switch solution
-
-### Config Options
-- VERIFY	    opens robot solutions from folder
-- WRITE_VIDEO:  writes video to file
-- ZOO:          visualizes mulitple solutions at once
-- BOUNCE        starts solutions above ground level
-- STATIONARY    turns off gravity

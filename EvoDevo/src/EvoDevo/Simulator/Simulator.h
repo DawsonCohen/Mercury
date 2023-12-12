@@ -6,7 +6,7 @@
 #include "EvoDevo/Simulator/element.h"
 #include "EvoDevo/Simulator/softbodysystem.h"
 #include <memory>
-
+#include <cassert>
 namespace EvoDevo {
 
 	// TODO: Face statistics if necessary??

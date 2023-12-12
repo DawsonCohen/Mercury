@@ -30,10 +30,13 @@ void Visualizer::Config(VisualizerConfig config)
 			m_Environment = EnvironmentWater;
 			break;
 	}
+	m_Environment.drag = 0.0f;
 
 	m_deltaT = config.simulator.time_step;
-	
+	m_deltaT = 0.0001f;
+
 	m_Sim.Initialize(m_Config.simulator);
+	m_Sim.SetEnvironment(m_Environment);
 	
 	if(config.objectives.verify) {
 		m_AssetManager.loadAssets(config.io.in_dir);
@@ -104,7 +107,7 @@ void Visualizer::OnImGuiRender()
 	EL_PROFILE_FUNCTION();
 
 	ImGui::Begin("Settings");
-	ImGui::SliderFloat("drag", &m_Environment.drag, 0.0f, 2000.0f);
+	ImGui::SliderFloat("drag", &m_Environment.drag, 0.0f, 1500.0f);
 	ImGui::SliderFloat("deltaT", &m_deltaT, 0.00001f, 0.005f, "%.7f");
 	ImGui::End();
 

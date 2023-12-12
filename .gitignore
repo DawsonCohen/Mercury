@@ -2,6 +2,7 @@
 ##folders
 obj/
 CMakeFiles
+build
 
 ##files
 visualize/visualizer
