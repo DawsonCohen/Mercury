@@ -10,6 +10,11 @@
 3) Install the boost library
 Use the following instruction: sudo apt-get install libboost-all-dev
 
+4) Install Libgmp and copy it into common/lib
+- sudo apt-get install libgmp3-dev
+- Find where it's installed (dpkg -L libgmp3-dev)
+- Move or copy all the files into common/lib (You need all the libgmp and libgmpxx files)
+
 ## Optimization
 Note before building: You will need to customize the makefile to compile for your GPU architecture. On line 6 include the number for your GPU architecture.
 
