@@ -1,11 +1,12 @@
 # Simulation Instructions
 ## Requirements:
 1) Install c++/ [g++](https://linuxconfig.org/how-to-install-g-the-c-compiler-on-ubuntu-22-04-lts-jammy-jellyfish-linux)
-Check using gcc --version (Should be 11.4 on new machines)
+- Check using gcc --version (Should be 11.4 on new machines)
 2) Install cuda
-a) Download cuda using this [guide](https://developer.nvidia.com/cuda-downloads?target_os=Linux)
-b) Add to path using this instruction: export PATH=/usr/local/cuda-12.3/bin${PATH:+:${PATH}} (If using a different cuda version, change the number in the instruction to match)
-Check using nvcc --version (Should match the downloaded cuda version, 12.3 at time of writing)
+- Download cuda using this [guide](https://developer.nvidia.com/cuda-downloads?target_os=Linux)
+- Add to path using this instruction: export PATH=/usr/local/cuda-12.3/bin${PATH:+:${PATH}} (If using a different cuda version, change the number in the instruction to match)
+- Check using nvcc --version (Should match the downloaded cuda version, 12.3 at time of writing)
+
 3) Install the boost library
 Use the following instruction: sudo apt-get install libboost-all-dev
 
