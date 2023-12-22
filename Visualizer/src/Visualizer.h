@@ -37,12 +37,15 @@ private:
 	float m_FrameRate = 60.0f;
 	float m_TimeStep = 1.0f / m_FrameRate;
 
-	float m_deltaT = 0.0001f;
+	RobotModel* m_CurrentRobot;
+
+	float m_deltaT = 0.001f;
 	EvoDevo::Environment m_Environment;
 	RobotModel* m_RobotModel;
 	ForceMesh m_ForceMesh;
 	bool m_ShowFaces = true;
 	bool m_ShowForces = false;
+	float m_FaceAlpha = 0.8;
 	
     VisualizerConfig m_Config;
     AssetManager m_AssetManager;

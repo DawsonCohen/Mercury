@@ -39,9 +39,9 @@ int main(int argc, char** argv)
 	
 	switch(config.robot_type) 
 	{
-		/*case ROBOT_VOXEL:
-			Evaluator<VoxelRobot>::Initialize(config);
-			break;*/
+		case EvoDevo::ROBOT_VOXEL:
+			EvoDevo::Evaluator<EvoDevo::VoxelRobot>::Initialize(config);
+			break;
 		case EvoDevo::ROBOT_NN:
 		default:
 			EvoDevo::Evaluator<EvoDevo::NNRobot>::Initialize(config);
@@ -50,14 +50,14 @@ int main(int argc, char** argv)
 
 	switch(config.robot_type)
 	{
-		/*case ROBOT_VOXEL:
+		case EvoDevo::ROBOT_VOXEL:
 		{
-			std::vector<VoxelRobot> v_solutions = Solve<VoxelRobot>();
-			for(VoxelRobot R : v_solutions) {
+			std::vector<EvoDevo::VoxelRobot> v_solutions = Solve<EvoDevo::VoxelRobot>();
+			for(EvoDevo::VoxelRobot R : v_solutions) {
 				solutions.push_back(R);
 			}
 		}
-		break;*/
+			break;
 		case EvoDevo::ROBOT_NN:
 		default:
 		{

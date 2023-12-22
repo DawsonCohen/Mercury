@@ -27,7 +27,7 @@ SPRINGS_PER_MASS=20
 HIDDEN_LAYER_SIZES=200,200
 
 # Evaluator Parameters
-BASE_TIME=1.0
+BASE_TIME=0.0
 EVAL_TIME=10.0
 
 # Development Parameters

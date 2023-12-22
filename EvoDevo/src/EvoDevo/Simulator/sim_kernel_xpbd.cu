@@ -4,7 +4,15 @@
 #include <assert.h>
 
 #define EPS (float) 1e-12
-
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
 namespace EvoDevo {
 
 struct SimOptions {
@@ -57,16 +65,16 @@ struct DeviceData {
 __constant__ float4 compositeMats_id[COMPOSITE_COUNT];
 __constant__ SimOptions cSimOpt;
 
-void setCompositeMats_id(float* compositeMats, uint count) {
-	cudaMemcpyToSymbol(compositeMats_id, compositeMats, sizeof(float)*4*count);
-}
+// void setCompositeMats_id(float* compositeMats, uint count) {
+// 	cudaMemcpyToSymbol(compositeMats_id, compositeMats, sizeof(float)*4*count);
+// }
 
-void setSimOpts(SimOptions opt) {
-	cudaMemcpyToSymbol(cSimOpt, &opt, sizeof(SimOptions));
-}
+// void setSimOpts(SimOptions opt) {
+// 	cudaMemcpyToSymbol(cSimOpt, &opt, sizeof(SimOptions));
+// }
 
 __device__
-void surfaceDragForce(
+void surfaceDragForceXPBD(
 		ushort4 face,
 		const float3 *s_pos,
 		const float3 *s_vel,
@@ -98,58 +106,33 @@ void surfaceDragForce(
 		atomicAdd(&(s_force[face.z].z), force.z);
 }
 
-
 /*
+	Exended Positon Based Dynamics
+	Computes lagrangian (force) for each distance constraint (spring)
+
 	mat: float4 describing spring material
 		x - k		stiffness
 		y - dL0 	maximum percent change
 		z - omega	frequency of oscillation
 		w - phi		phase
 */
-__device__
-inline void springForce(const float3& bl, const float3& br, const float4& mat, 
-					float mean_length, float time,
-					float3& force, float& magF)
-{
-	float3	dir, diff;
-
-	float	relative_change,
-			rest_length,
-			Lsqr, rL, L;
-
-	// rest_length = mean_length * (1 + relative_change);
-	relative_change = mat.y * sinf(mat.z*time+mat.w);
-	rest_length = __fmaf_rn(mean_length, relative_change, mean_length);
-	
-	diff.x = bl.x - br.x;
-	diff.y = bl.y - br.y;
-	diff.z = bl.z - br.z;
-
-	Lsqr = dot(diff,diff);
-	L = __fsqrt_rn(Lsqr);
-	rL = rsqrtf(Lsqr);
-
-	dir = {
-		__fmul_rn(diff.x,rL),
-		__fmul_rn(diff.y,rL),
-		__fmul_rn(diff.z,rL)
-	};
-	magF = mat.x*(rest_length-L);
-	force = magF * dir;
-}
-
-__global__ void
-inline solveIntegrateBodies(
-	float4 *__restrict__ pos, float4 *__restrict__ vel,
-	ushort2 *__restrict__ pairs, ushort4* __restrict__ faces,
-	float* stresses,
-	uint8_t *__restrict__ matIds, float *__restrict__ Lbars,
-	float time, uint step, bool integrateForce)
+__global__ 
+void solveIntegrateBodiesXPBD(
+	float4 *__restrict__ pos,
+	float4 *__restrict__ vel,
+	ushort2 *__restrict__ pairs, 
+	ushort4 *__restrict__ faces, 
+	float * __restrict__ stresses,
+	uint8_t *__restrict__ matIds,
+	float *__restrict__ Lbars,
+	float time, uint step, bool integrateForce
+	)
 {
 	extern __shared__ float3 s[];
 	float3  *s_pos = s;
 	float3  *s_vel = (float3*) &s_pos[cSimOpt.massesPerBlock];
-	float3  *s_force = (float3*) &s_vel[cSimOpt.massesPerBlock];
+	float3  *s_dp  = (float3*) &s_vel[cSimOpt.massesPerBlock];
+	float3  *s_force  = s_dp;
 	
 	uint massOffset   = blockIdx.x * cSimOpt.massesPerBlock;
 	uint springOffset = blockIdx.x * cSimOpt.springsPerBlock;
@@ -164,78 +147,100 @@ inline solveIntegrateBodies(
 	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
 		pos4 = __ldg(&pos[i+massOffset]);
 		vel4 = __ldg(&vel[i+massOffset]);
-		s_pos[i] = {pos4.x,pos4.y,pos4.z};
-		s_vel[i] = {vel4.x,vel4.y,vel4.z};
+		s_pos[i] = { pos4.x, pos4.y, pos4.z };
+		s_vel[i] = { vel4.x, vel4.y, vel4.z };
 		s_force[i] = {0.0f, 0.0f, 0.0f};
 	}
 	__syncthreads();
 
 	for(i = tid; i < cSimOpt.facesPerBlock && (i+faceOffset) < cSimOpt.maxFaces; i+=stride) {
-		surfaceDragForce(
+		surfaceDragForceXPBD(
 			__ldg(&faces[i+faceOffset]),
 			s_pos, s_vel, s_force);
 	}
 	__syncthreads();
-	
 
-	float4	 mat;
-	float3	 bl, br;
-	float3	 force;
-	ushort2	 pair;
-	uint8_t  matId;
-	float	 Lbar,
-			 magF = 0x0f;
-	ushort	 left, right;
+	float3 force3;
+	for(i = tid; i < cSimOpt.boundaryMassesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		force3 = s_force[i];
+		s_vel[i] = s_vel[i] + force3*cSimOpt.dt;
+		s_dp[i] = {0.0f, 0.0f, 0.0f};
+	}
+	
+	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
+		s_pos[i] = s_pos[i] + s_vel[i]*cSimOpt.dt;
+	}
+
+	__syncthreads();
+
+	float4	mat;
+	uint8_t matId;
+
+	float3	pos0, pos1;
+	float	Lbar,
+			C, alpha,
+			lambda;
+	ushort  v0, v1;
+	ushort2	pair;
+
+	float3	distance, n;
+
+	float	relative_change,
+			rest_length,
+			d, K;
+	float3	dp;
 	
 	for(i = tid; i < cSimOpt.springsPerBlock && (i+springOffset) < cSimOpt.maxSprings; i+=stride) {
 		matId = __ldg(&matIds[i+springOffset]);
 		if(matId == materials::air.id) continue;
 
 		pair = __ldg(&pairs[i+springOffset]);
-		left  = pair.x;
-		right = pair.y;
-		bl = s_pos[left];
-		br = s_pos[right];
+		Lbar = __ldg(&Lbars[i+springOffset]);
+		v0 = pair.x; v1 = pair.y;
+		pos0 = s_pos[v0];
+		pos1 = s_pos[v1];
 
 		mat = compositeMats_id[ matId ];
+		alpha = 1.0f/ mat.x / cSimOpt.dt / cSimOpt.dt;
+		// rest_length = mean_length * (1 + relative_change);
+		relative_change = mat.y * sinf(mat.z*time+mat.w);
+		rest_length = __fmaf_rn(Lbar, relative_change, Lbar);
+		
+		K = 2.0f + alpha;
+		distance = pos0-pos1;
+		d = l2norm(distance);
+		n = distance / (d + EPS);
+		
+		C = d-rest_length;
+		lambda = -(C) / (K);
+		dp = lambda * n;
 
-		Lbar = __ldg(&Lbars[i+springOffset]);
-		springForce(bl,br,mat,Lbar,time, force, magF);
+		if(integrateForce) stresses[i+springOffset] += lambda / Lbar;
 
-		if(integrateForce) stresses[i+springOffset] += magF / Lbar;
+		atomicAdd(&(s_dp[v0].x), dp.x);
+		atomicAdd(&(s_dp[v0].y), dp.y);
+		atomicAdd(&(s_dp[v0].z), dp.z);
 
-		atomicAdd(&(s_force[left].x), force.x);
-		atomicAdd(&(s_force[left].y), force.y);
-		atomicAdd(&(s_force[left].z), force.z);
-
-		atomicAdd(&(s_force[right].x), -force.x);
-		atomicAdd(&(s_force[right].y), -force.y);
-		atomicAdd(&(s_force[right].z), -force.z);
+		atomicAdd(&(s_dp[v1].x), -dp.x);
+		atomicAdd(&(s_dp[v1].y), -dp.y);
+		atomicAdd(&(s_dp[v1].z), -dp.z);
 	}
 	__syncthreads();
 
 	// Calculate and store new mass states
-	float3 oldPos, pos3, vel3;
+	float3 newPos3;
 	for(i = tid; i < cSimOpt.massesPerBlock && (i+massOffset) < cSimOpt.maxMasses; i+=stride) {
-		oldPos = s_pos[i];
-		vel3 = s_vel[i];
-
-		// new position = old position + velocity * deltaTime
-		// s_pos[i] += vel3 * cSimOpt.dt + s_force[i] * cSimOpt.dt*cSimOpt.dt;
-		// s_pos[i] += s_vel[i]*cSimOpt.dt + s_force[i]*cSimOpt.dt*cSimOpt.dt;
-		s_pos[i].x += vel3.x * cSimOpt.dt + s_force[i].x * cSimOpt.dt*cSimOpt.dt;
-		s_pos[i].y += vel3.y * cSimOpt.dt + s_force[i].y * cSimOpt.dt*cSimOpt.dt;
-		s_pos[i].z += vel3.z * cSimOpt.dt + s_force[i].z * cSimOpt.dt*cSimOpt.dt;
-
-		// store new position and velocity
-		pos3 = s_pos[i];
-		vel3 = cSimOpt.damping * (pos3 - oldPos) / cSimOpt.dt;
-		pos[i+massOffset] = {pos3.x, pos3.y, pos3.z};
-		vel[i+massOffset] = {vel3.x, vel3.y, vel3.z};
+		pos4 = __ldg(&pos[i+massOffset]);
+		newPos3 = s_pos[i];
+		newPos3 = newPos3 + s_dp[i];
+		pos[i+massOffset] = { newPos3.x, newPos3.y, newPos3.z, pos4.w };
+		vel[i+massOffset].x = 0.99*(newPos3.x - pos4.x) / cSimOpt.dt;
+		vel[i+massOffset].y = 0.99*(newPos3.y - pos4.y) / cSimOpt.dt;
+		vel[i+massOffset].z = 0.99*(newPos3.z - pos4.z) / cSimOpt.dt;
 	}
 }
 
-void integrateBodies(DeviceData deviceData, uint numElements,
+void integrateBodiesXPBD(DeviceData deviceData, uint numElements,
 	SimOptions opt, 
 	float time, uint step, bool integrateForce
 	) {
@@ -270,34 +275,21 @@ void integrateBodies(DeviceData deviceData, uint numElements,
 	uint numBlocksPreSolve = (opt.maxMasses + numThreadsPerBlockPreSolve - 1) / numThreadsPerBlockPreSolve;
 	uint numBlocksUpdate = (opt.maxMasses + numThreadsPerBlockUpdate - 1) / numThreadsPerBlockUpdate;
 
-	solveIntegrateBodies<<<numBlocksSolve,numThreadsPerBlockPreSolve,sharedMemSizeSolve>>>(
-				(float4*) deviceData.dPos, (float4*) deviceData.dVel,
-				(ushort2*)  deviceData.dPairs, (ushort4*) deviceData.dFaces,
-				(float*) deviceData.dSpringStresses,
-				(uint8_t*) deviceData.dSpringMatIds,  (float*) deviceData.dLbars,
-				time, step, integrateForce);
-
-	// surfaceDragForce<<<numBlocksDrag,numThreadsPerBlockDrag,sharedMemSizeDrag>>>(
-	// 	(float4*) deviceData.dPos, (float4*) deviceData.dNewPos, 
-	// 	(float4*) deviceData.dVel, (ushort4*) deviceData.dFaces);
-	// pointDragForce<<<numBlocksPreSolve,numThreadsPerBlockPreSolve>>>(
-	// 	(float4*) deviceData.dPos, (float4*) deviceData.dNewPos, 
-	// 	(float4*) deviceData.dVel);
+	// if(opt.boundaryMassesPerBlock > 0) {
+		// surfaceDragForce<<<numBlocksDrag,numThreadsPerBlockDrag,sharedMemSizeDrag>>>(
+		// 	(float4*) deviceData.dPos, (float4*) deviceData.dVel, (ushort4*) deviceData.dFaces);
+	// }
 	// cudaDeviceSynchronize();
 
-	// preSolve<<<numBlocksPreSolve, numThreadsPerBlockPreSolve>>>(
-	// 	(float4*) deviceData.dPos, (float4*) deviceData.dNewPos,
-	// 	(float4*) deviceData.dVel);
-	// cudaDeviceSynchronize();
-
-	// solveDistance<<<numBlocksSolve,numThreadsPerBlockSolve,sharedMemSizeSolve>>>(
-	// 	(float4*) deviceData.dNewPos, (ushort2*)  deviceData.dPairs, 
-	// 	(float*) deviceData.dSpringStresses, (uint8_t*) deviceData.dSpringMatIds, (float*) deviceData.dLbars,
-	// 	time, step, integrateForce);
-	// cudaDeviceSynchronize();
-		
-	// update<<<numBlocksUpdate,numThreadsPerBlockUpdate>>>((float4*) deviceData.dPos, (float4*) deviceData.dNewPos,
-	// 	(float4*) deviceData.dVel);
+	solveIntegrateBodiesXPBD<<<numBlocksSolve,numThreadsPerBlockSolve,sharedMemSizeSolve>>>(
+		(float4*) deviceData.dPos,
+		(float4*) deviceData.dVel,
+		(ushort2*)  deviceData.dPairs,
+		(ushort4*) deviceData.dFaces, 
+		(float*) deviceData.dSpringStresses,
+		(uint8_t*) deviceData.dSpringMatIds,
+		(float*) deviceData.dLbars,
+		time, step, integrateForce);
 	cudaDeviceSynchronize();
 }
 

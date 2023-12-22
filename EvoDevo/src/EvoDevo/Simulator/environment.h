@@ -29,7 +29,7 @@ const Environment EnvironmentWater {
 	0.0,
 	0.0f,
 	0.0f,
-	1000.0f,
+	500.0f,
 	0.99f
 };
 

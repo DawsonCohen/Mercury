@@ -40,7 +40,6 @@ namespace EvoDevo {
         float rest_length;
         float mean_length;
         Material material;
-        ushort group = 0;
 
         friend std::ostream& operator<<(std::ostream& out, const Spring& s) {
             out << std::setprecision(9);
@@ -148,7 +147,6 @@ namespace EvoDevo {
 
     private:
 		void SortBoundaryMasses();
-		void SortSprings();
         void GroupFaces();
         void GroupSprings();
         bool preProcessed = false;

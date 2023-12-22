@@ -11,7 +11,7 @@
 #include <cassert>
 #include "visualizer_util.h"
 
-namespace Visualizer {
+namespace Vis {
 
 VisualizerConfig Util::ReadConfigFile(const std::string& filename) {
     std::unordered_map<std::string, std::string> config_map;

@@ -26,7 +26,7 @@ FileWriter fw;
 
 int main(int argc, char** argv)
 {
-	// sim.Initialize(solution.masses.size(),solution.springs.size(), POP_SIZE);
+	// sim.Initialize(solution.masses.size(),solution.GetSprings().size(), POP_SIZE);
 	uint seed = std::chrono::system_clock::now().time_since_epoch().count();
     srand(seed);
 
@@ -62,10 +62,11 @@ int main(int argc, char** argv)
 void VoxelBenchmark() {
 	printf("BENCHMARKING VOXELS\n");
 	VoxelRobot R;
+	R.Build();
 
 	uint pop_size = INIT_POP_SIZE;
 
-	ulong num_springs = R.getSprings().size() * (MAX_TIME / sim.getDeltaT());
+	ulong num_springs = R.GetSprings().size() * (MAX_TIME / sim.getDeltaT());
 
 	fw.Open(out_dir + "/voxel_benchmark.csv");
 	fw << "springs simulated, execute time, springs per second\n";
@@ -74,14 +75,17 @@ void VoxelBenchmark() {
 
 
 	while(num_springs < MAX_SPRINGS) {
-		std::vector<Element> robots;
+		std::vector<VoxelRobot> robots;
+		std::vector<Element> robot_elements;
 		for(uint i = 0; i < pop_size; i++) {
 			robots.push_back(R);
 		}
+		VoxelRobot::BatchBuild(robots);
 
-		// printf("POPULATION SIZE:\t%u ROBOTS\n", pop_size);
-		
-		sim.SetElements(robots);
+		for(auto& R : robots) {
+			robot_elements.push_back(R);
+		}
+		sim.SetElements(robot_elements);
 
 		printf("STARTED\n");
 		auto start = std::chrono::high_resolution_clock::now();
@@ -94,7 +98,7 @@ void VoxelBenchmark() {
 
 		num_springs = 0;
 		for(auto& R : robots) {
-			num_springs += R.springs.size();
+			num_springs += R.GetSprings().size();
 		}
 		num_springs = num_springs * (MAX_TIME / sim.getDeltaT());
 		float springs_per_sec = num_springs / execute_time;
@@ -112,10 +116,11 @@ void VoxelBenchmark() {
 void StressBenchmark() {
 	printf("BENCHMARKING VOXEL STRESSES\n");
 	VoxelRobot R;
+	R.Build();
 
 	uint pop_size = INIT_POP_SIZE;
 
-	ulong num_springs = R.getSprings().size() * (MAX_TIME / sim.getDeltaT());
+	ulong num_springs = R.GetSprings().size() * (MAX_TIME / sim.getDeltaT());
 
 	fw.Open(out_dir + "/stress_benchmark.csv");
 	fw << "springs simulated, execute time, springs per second\n";
@@ -144,7 +149,7 @@ void StressBenchmark() {
 
 		num_springs = 0;
 		for(auto& R : robots) {
-			num_springs += R.springs.size();
+			num_springs += R.GetSprings().size();
 		}
 		num_springs = num_springs * (MAX_TIME / sim.getDeltaT());
 		float springs_per_sec = num_springs / execute_time;
@@ -161,6 +166,7 @@ void StressBenchmark() {
 void DevoBenchmark() {
 	printf("BENCHMARKING VOXEL DEVOS\n");
 	VoxelRobot R;
+	R.Build();
 
 	uint pop_size = INIT_POP_SIZE;
 
@@ -234,7 +240,7 @@ void NNBuildBenchmark() {
 
 		num_springs = 0;
 		for(auto& R : robots) {
-			num_springs += R.getSprings().size();
+			num_springs += R.GetSprings().size();
 		}
 		float springs_per_sec = num_springs / execute_time;
 
@@ -270,13 +276,11 @@ void NNBenchmark() {
 			R.Randomize();
 			robots.push_back(R);
 		}
-		NNRobot::BatchBuild(robots);
 		auto end = std::chrono::high_resolution_clock::now();
+		NNRobot::BatchBuild(robots);
 
 		execute_time = std::chrono::duration<float>(end - start).count();
 		printf("BUILT %u ROBOTS IN %f SECONDS\n", pop_size, execute_time);
-
-		// NNRobot::BatchBuild(robots);
 
 		for(auto& R : robots) {
 			robot_elements.push_back(R);
@@ -300,7 +304,7 @@ void NNBenchmark() {
 
 		num_springs = 0;
 		for(auto& R : robot_elements) {
-			num_springs += R.springs.size();
+			num_springs += R.GetSprings().size();
 		}
 		num_springs = num_springs * (MAX_TIME / sim.getDeltaT());
 		float springs_per_sec = num_springs / execute_time;

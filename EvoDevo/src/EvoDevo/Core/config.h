@@ -65,7 +65,7 @@ namespace EvoDevo {
 		struct Simulator {
 			bool visual = false;
 			uint replaced_springs_per_element = 128;
-			float time_step = 0.005f;
+			float time_step = 0.001f;
 			EnvironmentType env_type = ENVIRONMENT_WATER;
 		} simulator;
 

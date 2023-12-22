@@ -60,6 +60,7 @@ CUDA_OBJS := $(patsubst %.cu,$(OBJDIR)/%.o,$(notdir $(CUDA_SRCS)))
 
 # Included libraries
 INCLUDE_DIRS := -Isrc -Ivendor/spdlog/include -Ivendor/gmp -Ivendor/CGAL-5.6/include -Ivendor/eigen
+LIB_DIRS := -Lvendor/lib
 LIB_NAMES := -lgmp
 
 CXXFLAGS += $(INCLUDE_DIRS)

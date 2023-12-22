@@ -168,38 +168,30 @@ namespace EvoDevo {
 		}
 	}
 
-	ElementTracker Simulator::SetElement(const Element& element) {
+	ElementTracker Simulator::SetElement(Element& element) {
 		std::vector<Element> elements = {element};
 		std::vector<ElementTracker> trackers = SetElements(elements);
 		return trackers[0];
 	}
 
-	std::vector<ElementTracker> Simulator::SetElements(const std::vector<Element>& elements) {
+	std::vector<ElementTracker> Simulator::SetElements(std::vector<Element>& elements) {
 		std::vector<ElementTracker> trackers;
 
-		// cudaFuncAttributes attr;
-		// cudaFuncGetAttributes(&attr, integrateBodiesStresses);
-		// simThreadsPerBlock = attr.maxThreadsPerBlock;
-		// assert( attr.numRegs <= 32768 );
-		// cudaFuncGetAttributes(&attr, integrateBodies);
-		// if(attr.maxThreadsPerBlock < simThreadsPerBlock)
-		// 	simThreadsPerBlock = attr.maxThreadsPerBlock;
-		
-		// assert( attr.numRegs <= 32768 );
 		uint largestElementBoundaryMasses = 0;
 		uint largestElementSprings = 0;
 		uint largestElementFaces = 0;
 		uint largestElementCells = 0;
 		for(auto& e : elements) {
-			if(e.boundaryCount > largestElementBoundaryMasses) largestElementBoundaryMasses = e.boundaryCount;
-			if(e.springs.size() > largestElementSprings) largestElementSprings = e.springs.size();
-			if(e.faces.size() > largestElementFaces) largestElementFaces = e.faces.size();
-			if(e.cells.size() > largestElementCells) largestElementCells = e.cells.size();
+			e.PreProcess();
+			if(e.GetBoundaryCount() > largestElementBoundaryMasses) largestElementBoundaryMasses = e.GetBoundaryCount();
+			if(e.GetSprings().size() > largestElementSprings) largestElementSprings = e.GetSprings().size();
+			if(e.GetFaces().size() > largestElementFaces) largestElementFaces = e.GetFaces().size();
+			if(e.GetCells().size() > largestElementCells) largestElementCells = e.GetCells().size();
 		}
 
 		maxElements = elements.size();
 		maxReplaced = m_replacedSpringsPerElement * maxElements;
-		massesPerElement = elements[0].masses.size();
+		massesPerElement = elements[0].GetMasses().size();
 		boundaryMassesPerElement = largestElementBoundaryMasses;
 		springsPerElement = largestElementSprings;
 		facesPerElement = largestElementFaces;
@@ -443,7 +435,7 @@ namespace EvoDevo {
 		#endif
 	}
 
-	ElementTracker Simulator::AllocateElement(const Element& e) {
+	ElementTracker Simulator::AllocateElement(Element& e) {
 		ElementTracker tracker;
 
 		tracker.mass_begin = massBuf + numMasses;
@@ -455,7 +447,7 @@ namespace EvoDevo {
 		tracker.cell_begin = cellBuf + numCells;
 		tracker.cell_end = tracker.cell_begin;
 		
-		for(const Mass& m : e.masses) {
+		for(const Mass& m : e.GetMasses()) {
 			massBuf[numMasses] = m;
 			tracker.mass_end++;
 			numMasses++;
@@ -463,12 +455,12 @@ namespace EvoDevo {
 
 		
 		// unsigned seed = rand();
-		// std::vector<Spring> shuffledSprings(e.springs);
+		// std::vector<Spring> shuffledSprings(e.GetSprings());
 		// std::shuffle(shuffledSprings.begin(), shuffledSprings.end(), std::default_random_engine(seed));
 
 		// for(const Spring& s : shuffledSprings) {
 		uint count = 0;
-		for(const Spring& s : e.springs) {
+		for(const Spring& s : e.GetSprings()) {
 			springBuf[numSprings] = s;
 			tracker.spring_end++;
 
@@ -484,7 +476,7 @@ namespace EvoDevo {
 		}
 
 		count = 0;
-		for(const Face& f : e.faces) {
+		for(const Face& f : e.GetFaces()) {
 			faceBuf[numFaces] = f;
 			tracker.face_end++;
 
@@ -500,7 +492,7 @@ namespace EvoDevo {
 		}
 
 		count = 0;
-		for(const Cell& c : e.cells) {
+		for(const Cell& c : e.GetCells()) {
 			cellBuf[numCells] = c;
 			tracker.cell_end++;
 
@@ -508,7 +500,7 @@ namespace EvoDevo {
 			count++;
 		}
 
-		// fill up cells to max cell size
+		// fill up.GetCells() to max cell size
 		// TODO: variable cell count per robot
 		for( ; count < cellsPerElement; count++) {
 			cellBuf[numCells] = {0,0,0,0,0.0f,materials::air};

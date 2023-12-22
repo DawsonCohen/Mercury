@@ -45,7 +45,7 @@ namespace EvoDevo {
             filename = std::string("solution_") + std::to_string(i) + + "_fitness_" + std::to_string(fitness);
             filepath = directory + "/" + filename;
             
-            Util::WriteFile(filename,encoding);
+            Util::WriteFile(filepath,encoding);
             i++;
         }
     }

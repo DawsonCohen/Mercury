@@ -8,15 +8,17 @@ using namespace Elastic;
 void ForceMesh::Update(Element& robot, Environment& env) {
     m_Edges.clear();
 
-    std::vector<glm::vec3> forces(robot.masses.size(), glm::vec3(0.0f));
+    std::vector<Mass> masses = robot.GetMasses();
+    std::vector<Face> faces = robot.GetFaces();
+    std::vector<glm::vec3> forces(masses.size(), glm::vec3(0.0f));
     
-    for(auto& f : robot.faces) {
-        glm::vec3 p0 = glm::vec3(robot.masses[f.m0].pos.x(), robot.masses[f.m0].pos.y(), robot.masses[f.m0].pos.z());
-        glm::vec3 p1 = glm::vec3(robot.masses[f.m1].pos.x(), robot.masses[f.m1].pos.y(), robot.masses[f.m1].pos.z());
-        glm::vec3 p2 = glm::vec3(robot.masses[f.m2].pos.x(), robot.masses[f.m2].pos.y(), robot.masses[f.m2].pos.z());
-        glm::vec3 v0 = glm::vec3(robot.masses[f.m0].vel.x(), robot.masses[f.m0].vel.y(), robot.masses[f.m0].vel.z());
-        glm::vec3 v1 = glm::vec3(robot.masses[f.m1].vel.x(), robot.masses[f.m1].vel.y(), robot.masses[f.m1].vel.z());
-        glm::vec3 v2 = glm::vec3(robot.masses[f.m2].vel.x(), robot.masses[f.m2].vel.y(), robot.masses[f.m2].vel.z());
+    for(auto& f : faces) {
+        glm::vec3 p0 = glm::vec3(masses[f.m0].pos.x(), masses[f.m0].pos.y(), masses[f.m0].pos.z());
+        glm::vec3 p1 = glm::vec3(masses[f.m1].pos.x(), masses[f.m1].pos.y(), masses[f.m1].pos.z());
+        glm::vec3 p2 = glm::vec3(masses[f.m2].pos.x(), masses[f.m2].pos.y(), masses[f.m2].pos.z());
+        glm::vec3 v0 = glm::vec3(masses[f.m0].vel.x(), masses[f.m0].vel.y(), masses[f.m0].vel.z());
+        glm::vec3 v1 = glm::vec3(masses[f.m1].vel.x(), masses[f.m1].vel.y(), masses[f.m1].vel.z());
+        glm::vec3 v2 = glm::vec3(masses[f.m2].vel.x(), masses[f.m2].vel.y(), masses[f.m2].vel.z());
 
         glm::vec3 v = (v0 + v1 + v2) / 3.0f;
         glm::vec3 n = glm::cross(p1 - p0, p2 - p0);
@@ -37,8 +39,8 @@ void ForceMesh::Update(Element& robot, Environment& env) {
         maxF = std::max(maxF, glm::length(f));
     }
 
-    for(uint i = 0; i < robot.masses.size(); i++) {
-        glm::vec3 pos = glm::vec3(robot.masses[i].pos.x(), robot.masses[i].pos.y(), robot.masses[i].pos.z());
+    for(uint i = 0; i < masses.size(); i++) {
+        glm::vec3 pos = glm::vec3(masses[i].pos.x(), masses[i].pos.y(), masses[i].pos.z());
         forces[i] = forces[i] / maxF;
         m_Vertices.push_back({pos, {0.0f, 0.0f, 0.0f, 0.0f}});
         m_Vertices.push_back({pos + forces[i], {0.0f, 0.0f, 0.0f, 0.0f}});

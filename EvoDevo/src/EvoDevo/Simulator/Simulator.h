@@ -32,9 +32,9 @@ namespace EvoDevo {
 
 		void Initialize(Config::Simulator = Config::Simulator());
 		
-		ElementTracker SetElement(const Element& element);
-		std::vector<ElementTracker> SetElements(const std::vector<Element>& elements);
-		ElementTracker AllocateElement(const Element& e);
+		ElementTracker SetElement(Element& element);
+		std::vector<ElementTracker> SetElements(std::vector<Element>& elements);
+		ElementTracker AllocateElement(Element& e);
 		void Simulate(float sim_duration, bool trackStresses = false, bool trace = false, std::string tracefile = "trace.csv");
 		void Devo();
 		Element Collect(const ElementTracker& tracker);

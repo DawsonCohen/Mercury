@@ -1,9 +1,9 @@
-#include "evpch.h"
-
+#include <map>
 #include <chrono>
 #include <fstream>
+#include <sstream>
 #include <thread>
-#include "EvoDevo/Evolvables/VoxelRobot.h"
+#include "VoxelRobot.h"
 
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
@@ -11,6 +11,7 @@
 namespace EvoDevo {
 
     VoxelRobot::Encoding VoxelRobot::repr = VoxelRobot::ENCODE_RADIUS;
+
 
     void Voxel::setRandomMaterial() {
         mat = materials::random();
@@ -29,40 +30,12 @@ namespace EvoDevo {
         radius = max_radius * uniform(gen);
     }
 
-    void ShiftY(VoxelRobot& R) {
-        bool setFlag = false;
-        float minY = -1;
-        for(const Mass& m : R.getMasses()) {
-            if(!setFlag || m.protoPos.y() < minY) {
-                setFlag = true;
-                minY = m.protoPos.y();
-            }
-        }
-
-        Eigen::Vector3f translation(0.0f,-minY,0.0f);
-        R.translate(translation);
-    }
-
-    void ShiftX(VoxelRobot& R) {
-        bool setFlag = false;
-        float maxX = 0;
-        for(const Mass& m : R.getMasses()) {
-            if(!setFlag || m.protoPos.x() > maxX) {
-                setFlag = true;
-                maxX = m.protoPos.x();
-            }
-        }
-
-        Eigen::Vector3f translation(-maxX,0.0f,0.0f);
-        R.translate(translation);
-    }
-
     // Note mMasses.size == voxels.size
     // Builds spring from srcIdx to vIdx
-    void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx indices, std::vector<bool>& visit_list, uint srcIdx) {
+    void VoxelRobot::BuildSpringsRecurse(std::vector<Spring>& _springs, BasisIdx indices, std::vector<bool>& visit_list, uint16_t srcIdx) {
         if(!isValidIdx(indices)) return;
 
-        uint vIdx = getVoxelIdx(indices);
+        uint16_t vIdx = getVoxelIdx(indices);
 
         Voxel v = voxels[vIdx];
         Voxel v_src = voxels[srcIdx];
@@ -77,7 +50,7 @@ namespace EvoDevo {
             uint32_t matEncoding = 0x00u;
 
             BasisIdx neighbors[4];
-            for(uint i = 0; i < 4; i++) {
+            for(uint8_t i = 0; i < 4; i++) {
                 neighbors[i] = {0,0,0};
             }
             if(abs(path.x)+abs(path.y)+abs(path.z) == 1) { // cardinal
@@ -97,7 +70,7 @@ namespace EvoDevo {
                         neighbors[i] = v_src.indices - nprox;
                     }
                 }
-                for(uint i = 0; i < 4; i++) {
+                for(uint8_t i = 0; i < 4; i++) {
                     if(!isValidIdx(neighbors[i])) continue;
                     Voxel neighbor = voxels[getVoxelIdx(neighbors[i])];
                     if(neighbor.mat.encoding != materials::air.encoding)
@@ -157,9 +130,9 @@ namespace EvoDevo {
         visit_list[vIdx] = true;
         //  Adds the following to the basis indices:
         //  001, 010, 011, 100, 101, 110, 111
-        int x,y,z;
-        uint tempx,tempy;
-        for(uint k = 1; k < 8; k++) {
+        uint16_t x,y,z;
+        uint16_t tempx,tempy;
+        for(uint8_t k = 1; k < 8; k++) {
             x = k%2;
             y = (k/2)%2;
             z = (k/4)%2;
@@ -170,7 +143,7 @@ namespace EvoDevo {
         //  Adds the following to the basis indices:
         // 1-10, 01-1,-101
         x = 1; y = -1; z = 0;
-        for(uint k = 0; k < 3; k++) {
+        for(uint8_t k = 0; k < 3; k++) {
             BasisIdx offset = {x,y,z};
             BuildSpringsRecurse(_springs, indices + offset, visit_list, vIdx);
             tempx = x;
@@ -183,7 +156,7 @@ namespace EvoDevo {
         //  Adds the following to the basis indices:
         // -111,1-11,11-1
         x = -1; y = 1; z = 1;
-        for(uint k = 0; k < 3; k++) {
+        for(uint8_t k = 0; k < 3; k++) {
             BasisIdx offset = {x,y,z};
             BuildSpringsRecurse(_springs, indices + offset, visit_list, vIdx);
             tempx = x;
@@ -194,10 +167,164 @@ namespace EvoDevo {
         }
     }
 
+    void VoxelRobot::BuildFaces() {
+        
+        BasisIdx neighbor_idx;
+        Face f1, f2;
+        for(Voxel& v : voxels) {
+            if(v.mat == materials::air) continue;
+
+            // RIGHT
+            neighbor_idx = v.indices + BasisIdx{1,0,0};
+            if(!isValidIdx(neighbor_idx) ||
+                voxels[getVoxelIdx(neighbor_idx)].mat == materials::air
+            ) {
+                
+                f1.m0 = getVoxelIdx(v.indices + BasisIdx{1,0,0});
+                f1.m1 = getVoxelIdx(v.indices + BasisIdx{1,1,1});
+                f1.m2 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+
+                f2.m0 = getVoxelIdx(v.indices + BasisIdx{1,0,0});
+                f2.m1 = getVoxelIdx(v.indices + BasisIdx{1,1,1});
+                f2.m2 = getVoxelIdx(v.indices + BasisIdx{1,1,0});
+
+                masses[f1.m0].isOnBoundary = true;
+                masses[f1.m1].isOnBoundary = true;
+                masses[f1.m2].isOnBoundary = true;
+                masses[f2.m0].isOnBoundary = true;
+                masses[f2.m1].isOnBoundary = true;
+                masses[f2.m2].isOnBoundary = true;
+
+                faces.push_back(f1);
+                faces.push_back(f2);
+            }
+
+            // LEFT
+            neighbor_idx = v.indices + BasisIdx{-1,0,0};
+            if(!isValidIdx(neighbor_idx) ||
+                voxels[getVoxelIdx(neighbor_idx)].mat == materials::air ) {
+                
+                f1.m0 = getVoxelIdx(v.indices + BasisIdx{0,0,0});
+                f1.m1 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+                f1.m2 = getVoxelIdx(v.indices + BasisIdx{0,0,1});
+
+                f2.m0 = getVoxelIdx(v.indices + BasisIdx{0,0,0});
+                f2.m1 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+                f2.m2 = getVoxelIdx(v.indices + BasisIdx{0,1,0});
+
+                masses[f1.m0].isOnBoundary = true;
+                masses[f1.m1].isOnBoundary = true;
+                masses[f1.m2].isOnBoundary = true;
+                masses[f2.m0].isOnBoundary = true;
+                masses[f2.m1].isOnBoundary = true;
+                masses[f2.m2].isOnBoundary = true;
+
+                faces.push_back(f1);
+                faces.push_back(f2);
+            }
+
+            // UP
+            neighbor_idx = v.indices + BasisIdx{0,1,0};
+            if(!isValidIdx(neighbor_idx) ||
+                voxels[getVoxelIdx(neighbor_idx)].mat == materials::air ) {
+                
+                f1.m0 = getVoxelIdx(v.indices + BasisIdx{0,1,0});
+                f1.m1 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+                f1.m2 = getVoxelIdx(v.indices + BasisIdx{1,1,1});
+
+                f2.m0 = getVoxelIdx(v.indices + BasisIdx{0,1,0});
+                f2.m1 = getVoxelIdx(v.indices + BasisIdx{1,1,1});
+                f2.m2 = getVoxelIdx(v.indices + BasisIdx{1,1,0});
+
+                masses[f1.m0].isOnBoundary = true;
+                masses[f1.m1].isOnBoundary = true;
+                masses[f1.m2].isOnBoundary = true;
+                masses[f2.m0].isOnBoundary = true;
+                masses[f2.m1].isOnBoundary = true;
+                masses[f2.m2].isOnBoundary = true;
+
+                faces.push_back(f1);
+                faces.push_back(f2);
+            }
+
+            // DOWN
+            neighbor_idx = v.indices + BasisIdx{0,-1,0};
+            if(!isValidIdx(neighbor_idx) ||
+                voxels[getVoxelIdx(neighbor_idx)].mat == materials::air ) {
+                
+                f1.m0 = getVoxelIdx(v.indices + BasisIdx{0,0,0});
+                f1.m1 = getVoxelIdx(v.indices + BasisIdx{0,0,1});
+                f1.m2 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+
+                f2.m0 = getVoxelIdx(v.indices + BasisIdx{0,0,0});
+                f2.m1 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+                f2.m2 = getVoxelIdx(v.indices + BasisIdx{1,0,0});
+
+                masses[f1.m0].isOnBoundary = true;
+                masses[f1.m1].isOnBoundary = true;
+                masses[f1.m2].isOnBoundary = true;
+                masses[f2.m0].isOnBoundary = true;
+                masses[f2.m1].isOnBoundary = true;
+                masses[f2.m2].isOnBoundary = true;
+
+                faces.push_back(f1);
+                faces.push_back(f2);
+            }
+
+            // FORWARD
+            neighbor_idx = v.indices + BasisIdx{0,0,1};
+            if(!isValidIdx(neighbor_idx) ||
+                voxels[getVoxelIdx(neighbor_idx)].mat == materials::air ) {
+                
+                f1.m0 = getVoxelIdx(v.indices + BasisIdx{0,0,1});
+                f1.m1 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+                f1.m2 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+
+                f2.m0 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+                f2.m1 = getVoxelIdx(v.indices + BasisIdx{1,1,1});
+                f2.m2 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+
+                masses[f1.m0].isOnBoundary = true;
+                masses[f1.m1].isOnBoundary = true;
+                masses[f1.m2].isOnBoundary = true;
+                masses[f2.m0].isOnBoundary = true;
+                masses[f2.m1].isOnBoundary = true;
+                masses[f2.m2].isOnBoundary = true;
+
+                faces.push_back(f1);
+                faces.push_back(f2);
+            }
+
+            // BACK
+            neighbor_idx = v.indices + BasisIdx{0,0,-1};
+            if(!isValidIdx(neighbor_idx) ||
+                voxels[getVoxelIdx(neighbor_idx)].mat == materials::air ) {
+                
+                f1.m0 = getVoxelIdx(v.indices + BasisIdx{0,0,1});
+                f1.m1 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+                f1.m2 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+
+                f2.m0 = getVoxelIdx(v.indices + BasisIdx{1,0,1});
+                f2.m1 = getVoxelIdx(v.indices + BasisIdx{1,1,1});
+                f2.m2 = getVoxelIdx(v.indices + BasisIdx{0,1,1});
+
+                masses[f1.m0].isOnBoundary = true;
+                masses[f1.m1].isOnBoundary = true;
+                masses[f1.m2].isOnBoundary = true;
+                masses[f2.m0].isOnBoundary = true;
+                masses[f2.m1].isOnBoundary = true;
+                masses[f2.m2].isOnBoundary = true;
+
+                faces.push_back(f1);
+                faces.push_back(f2);
+            }
+        }
+    }
+
     // Gets number of non-air adjacent voxels
-    uint VoxelRobot::ConnectedVoxelRecurse(BasisIdx ind, std::vector<bool>& visit_list) {
-        uint numConnected = 0;
-        uint idx = getVoxelIdx(ind);
+    uint16_t VoxelRobot::ConnectedVoxelRecurse(BasisIdx ind, std::vector<bool>& visit_list) {
+        uint16_t numConnected = 0;
+        uint16_t idx = getVoxelIdx(ind);
 
         if(!isValidIdx(ind)) return 0;
         if(visit_list[idx] == true) return 0;
@@ -216,7 +343,7 @@ namespace EvoDevo {
         // voxel postive and negative cardinal directions
         Voxel v_pos, v_neg;
         int tempx, tempy;
-        for(uint k = 0; k < 3; k++) {
+        for(uint8_t k = 0; k < 3; k++) {
             BasisIdx pos_offset = {x,y,z};
             numConnected += ConnectedVoxelRecurse(ind + pos_offset, visit_list);
 
@@ -235,7 +362,7 @@ namespace EvoDevo {
 
     void VoxelRobot::CopyFromVoxelRecurse(BasisIdx ind, VoxelRobot& R, std::vector<bool>& visit_list) {
         if(!isValidIdx(ind)) return;
-        uint idx = getVoxelIdx(ind);
+        uint16_t idx = getVoxelIdx(ind);
 
         if(visit_list[idx] == true) return;
 
@@ -251,7 +378,7 @@ namespace EvoDevo {
         Voxel v_pos, v_neg;
         int x = 1, y = 0, z = 0;
         int tempx, tempy;
-        for(uint k = 0; k < 3; k++) {
+        for(uint8_t k = 0; k < 3; k++) {
             BasisIdx pos_offset = {x,y,z};
             CopyFromVoxelRecurse(ind + pos_offset, R, visit_list);
 
@@ -269,8 +396,8 @@ namespace EvoDevo {
     void VoxelRobot::Strip() {
         std::vector<bool> visited(voxels.size(), false);
         std::vector<uint> connected_count(voxels.size());
-        uint idx = 0;
-        uint maxIdx = 0;
+        uint16_t idx = 0;
+        uint16_t maxIdx = 0;
         for(Voxel& v : voxels) {
             connected_count[idx] = ConnectedVoxelRecurse(v.indices, visited);
             if(connected_count[idx] > connected_count[maxIdx]) maxIdx = idx;
@@ -285,7 +412,7 @@ namespace EvoDevo {
     }
 
     void RunBatchBuild(std::vector<VoxelRobot>& robots, size_t begin, size_t end) {
-        for(uint i = begin; i < end; i++) {
+        for(size_t i = begin; i < end; i++) {
             robots[i].Build();
         }
     }
@@ -296,7 +423,7 @@ namespace EvoDevo {
         unsigned int robots_per_thread = robots.size() / active_threads;
         
         std::vector<std::thread> threads;
-        uint begin, end;
+        size_t begin, end;
         for(unsigned int i = 0; i < active_threads; i++) {
             begin = i*robots_per_thread;
             end = min((i+1)*robots_per_thread, robots.size());
@@ -304,7 +431,7 @@ namespace EvoDevo {
             threads.push_back(std::move(t));
         }
 
-        for(uint i = 0; i < active_threads; i++) {
+        for(size_t i = 0; i < active_threads; i++) {
             threads[i].join();
         }
     }
@@ -316,7 +443,7 @@ namespace EvoDevo {
         mVolume = 0;
 
         std::vector<bool> visited(voxels.size());
-        for(uint i = 0; i < voxels.size(); i++) {
+        for(uint16_t i = 0; i < voxels.size(); i++) {
             if(voxels[i].mat != materials::air) mVolume++;
             Mass m(i, voxels[i].base, voxels[i].mat);
             addMass(m);
@@ -326,16 +453,20 @@ namespace EvoDevo {
         std::vector<Spring> _springs;
         BuildSpringsRecurse(_springs, {0,0,0}, visited);
         setSprings(_springs);
-        ShiftX(*this);
-        ShiftY(*this);
+        BuildFaces();
+
+        ShiftX();
+        ShiftY();
         
         updateBaseline();
     }
 
     void VoxelRobot::BuildFromCircles() {
         for(Voxel& v : voxels) {
-            if((uint) v.indices.x == xCount-1 || (uint) v.indices.y == yCount-1 || (uint) v.indices.z == zCount-1)
+            v.mat = materials::air;
+            if((uint16_t) v.indices.x == xCount-1 || (uint16_t) v.indices.y == yCount-1 || (uint16_t) v.indices.z == zCount-1) {
                 continue;
+            }
             std::vector<Material> mats;
             uint32_t matEncoding = 0x00u;
             float dist;
@@ -358,28 +489,28 @@ namespace EvoDevo {
         circles.push_back({materials::tissue});
         circles.push_back({materials::adductor_muscle0});
         circles.push_back({materials::adductor_muscle0});
-        circles.push_back({materials::abductor_muscle0});
-        circles.push_back({materials::abductor_muscle0});
+        // circles.push_back({materials::abductor_muscle0});
+        // circles.push_back({materials::abductor_muscle0});
 
         xCount = resolution*xSize;
         yCount = resolution*ySize;
         zCount = resolution*zSize;
-        uint numVoxels = xCount*yCount*zCount;
+        uint16_t numVoxels = xCount*yCount*zCount;
         voxels = std::vector<Voxel>(numVoxels);
 
         Eigen::Vector3f center_correction = (1.0f/resolution)*Eigen::Vector3f(0.5f,0.5f,0.5f);
-        for(uint i = 0; i < voxels.size(); i++) {
+        for(uint16_t i = 0; i < voxels.size(); i++) {
             BasisIdx indices = getVoxelBasisIdx(i);
             Eigen::Vector3f base((1.0f/resolution)*(indices.x),
                         (1.0f/resolution)*(indices.y),
                         (1.0f/resolution)*(indices.z));
             Eigen::Vector3f center = base + center_correction;
-            if((uint) indices.x == xCount-1 || (uint) indices.y == yCount-1 || (uint) indices.z == zCount-1)
+            if((uint16_t) indices.x == xCount-1 || (uint16_t) indices.y == yCount-1 || (uint16_t) indices.z == zCount-1)
                 voxels[i] = {i, indices, center, base, materials::air};
             else
                 voxels[i] = {i, indices, center, base, materials::bone};
         }
-        Build();
+        // Build();
     }
 
     VoxelRobot::VoxelRobot()
@@ -391,7 +522,7 @@ namespace EvoDevo {
         switch(VoxelRobot::repr) {
         case ENCODE_RADIUS:
         {
-            int idx = rand() % circles.size();
+            uint16_t idx = rand() % circles.size();
             circles[idx].Randomize(xSize,ySize,zSize);
         }
         break;
@@ -401,7 +532,7 @@ namespace EvoDevo {
         case ENCODE_SHAPE_ACT:
         default:
         {
-            int idx = rand() % voxels.size();
+            uint16_t idx = rand() % voxels.size();
             voxels[idx].setRandomMaterial();
 
             Build();
@@ -410,6 +541,10 @@ namespace EvoDevo {
     }
 
     void VoxelRobot::Randomize() {
+        for(Voxel& v : voxels) {
+            v.mat = materials::air;
+        }
+        
         switch(VoxelRobot::repr) {
         case ENCODE_RADIUS:
             for(Circle& c : circles)
@@ -419,7 +554,7 @@ namespace EvoDevo {
         case ENCODE_DIRECT: 
         default:
             for(Voxel& v : voxels) {
-                if((uint) v.indices.x < xCount-1 && (uint) v.indices.y < yCount-1 && (uint) v.indices.z < zCount-1)
+                if((uint16_t) v.indices.x < xCount-1 && (uint16_t) v.indices.y < yCount-1 && (uint16_t) v.indices.z < zCount-1)
                     v.setRandomMaterial();
             }
             Build();
@@ -430,13 +565,13 @@ namespace EvoDevo {
     CandidatePair<VoxelRobot> VoxelRobot::TwoPointChildren(const CandidatePair<VoxelRobot>& parents) {
         CandidatePair<VoxelRobot> children = {parents.first, parents.second};
 
-        uint range = children.first.voxels.size();
+        uint16_t range = children.first.voxels.size();
         float uni = uniform(gen);
         // clear("%f\n",uni);
         uint sample_length = range*uni;
         uint point = (range-sample_length)*uniform(gen);
 
-        for(uint i = point; i < sample_length; i++) {
+        for(uint16_t i = point; i < sample_length; i++) {
             swap(children.first.voxels[i], children.second.voxels[i]);
         }
 
@@ -489,31 +624,12 @@ namespace EvoDevo {
         return children;
     }
 
-    void VoxelRobot::Duplicate(const VoxelRobot& R) {
-        *this = R;
-    }
-
-    float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& robots) {
-        float dist = 0;
-        std::vector<Voxel> s1 = robots.first.voxels;
-        std::vector<Voxel> s2 = robots.second.voxels;
-        for(size_t i = 0; i < s1.size(); i++) {
-            dist += !(s1[i].mat == s2[i].mat);
+    float VoxelRobot::Distance(const CandidatePair<VoxelRobot>& candidates) {
+        float distance = 0;
+        for(uint16_t i = 0; i < candidates.first.voxels.size(); i++) {
+            distance += (candidates.first.voxels[i].mat.encoding != candidates.second.voxels[i].mat.encoding);
         }
-        return dist;
-    }
-
-    std::string VoxelRobot::Encode() const {
-        std::string encoding;
-        encoding += "type=VoxelRobot\n";
-        encoding += std::to_string(xSize) + "\n";
-        encoding += std::to_string(ySize) + "\n";
-        encoding += std::to_string(zSize) + "\n";
-        encoding += std::to_string(resolution) + "\n";
-        for(const Voxel& v : voxels) {
-            encoding += "v " + v.to_string() + "\n";
-        }
-        return encoding;
+        return distance;
     }
 
     std::vector<float> VoxelRobot::findDiversity(std::vector<VoxelRobot> pop) {
@@ -542,73 +658,4 @@ namespace EvoDevo {
         // }
         return diversity;
     }
-
-    void VoxelRobot::Decode(const std::string& filename) {
-        std::ifstream file(filename);
-        std::string line;
-        
-        uint ID;
-        int xIdx, yIdx, zIdx;
-        float   cx,cy,cz,
-                bx, by, bz;
-        Material mat;
-
-        std::getline(file, line, '\n');
-        std::getline(file, line, '\n');
-        xSize = atof(line.data());
-        std::getline(file, line, '\n');
-        ySize = atof(line.data());
-        std::getline(file, line, '\n');
-        zSize = atof(line.data());
-        std::getline(file, line, '\n');
-        resolution = atof(line.data());
-        
-        while(file.peek() == 'v') {
-            std::getline(file, line, 'v');
-            std::getline(file, line, ',');
-            ID = atoi(line.data());
-            std::getline(file, line, ',');
-            xIdx = atoi(line.data());
-            std::getline(file, line, ',');
-            yIdx = atoi(line.data());
-            std::getline(file, line, ',');
-            zIdx = atoi(line.data());
-            std::getline(file, line, ',');
-            cx = atof(line.data());
-            std::getline(file, line, ',');
-            cy = atof(line.data());
-            std::getline(file, line, ',');
-            cz = atof(line.data());
-            std::getline(file, line, ',');
-            bx = atof(line.data());
-            std::getline(file, line, ',');
-            by = atof(line.data());
-            std::getline(file, line, ',');
-            bz = atof(line.data());
-            std::getline(file, line, ',');
-            mat.k = atof(line.data());
-            std::getline(file, line, ',');
-            mat.dL0 = atof(line.data());
-            std::getline(file, line, ',');
-            mat.omega = atof(line.data());
-            std::getline(file, line, ',');
-            mat.phi = atof(line.data());
-            std::getline(file, line, ',');
-            mat.color.r = atof(line.data());
-            std::getline(file, line, ',');
-            mat.color.g = atof(line.data());
-            std::getline(file, line, ',');
-            mat.color.b = atof(line.data());
-            std::getline(file, line, '\n');
-            mat.color.a = atof(line.data());
-
-
-            Eigen::Vector3f center(cx,cy,cz);
-            Eigen::Vector3f base(bx,by,bz);
-
-            Voxel v{ID, {xIdx,yIdx,zIdx}, center, base, mat};
-            voxels.push_back(v);
-        }
     }
-
-}

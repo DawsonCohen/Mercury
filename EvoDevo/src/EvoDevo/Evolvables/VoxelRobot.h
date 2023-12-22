@@ -31,7 +31,7 @@ namespace EvoDevo {
         Material mat = materials::bone;
         float radius = 0;
         Eigen::Vector3f center = Eigen::Vector3f::Zero();
-        float max_radius = 0.5f;
+        float max_radius = 5.0f;
         void Randomize(float xlim, float ylim, float zlim);
 
         friend void swap(Circle& c1, Circle& c2) {
@@ -42,11 +42,11 @@ namespace EvoDevo {
     };
 
     struct Voxel {
-        uint ID;
+        uint16_t ID;
         BasisIdx indices;
         Eigen::Vector3f center;
         Eigen::Vector3f base;
-        Material mat;
+        Material mat = materials::air;
 
         void setRandomMaterial();
 
@@ -79,51 +79,52 @@ namespace EvoDevo {
         ENCODE_SHAPE_ACT = 3
     };
 
-        static float Distance(const CandidatePair<VoxelRobot>& robots);
+    private:
 
         static CandidatePair<VoxelRobot> TwoPointChildren(const CandidatePair<VoxelRobot>& parents);
         static CandidatePair<VoxelRobot> RadiusChildren(const CandidatePair<VoxelRobot>& parents);
-        void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, std::vector<bool>& visit_list, uint srcIdx = 0);
+        void BuildSpringsRecurse(std::vector<Spring>& springs, BasisIdx indices, std::vector<bool>& visit_list, uint16_t srcIdx = 0);
+        void BuildFaces();
+        void SortBoundaryMasses();
         void BuildFromCircles();
-        void Build();
-        void BatchBuild(std::vector<VoxelRobot>& robots);
         void Initialize();
 
-
         // Gets number of non-air connected voxels from a given voxel index
-        uint ConnectedVoxelRecurse(BasisIdx ind, std::vector<bool>& visit_list);
+        uint16_t ConnectedVoxelRecurse(BasisIdx ind, std::vector<bool>& visit_list);
 
         // Builds a robot R from voxels connected to a source voxel at index ind
         void CopyFromVoxelRecurse(BasisIdx ind, VoxelRobot& R, std::vector<bool>& visit_list);
         void Strip();
 
     private:
-        float xSize = 12.0f;
-        float ySize = 12.0f;
-        float zSize = 12.0f;
+        float xSize = 11.0f;
+        float ySize = 11.0f;
+        float zSize = 11.0f;
         float resolution = 1.0f; // Masses per cm
         Eigen::Vector3f center = Eigen::Vector3f(xSize/2.0f, ySize/2.0f, 0.0f);
         std::vector<Voxel> voxels;
         std::vector<Circle> circles;
-        uint xCount;
-        uint yCount;
-        uint zCount;
+        uint16_t xCount;
+        uint16_t yCount;
+        uint16_t zCount;
 
     public:
         static Encoding repr;
         
-        uint getVoxelIdx(uint xIdx, uint yIdx, uint zIdx) {
+        void Build();
+        static void BatchBuild(std::vector<VoxelRobot>& robots);
+        uint16_t getVoxelIdx(uint16_t xIdx, uint16_t yIdx, uint16_t zIdx) {
             return xIdx + yIdx * xCount + zIdx * (xCount*yCount);
         }
 
-        uint getVoxelIdx(BasisIdx i) {
+        uint16_t getVoxelIdx(BasisIdx i) {
             return i.x + i.y * xCount + i.z * (xCount*yCount);
         }
 
-        BasisIdx getVoxelBasisIdx(uint idx) {
-            uint xIdx = idx % xCount;
-            uint yIdx = (idx / xCount) % yCount;
-            uint zIdx = (idx / xCount / yCount) % zCount;
+        BasisIdx getVoxelBasisIdx(uint16_t idx) {
+            uint16_t xIdx = idx % xCount;
+            uint16_t yIdx = (idx / xCount) % yCount;
+            uint16_t zIdx = (idx / xCount / yCount) % zCount;
             return {(int) xIdx, (int) yIdx, (int) zIdx};
         }
 
@@ -194,9 +195,6 @@ namespace EvoDevo {
         
         static CandidatePair<VoxelRobot> Crossover(const CandidatePair<VoxelRobot>& parents);
 
-        std::string Encode() const;
-        void Decode(const std::string& filename);
-
         friend void swap(VoxelRobot& r1, VoxelRobot& r2) {
             using std::swap;
             swap(r1.voxels, r2.voxels);
@@ -219,6 +217,8 @@ namespace EvoDevo {
         }
 
         static std::vector<float> findDiversity(std::vector<VoxelRobot> pop);
+        static float Distance(const CandidatePair<VoxelRobot>& robots);
+
     };
 
 }

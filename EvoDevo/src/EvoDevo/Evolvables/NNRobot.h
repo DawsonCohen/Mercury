@@ -48,7 +48,7 @@ namespace EvoDevo {
                     float z = r * cos(el) * sin(az);
                     float y = r * sin(el);
 
-                    Mass m(i,x,y,z);
+                    Mass m (i,{x,y,z});
                     randMasses.push_back(m);
                 }
             }

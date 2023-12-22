@@ -6,8 +6,16 @@
 
 #define min(a,b) a < b ? a : b
 
-#define EPS 1e-3
+#define EPS 1e-1
 
+/**
+ * @file NNRobot.cpp
+ * @brief Implementation file for the NNRobot class.
+ * 
+ * This file contains the implementation of the NNRobot class, which represents a neural network-based robot.
+ * It includes functions for forward propagation, randomization, mutation, crossover, distance calculation,
+ * diversity calculation, and building the robot's structure.
+ */
 namespace EvoDevo {
 
     std::vector<unsigned int> NNRobot::hidden_sizes = std::vector<unsigned int>{25,25};
@@ -19,38 +27,10 @@ namespace EvoDevo {
     float NNRobot::crossover_neuron_count = .2;
     int NNRobot::mutation_weight_count = 10;
     int NNRobot::springs_per_mass = 25;
-    unsigned int NNRobot::maxMasses = 1708;
+    unsigned int NNRobot::maxMasses = 1365;
     unsigned int NNRobot::maxSprings = NNRobot::maxMasses * NNRobot::springs_per_mass;
     CrossoverDistribution NNRobot::crossover_distribution = CROSS_DIST_BINOMIAL;
     CrossoverType NNRobot::crossover_type = CROSS_CONTIGUOUS;
-
-    void ShiftY(NNRobot& R) {
-        bool setFlag = false;
-        float minY = -1;
-        for(const Mass& m : R.getMasses()) {
-            if(!setFlag || m.protoPos.y() < minY) {
-                setFlag = true;
-                minY = m.protoPos.y();
-            }
-        }
-
-        Eigen::Vector3f translation(0.0f,-minY,0.0f);
-        R.translate(translation);
-    }
-
-    void ShiftX(NNRobot& R) {
-        bool setFlag = false;
-        float maxX = 0;
-        for(const Mass& m : R.getMasses()) {
-            if(!setFlag || m.protoPos.x() > maxX) {
-                setFlag = true;
-                maxX = m.protoPos.x();
-            }
-        }
-
-        Eigen::Vector3f translation(-maxX,0.0f,0.0f);
-        R.translate(translation);
-    }
 
     NNRobot::NNRobot()
     {
@@ -116,8 +96,6 @@ namespace EvoDevo {
         // x = addBias(x);
         x = weights[num_layers-2] * x;
 
-        // tanh activation to position rows
-        // x.topRows(output_size - MATERIAL_COUNT) = tanh(x.topRows(output_size - MATERIAL_COUNT)); 
         float maxNorm = 0.0f;
         for (int i = 0; i < x.cols(); ++i) {
             float norm = x.col(i).head(output_size - MATERIAL_COUNT).norm();
@@ -144,15 +122,23 @@ namespace EvoDevo {
         }
     }
 
+    /**
+     * Produces random weight matrices to prdocue a random NNRobot
+     */
     void NNRobot::Randomize() {
         for(unsigned int i = 0; i < weights.size(); i++) {
             weights[i] = Eigen::MatrixXf::Random(weights[i].rows(), weights[i].cols());
         }
 
         mAge = 0;
-        // Build();
     }
 
+    /**
+     * @brief Mutates the weights of the neural network robot.
+     * 
+     * This function randomly assigns a new random value to randomly selected weights
+     * The new value is generated from a uniform distribution between -1 and 1.
+     */
     void NNRobot::Mutate() {
         for(int i = 0; i < mutation_weight_count; i++) {
             int layer = rand() % weights.size();
@@ -161,9 +147,15 @@ namespace EvoDevo {
 
             weights[layer](row,col) = uniform(gen)*2-1;
         }
-        // Build();
     }
 
+    
+    /**
+     * Performs crossover operation on two NNRobot parents to produce children.
+     * Swaps the weights of a randomly selected node (i.e. row of random weight matrix)
+     * @param parents The pair of NNRobot parents for crossover.
+     * @return The pair of NNRobot children generated from crossover.
+     */
     CandidatePair<NNRobot> NNRobot::Crossover(const CandidatePair<NNRobot>& parents) {
         CandidatePair<NNRobot> children;
         int crossover_count, layer = 0;
@@ -225,9 +217,6 @@ namespace EvoDevo {
             break;
         }
 
-        // children.first.Build();
-        // children.second.Build();
-
         uint maxAge = parents.first.mAge;
         if(parents.second.mAge > maxAge)
             maxAge = parents.second.mAge;
@@ -252,7 +241,7 @@ namespace EvoDevo {
         size_t pop_size = pop.size();
         std::vector<float> diversity(pop_size, 0);
         
-        // // TODO
+        // // TODO: this is a significant slowdown
         // for(size_t i = 0; i < pop_size; i++) {
         //     for(size_t j  = 0; j < pop_size; j++){
         //         CandidatePair<NNRobot> pair = {pop[i], pop[j]};
@@ -287,72 +276,31 @@ namespace EvoDevo {
         }
     }
 
-    /*
-    * 1) Sorts masses such that boundary masses are a continguous 
-    * 2) Updaes mass id's 
-    * Input :  an equal-sized vector of masses and boundary flags
-    * Output:  a map from the original index to the new index
-    */
-    void sortBoundaryMasses(std::vector<Mass>& masses, Triangulation::Mesh& mesh) {
-        std::vector<uint16_t> idxMap(masses.size());
-
-        // Can push to batched GPU sort if need be
-        std::sort(masses.begin(), masses.end(),[mesh](const Mass a, const Mass b) {
-                return mesh.isBoundaryVertexFlags[a.id] > mesh.isBoundaryVertexFlags[b.id];
-            });
-        for(uint i = 0; i < masses.size(); i++) {
-            idxMap[masses[i].id] = i;
-            masses[i].id = i;
-        }
-        for(auto& e : mesh.edges) {
-            e.v1 = idxMap[e.v1];
-            e.v2 = idxMap[e.v2];
-        }
-        for(auto& f : mesh.facets) {
-            assert(mesh.isBoundaryVertexFlags[f.v1]);
-            assert(mesh.isBoundaryVertexFlags[f.v2]);
-            assert(mesh.isBoundaryVertexFlags[f.v3]);
-            f.v1 = idxMap[f.v1];
-            f.v2 = idxMap[f.v2];
-            f.v3 = idxMap[f.v3];
-        }
-        for(auto& c : mesh.cells) {
-            c.v1 = idxMap[c.v1];
-            c.v2 = idxMap[c.v2];
-            c.v3 = idxMap[c.v3];
-            c.v4 = idxMap[c.v4];
-        }
-    }
-
+    /**
+     * @brief Builds the robot by performing alpha shape triangulation on the masses.
+     *
+     * This function clears the existing robot, performs alpha shape triangulation on the masses,
+     * and generates the necessary springs, faces, and cells for the robot. The resulting robot
+     * is then shifted in the X and Y directions, and the baseline is updated
+     * 
+     * Note: this must be called before simulation
+     */
     void NNRobot::Build() {
-        masses.clear();
-        springs.clear();
-        faces.clear();
-        cells.clear();
-        boundaryCount = 0;
+        Clear();
 
-        // auto start = std::chrono::high_resolution_clock::now();
         forward();
 
-        // auto end = std::chrono::high_resolution_clock::now();
-        // auto execute_time = std::chrono::duration<float>(end - start).count();
-        // printf("INFERENCE IN %f SECONDS\n", execute_time);
-
-        // start = std::chrono::high_resolution_clock::now();
+        /**
+         * @brief Perform alpha shape triangulation on the masses.
+         *
+         * This function uses the Triangulation::AlphaShape method to perform alpha shape triangulation
+         * on the given masses.
+         *
+         * @param masses The masses to perform triangulation on.
+         * @return The triangulated shape.
+         */
         auto triangulation = Triangulation::AlphaShape(this->masses);
-
         // auto triangulation = Triangulation::KNN(this->masses,springs_per_mass);
-        
-        // end = std::chrono::high_resolution_clock::now();
-        // execute_time = std::chrono::duration<float>(end - start).count();
-        // printf("KNN IN %f SECONDS\n", execute_time);
-
-        // start = std::chrono::high_resolution_clock::now();
-
-        sortBoundaryMasses(masses, triangulation);
-        for(uint i = 0; i < triangulation.isBoundaryVertexFlags.size(); i++) {
-            boundaryCount += triangulation.isBoundaryVertexFlags[i];
-        }
 
         for (auto edge : triangulation.edges) {
             uint16_t m1 = edge.v1,
@@ -361,12 +309,11 @@ namespace EvoDevo {
             Material mat1, mat2, mat;
 
             if(dist < EPS) {
-                // mat = materials::air;
+                mat = materials::air;
                 continue;
             } 
             mat1 = masses[m1].material;
             mat2 = masses[m2].material;
-            // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
             mat = materials::decode(mat1.encoding | mat2.encoding);
 
             Spring s = {m1, m2, dist, dist, mat};
@@ -396,7 +343,6 @@ namespace EvoDevo {
             mat2 = masses[v2].material;
             mat3 = masses[v3].material;
             mat4 = masses[v4].material;
-            // mat = materials::id_lookup(materials::get_composite_id(mat1.id, mat2.id));
             mat = materials::avg({mat1, mat2, mat3, mat4});
 
             float volume = ((m1.pos-m0.pos).cross(m2.pos-m0.pos)).dot(m3.pos-m0.pos) / 6.0f;
@@ -405,18 +351,9 @@ namespace EvoDevo {
             cells.push_back(c);
         }
 
-
-        // end = std::chrono::high_resolution_clock::now();
-        // execute_time = std::chrono::duration<float>(end - start).count();
-        // printf("SPRINGS CREATED IN %f SECONDS\n", execute_time);
-
-        ShiftX(*this);
-        ShiftY(*this);
+        ShiftX();
+        ShiftY();
 
         updateBaseline();
-
-        std::ofstream("robot.obj") << ToOBJ();
-        
     }
-
 }

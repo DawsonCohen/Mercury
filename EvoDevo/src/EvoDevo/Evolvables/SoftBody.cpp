@@ -14,6 +14,14 @@
 #define min(a,b) a < b ? a : b
 #define max(a,b) a > b ? a : b
 
+/**
+ * @file SoftBody.cpp
+ * @brief Implementation file for the SoftBody class.
+ * 
+ * This file contains the implementation of the SoftBody class, which represents a soft body object in the EvoDevo simulation.
+ * It includes functions for rotation, translation, resetting, clearing, and updating various properties of the soft body.
+ * The class also provides methods for encoding and decoding the soft body object to/from a string representation.
+ */
 namespace EvoDevo {
 
     unsigned SoftBody::seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -76,7 +84,6 @@ namespace EvoDevo {
             s.mean_length = (masses[s.m0].protoPos - masses[s.m1].protoPos).norm();
             s.rest_length = s.mean_length;
         }
-        sim_time = 0;
         total_sim_time = 0;
         updateBaseline();
     }
@@ -84,6 +91,9 @@ namespace EvoDevo {
     void SoftBody::Clear() {
         masses.clear();
         springs.clear();
+        faces.clear();
+        cells.clear();
+        boundaryCount = 0;
     }
 
     void SoftBody::updateClosestPos() {
@@ -165,6 +175,9 @@ namespace EvoDevo {
             ss << (i < faces.size()- 1 ? ";" : "\n");
         }
         ss << "cells=";
+        if(cells.size() == 0) {
+            ss<<"\n";
+        }
         for(unsigned int i = 0; i < cells.size(); i++) {
             ss << cells[i];
             ss << (i < cells.size()- 1 ? ";" : "\n");
@@ -195,6 +208,7 @@ namespace EvoDevo {
             std::istringstream lineStream(value);
             std::string cell;
 
+
             while (std::getline(lineStream, cell, ';')) {
                 std::istringstream word(cell);
                 std::string param;
@@ -214,7 +228,7 @@ namespace EvoDevo {
                 m = std::stof(param);
                 std::getline(word, param, ',');
                 mat = materials::id_lookup(stoi(param));
-                masses.push_back(Mass(id, x, y, z, m, mat));
+                masses.push_back(Mass(id, {x, y, z}, mat, m));
             }
         }
         std::getline(infile, line);
@@ -266,6 +280,9 @@ namespace EvoDevo {
                 std::getline(word, param, ',');
                 m2 = std::stoi(param);
                 Face f = {m0, m1, m2};
+                masses[m0].isOnBoundary = true;
+                masses[m1].isOnBoundary = true;
+                masses[m2].isOnBoundary = true;
                 faces.push_back(f);
             }
         }
@@ -276,38 +293,74 @@ namespace EvoDevo {
         if(key == "cells") {
             std::istringstream lineStream(value);
             std::string cell;
+            std::cout << "Cell: " << cell << std::endl;
+            if(cell.find(';') < cell.length()) {
+                while (std::getline(lineStream, cell, ';')) {
+                    std::istringstream word(cell);
+                    std::string param;
+                    uint16_t m0, m1, m2, m3;
+                    float mv;
+                    Material mat;
 
-            while (std::getline(lineStream, cell, ';')) {
-                std::istringstream word(cell);
-                std::string param;
-                uint16_t m0, m1, m2, m3;
-                float mv;
-                Material mat;
+                    std::getline(word, param, ',');
+                    m0 = std::stoi(param);
+                    std::getline(word, param, ',');
+                    m1 = std::stoi(param);
+                    std::getline(word, param, ',');
+                    m2 = std::stoi(param);
+                    std::getline(word, param, ',');
+                    m3 = std::stoi(param);
+                    std::getline(word, param, ',');
+                    mv = std::stof(param);
+                    std::getline(word, param, ',');
+                    mat = materials::decode((uint16_t) std::stoi(param));
+                    Cell c = {m0, m1, m2, m3, mv, mat};
+                    cells.push_back(c);
+                }
+            }
 
-                std::getline(word, param, ',');
-                m0 = std::stoi(param);
-                std::getline(word, param, ',');
-                m1 = std::stoi(param);
-                std::getline(word, param, ',');
-                m2 = std::stoi(param);
-                std::getline(word, param, ',');
-                m3 = std::stoi(param);
-                std::getline(word, param, ',');
-                mv = std::stof(param);
-                std::getline(word, param, ',');
-                mat = materials::decode((uint16_t) std::stoi(param));
-                Cell c = {m0, m1, m2, m3, mv, mat};
-                cells.push_back(c);
+        }
+        boundaryCount = 0;
+        for(Mass& m : masses) {
+            if(m.isOnBoundary) boundaryCount++;
+        }
+        // std::getline(infile, line);
+        // pos = line.find('=');
+        // key = line.substr(0, pos);
+        // value = line.substr(pos+1);
+        // if(key == "boundary_count") {
+        //     boundaryCount = std::stoi(value);
+        // }
+        updateBaseline();
+    }
+
+    
+    void SoftBody::ShiftY() {
+        bool setFlag = false;
+        float minY = -1;
+        for(const Mass& m : masses) {
+            if(!setFlag || m.protoPos.y() < minY) {
+                setFlag = true;
+                minY = m.protoPos.y();
             }
         }
-        std::getline(infile, line);
-        pos = line.find('=');
-        key = line.substr(0, pos);
-        value = line.substr(pos+1);
-        if(key == "boundary_count") {
-            boundaryCount = std::stoi(value);
+
+        Eigen::Vector3f translation(0.0f,-minY,0.0f);
+        translate(translation);
+    }
+
+    void SoftBody::ShiftX() {
+        bool setFlag = false;
+        float maxX = 0;
+        for(const Mass& m : masses) {
+            if(!setFlag || m.protoPos.x() > maxX) {
+                setFlag = true;
+                maxX = m.protoPos.x();
+            }
         }
-        updateBaseline();
+
+        Eigen::Vector3f translation(-maxX,0.0f,0.0f);
+        translate(translation);
     }
 
 }

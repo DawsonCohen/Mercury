@@ -43,7 +43,7 @@ public:
 		updateBaseline();
 	}
 	SoftBody(const SoftBody& src) :
-	Element{src.masses, src.springs, src.faces, src.cells, src.boundaryCount}, Candidate(src),
+	Element(src), Candidate(src),
 	mVolume(src.mVolume), mLength(src.mLength), mBaseCOM(src.mBaseCOM)
 	{}
 
@@ -64,11 +64,6 @@ public:
 	void rotate(float deg, Eigen::Vector3f& axis);
 	void translate(Eigen::Vector3f& translation);
 
-	const std::vector<Mass>& getMasses() const { return masses; };
-	const std::vector<Spring>& getSprings() const { return springs; }
-
-	float getSimTime() const { return sim_time; }
-	float getTotalSimTime() const { return total_sim_time; }
 	Eigen::Vector3f getCOM() const { return mCOM; }
 	Eigen::Vector3f getBaseCOM() const { return mBaseCOM; }
 	Eigen::Vector3f getClosestPos() const { return mClosestPos; }
@@ -79,7 +74,6 @@ public:
 		updateLength();
 		updateCOM();
 		mBaseCOM = mCOM;
-		std::cout << "BASELINE COM: " << mBaseCOM.x() << std::endl;
 	}
 
 	void Reset() override;
@@ -106,9 +100,9 @@ public:
 	}
 
 	void setMasses(std::vector<Mass> _masses) {
-		masses.resize(_masses.size());
-		for(size_t i = 0; i < masses.size(); i++) {
-			masses[i] = _masses[i];
+		masses.clear();
+		for(size_t i = 0; i < _masses.size(); i++) {
+			masses.push_back(_masses[i]);
 		}
 	}
 
@@ -124,6 +118,8 @@ public:
     void updateLength();
 	
     void updateFitness() override;
+	
+	void ShiftX(); void ShiftY();
 
 	void printObjectPositions();
 	

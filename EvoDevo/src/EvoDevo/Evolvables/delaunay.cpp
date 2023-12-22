@@ -75,14 +75,18 @@ namespace EvoDevo {
         std::list<Edge>  as_edges;
         std::list<Facet> as_facets;
         std::list<Cell_handle>  as_cells;
+
+        // inserts interior and boundary edges
         as.get_alpha_shape_edges(std::back_inserter(as_edges),
                             Alpha_shape_3::REGULAR);
         as.get_alpha_shape_edges(std::back_inserter(as_edges),
                             Alpha_shape_3::INTERIOR); 
 
+        // inserts only boundary facets
         as.get_alpha_shape_facets(std::back_inserter(as_facets),
                             Alpha_shape_3::REGULAR);
                             
+        // inserts interior cells
         as.get_alpha_shape_cells(std::back_inserter(as_cells),
                             Alpha_shape_3::INTERIOR);
 
