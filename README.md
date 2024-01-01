@@ -1,3 +1,6 @@
+# Mercury
+Mercury is a CUDA-based simulation library that forcuses on fast, cached simulation of soft-body robots on land in the water. See our paper [here](https://github.com/DawsonCohen/Mercury/blob/master/mercury_fall_2023.pdf)
+
 # Simulation Instructions
 ## Requirements:
 1) Install c++/ [g++](https://linuxconfig.org/how-to-install-g-the-c-compiler-on-ubuntu-22-04-lts-jammy-jellyfish-linux)
